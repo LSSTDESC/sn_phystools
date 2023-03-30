@@ -20,7 +20,8 @@ class DDF:
 class FiveSigmaDepth_Nvisits:
     def __init__(self, dbDir='../DB_Files',
                  dbName='draft_connected_v2.99_10yrs.npy',
-                 requirements='input/DESC_cohesive_strategy/pz_requirements.csv'):
+                 requirements='input/DESC_cohesive_strategy/pz_requirements.csv',
+                 Nvisits_WL_season=800):
         """
         class to estimate Nvisits from m5 and m5 from Nvisits
 
@@ -32,6 +33,8 @@ class FiveSigmaDepth_Nvisits:
             db Name to load. The default is 'draft_connected_v2.99_10yrs.npy'.
         requirements : str, optional
             csv file of requirements. The default is 'pz_requirements.csv'.
+        Nvisits_WL_season: int, optional.
+            Number of visits per season required by WL.
 
         Returns
         -------
@@ -39,7 +42,7 @@ class FiveSigmaDepth_Nvisits:
 
         """
 
-        # load data
+        # load data - DDF
         self.data = self.load_DDF(dbDir, dbName)
 
         # get frac events Moon-on
@@ -49,15 +52,22 @@ class FiveSigmaDepth_Nvisits:
 
         self.frac_moon = np.round(frac_moon, 2)
 
-        # load requirements
+        # load requirements from csv file
 
-        self.req = self.load_req(requirements)
+        self.m5_req = self.load_req(requirements)
 
         # get m5 single exp. median
         self.msingle = pd.DataFrame.from_records(self.get_median_m5())
 
-        self.msingle_calc, self.summary = self.get_Nvisits(
-            self.msingle, self.req)
+        msingle_calc, summary = self.get_Nvisits(
+            self.msingle, self.m5_req)
+
+        # get Nvisits requirements from WL
+        nvisits_WL = self.filter_allocation(
+            dbDir, dbName, Nvisits_WL_season)
+
+        self.msingle_calc, self.summary = self.merge_reqs(
+            msingle_calc, nvisits_WL)
 
     def load_req(self, requirements):
         """
@@ -123,6 +133,114 @@ class FiveSigmaDepth_Nvisits:
                 data = np.concatenate((data, tt[idx]))
 
         return data
+
+    def filter_allocation(self, dbDir, dbName, Nvisits=800):
+        """
+        Method to estimate filter allocation and estimate
+       the number of visits per band corresponding to Nvisits
+
+        Parameters
+        ----------
+        dbDir : str
+            dbDir.
+        dbName : str
+            db name.
+        Nvisits : int, optional
+            number of reference visits. The default is 800.
+
+        Returns
+        -------
+        df : TYPE
+            DESCRIPTION.
+
+        """
+
+        fullPath = '{}/{}'.format(dbDir, dbName)
+        obs = np.load(fullPath)
+        ntot = len(obs)
+
+        r = []
+        for b in 'ugrizy':
+            idx = obs['band'] == b
+            sel = obs[idx]
+            b_alloc = len(sel)/ntot
+            nv = np.round(b_alloc*Nvisits, 0)
+            r.append((b, np.round(100.*b_alloc), nv))
+            print(b, np.round(100.*b_alloc, 1), int(nv))
+
+        df = pd.DataFrame(
+            r, columns=['band', 'filter_allocation', 'Nvisits_WL_season'])
+
+        return df
+
+    def merge_reqs(self, msingle_calc, nvisits_WL):
+        """
+        Method to merge reqs in terms of visits
+
+        Parameters
+        ----------
+        msingle_calc : pandas df
+            requirements from PZ.
+        nvisits_WL : pandas df
+            requirements from WL.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        var = ['band', 'm5_med_single', 'Nvisits_y1', 'Nvisits_y2_y10_p',
+               'Nvisits_y2_y10_m', 'Nvisits_y2_y10', 'nseason_y2_y10']
+
+        msingle_PZ = msingle_calc[var]
+
+        msingle_all = msingle_PZ.merge(
+            nvisits_WL, left_on=['band'], right_on=['band'])
+
+        msingle_all['Nvisits_WL_y1'] = msingle_all['Nvisits_WL_season']
+        msingle_all['Nvisits_WL_y2_y10'] = msingle_all['Nvisits_WL_season'] * \
+            msingle_all['nseason_y2_y10']
+
+        for tt in ['y1', 'y2_y10']:
+            msingle_all['Nvisits_WL_PZ_{}'.format(tt)] = np.max(
+                msingle_all[['Nvisits_{}'.format(tt), 'Nvisits_WL_{}'.format(tt)]], axis=1)
+
+        varb = ['band', 'Nvisits_y1',
+                'Nvisits_y2_y10', 'Nvisits_y2_y10_p', 'Nvisits_y2_y10_m',
+                'Nvisits_WL_y1', 'Nvisits_WL_y2_y10',
+                'Nvisits_WL_PZ_y1', 'Nvisits_WL_PZ_y2_y10']
+        print('alors2', msingle_all[varb])
+
+        # estimate m5 from WL_PZ reqs
+        for tt in ['y1', 'y2_y10']:
+            msingle_all['m5_WL_PZ_{}'.format(tt)] = \
+                msingle_all['m5_med_single']\
+                + 1.26*np.log10(msingle_all['Nvisits_WL_PZ_{}'.format(tt)])
+
+        print(msingle_all)
+
+        # m5 +- 0.05
+        tt = 'y2_y10'
+        delta_m5 = 0.01
+        dm5 = dict(zip(['p', 'm'], [+1, -1]))
+
+        for key, vals in dm5.items():
+            msingle_all['m5_WL_PZ_{}_{}'.format(
+                tt, key)] = msingle_all['m5_WL_PZ_{}'.format(tt)]+vals*delta_m5
+
+        # Nvisits corresponding to m5+-0.05
+        for key, vals in dm5.items():
+            msingle_all['Nvisits_WL_PZ_{}_{}'.format(tt, key)] = 10**(0.8*(msingle_all['m5_WL_PZ_{}_{}'.format(
+                tt, key)]-msingle_all['m5_med_single']))
+
+        vv = ['Nvisits_WL_PZ_y1', 'Nvisits_WL_PZ_y2_y10',
+              'Nvisits_WL_PZ_y2_y10_p', 'Nvisits_WL_PZ_y2_y10_m', 'Nvisits_y1',
+              'Nvisits_y2_y10', 'Nvisits_y2_y10_p', 'Nvisits_y2_y10_m']
+
+        summary = msingle_all[vv].sum()
+
+        return msingle_all, summary
 
     def get_median_m5_field(self):
         """
@@ -274,7 +392,7 @@ class FiveSigmaDepth_Nvisits:
 
         df = self.get_Nvisits_from_frac(Nvisits)
         df = df.merge(self.msingle, left_on=['band'], right_on=['band'])
-        df = df.merge(self.req, left_on=['band'], right_on=['band'])
+        df = df.merge(self.m5_req, left_on=['band'], right_on=['band'])
         # df['m5'] = df['m5_med_single']+1.25*np.log10(df['Nvisits'])
         # df['delta_m5'] = df['m5']-df['m5_y2_y10']
 
@@ -307,6 +425,8 @@ class FiveSigmaDepth_Nvisits:
 
         m5_resu = pd.DataFrame(m5_resu_orig)
 
+        print('alors', m5_resu.columns)
+        print(test)
         # m5_resu['Nvisits'] = m5_resu['Nvisits'].astype(int)
 
         m5_resu = self.visits_night_from_frac(m5_resu, sl=sl_DD,
@@ -1520,7 +1640,7 @@ class Scenario_time:
         ff_nomoon = copy.deepcopy(ff)
         ff_nomoon['u'] = 0
         nv_nomoon = '/'.join(['{}'.format(int(ff_nomoon[key]))
-                             for key in bands])
+                              for key in bands])
         nv_nomoon_night = np.sum([int(ff_nomoon[key]) for key in bands])
 
         # res = '{}||{}'.format(nv_moon, nv_nomoon)
@@ -1577,8 +1697,8 @@ class Scenario_time:
 
                 tt = sela.groupby(visitName).apply(lambda x:
                                                    pd.DataFrame({'yearmin':
-                                                                [x['year'].min()],
-                                                                'yearmax':
+                                                                 [x['year'].min()],
+                                                                 'yearmax':
                                                                  [x['year'].max()]})).reset_index()
 
                 y = [ya-0.1, ya+0.1]
