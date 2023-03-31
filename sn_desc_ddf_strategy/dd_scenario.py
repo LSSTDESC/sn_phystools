@@ -59,6 +59,12 @@ class FiveSigmaDepth_Nvisits:
         # get m5 single exp. median
         self.msingle = pd.DataFrame.from_records(self.get_median_m5())
 
+        self.m5_single_field = pd.DataFrame.from_records(
+            self.get_median_m5_field())
+
+        print(self.m5_single_field)
+        print(test)
+
         msingle_calc, summary = self.get_Nvisits(
             self.msingle, self.m5_req)
 
@@ -191,7 +197,8 @@ class FiveSigmaDepth_Nvisits:
         """
 
         var = ['band', 'm5_med_single', 'Nvisits_y1', 'Nvisits_y2_y10_p',
-               'Nvisits_y2_y10_m', 'Nvisits_y2_y10', 'nseason_y2_y10']
+               'Nvisits_y2_y10_m', 'Nvisits_y2_y10', 'nseason_y2_y10',
+               'm5_y1', 'm5_y2_y10']
 
         msingle_PZ = msingle_calc[var]
 
@@ -204,7 +211,8 @@ class FiveSigmaDepth_Nvisits:
 
         for tt in ['y1', 'y2_y10']:
             msingle_all['Nvisits_WL_PZ_{}'.format(tt)] = np.max(
-                msingle_all[['Nvisits_{}'.format(tt), 'Nvisits_WL_{}'.format(tt)]], axis=1)
+                msingle_all[['Nvisits_{}'.format(tt),
+                             'Nvisits_WL_{}'.format(tt)]], axis=1)
 
         varb = ['band', 'Nvisits_y1',
                 'Nvisits_y2_y10', 'Nvisits_y2_y10_p', 'Nvisits_y2_y10_m',
@@ -216,13 +224,11 @@ class FiveSigmaDepth_Nvisits:
         for tt in ['y1', 'y2_y10']:
             msingle_all['m5_WL_PZ_{}'.format(tt)] = \
                 msingle_all['m5_med_single']\
-                + 1.26*np.log10(msingle_all['Nvisits_WL_PZ_{}'.format(tt)])
-
-        print(msingle_all)
+                + 1.25*np.log10(msingle_all['Nvisits_WL_PZ_{}'.format(tt)])
 
         # m5 +- 0.05
         tt = 'y2_y10'
-        delta_m5 = 0.01
+        delta_m5 = 0.05
         dm5 = dict(zip(['p', 'm'], [+1, -1]))
 
         for key, vals in dm5.items():
@@ -231,8 +237,18 @@ class FiveSigmaDepth_Nvisits:
 
         # Nvisits corresponding to m5+-0.05
         for key, vals in dm5.items():
-            msingle_all['Nvisits_WL_PZ_{}_{}'.format(tt, key)] = 10**(0.8*(msingle_all['m5_WL_PZ_{}_{}'.format(
-                tt, key)]-msingle_all['m5_med_single']))
+            msingle_all['Nvisits_WL_PZ_{}_{}'.format(tt, key)] =\
+                10**(0.8*(msingle_all['m5_WL_PZ_{}_{}'.format(
+                    tt, key)]-msingle_all['m5_med_single']))
+
+        # restimate m5_y1 and m5_y2_y10
+
+        for tt in ['y1', 'y2_y10']:
+            msingle_calc['m5_{}'.format(
+                tt)] = msingle_all['m5_WL_PZ_{}'.format(tt)]
+
+        # print('icib', msingle_all[['Nvisits_WL_PZ_y2_y10',
+        #      'Nvisits_WL_PZ_y2_y10_p', 'Nvisits_WL_PZ_y2_y10_m']])
 
         vv = ['Nvisits_WL_PZ_y1', 'Nvisits_WL_PZ_y2_y10',
               'Nvisits_WL_PZ_y2_y10_p', 'Nvisits_WL_PZ_y2_y10_m', 'Nvisits_y1',
@@ -343,7 +359,7 @@ class FiveSigmaDepth_Nvisits:
         return msingle, summary
 
     def get_Nvisits_from_frac(self, Nvisits,
-                              col='Nvisits_y2_y10'):
+                              col='Nvisits_WL_PZ_y2_y10'):
         """
         Method to estimate the number of visits per band from a ref
 
@@ -390,7 +406,7 @@ class FiveSigmaDepth_Nvisits:
 
         """
 
-        df = self.get_Nvisits_from_frac(Nvisits)
+        df = self.get_Nvisits_from_frac(Nvisits, col='Nvisits_WL_PZ_y2_y10')
         df = df.merge(self.msingle, left_on=['band'], right_on=['band'])
         df = df.merge(self.m5_req, left_on=['band'], right_on=['band'])
         # df['m5'] = df['m5_med_single']+1.25*np.log10(df['Nvisits'])
@@ -425,21 +441,29 @@ class FiveSigmaDepth_Nvisits:
 
         m5_resu = pd.DataFrame(m5_resu_orig)
 
-        print('alors', m5_resu.columns)
-        print(test)
         # m5_resu['Nvisits'] = m5_resu['Nvisits'].astype(int)
 
+        m5_resu = m5_resu[['name', 'band', 'Nvisits', 'Nseasons']]
         m5_resu = self.visits_night_from_frac(m5_resu, sl=sl_DD,
                                               cad=cad_DD, col='Nvisits',
+                                              colb='m5_y2_y10',
+                                              seasoncol='Nseasons',
                                               frac_moon=frac_moon)
 
-        topp = m5_resu[['name', 'band', 'Nvisits', 'Nvisits_night']]
+        print(m5_resu.columns)
+
+        topp = m5_resu[['name', 'band', 'Nvisits',
+                        'Nvisits_night']]
 
         topp.to_csv('DD_res2.csv', index=False)
 
         # now estimate the number of visits per night for y1
 
+        print('there man', m5single.columns)
+
         tt = m5single[['band', 'Nvisits_y1', 'm5_y1', 'm5_med_single']]
+        tt = m5single[['band', 'Nvisits_WL_PZ_y1',
+                       'm5_WL_PZ_y1', 'm5_med_single']]
         tt['Nseasons'] = 1
 
         # tt['Nvisits_y1'] = tt['Nvisits_y1'].astype(int)
@@ -452,15 +476,15 @@ class FiveSigmaDepth_Nvisits:
         tt['Nvisits_y1_night'] = tt['Nvisits_y1_night'].astype(int)
         """
         tt = self.visits_night_from_frac(tt, sl=sl_DD,
-                                         cad=cad_DD, col='Nvisits_y1',
-                                         colb='m5_y1', frac_moon=frac_moon)
+                                         cad=cad_DD, col='Nvisits_WL_PZ_y1',
+                                         colb='m5_WL_PZ_y1', seasoncol='Nseasons', frac_moon=frac_moon)
 
         return m5_resu, tt
 
     def visits_night_from_frac(self, tab, sl, cad, col='Nvisits',
-                               colb='m5_y2_y10', frac_moon=0.20):
+                               colb='m5_y2_y10', seasoncol='Nseasons', frac_moon=0.20):
         """
-        Method to estimate the number of visits per night according to frac
+        Method to estimate the number of visits per night according to moon frac
 
         Parameters
         ----------
@@ -484,12 +508,14 @@ class FiveSigmaDepth_Nvisits:
 
         """
 
+        print('there we go', tab)
+
         nights_season = int(sl/cad)
         bands = 'ugrizy'
         frac_night = [frac_moon, 1., 1., 1., 1.-frac_moon, 1.]
         fracs = dict(zip(bands, frac_night))
         tab['{}_night'.format(col)] = tab.apply(
-            lambda x: x[col]/x['Nseasons'] /
+            lambda x: x[col]/x[seasoncol] /
             (fracs[x['band']]*nights_season),
             axis=1)
 
@@ -500,16 +526,18 @@ class FiveSigmaDepth_Nvisits:
 
         frac_df = pd.DataFrame(list(bands), columns=['band'])
         frac_df['frac_night'] = frac_night
-        tab['Nseasons'] = tab['Nseasons']
+        tab['Nseasons'] = tab[seasoncol]
         tab = tab.merge(frac_df, left_on=['band'], right_on=['band'])
 
         tab = tab.round({'{}'.format(col): 0, '{}_night'.format(col): 0})
         tab['{}_recalc'.format(col)] = tab['{}_night'.format(
             col)]*tab['nights_season']*tab['frac_night']*tab['Nseasons']
 
+        """
         tab['m5_recalc'] = 1.25 * \
             np.log10(tab['{}_recalc'.format(col)])+tab['m5_med_single']
         tab['diff_m5'] = tab['m5_recalc']-tab[colb]
+        """
         return tab
 
 
@@ -526,6 +554,8 @@ class DD_Scenario:
                  Nv_DD_y1=998,  # number of DD visits year 1
                  # nvisits vs zcomp
                  nvisits_zcomp_file='input/DESC_cohesive_strategy/Nvisits_zcomp_paper.csv',
+                 m5_single_zcomp_file='input/DESC_cohesive_strategy/m5_single_zcomp_paper.csv',
+                 m5_single_OS=pd.DataFrame(),
                  Nf_combi=[(1, 3), (2, 2), (2, 3), (2, 4)],  # UD combi
                  zcomp=[0.66, 0.80, 0.75, 0.70],  # correesponding zcomp
                  scen_names=['DDF_SCOC', 'DDF_DESC_0.80',
@@ -560,6 +590,12 @@ class DD_Scenario:
         nvisits_zcomp_file : csv file, optional
             Nvisits<-> zcomplete (SNe Ia). The default is '
             input/DESC_cohesive_strategy/Nvisits_zcomp_paper.csv'.
+        m5_single_zcomp_file : csv file, optional
+            m5 single visit used to estimate Nvisits <-> zcomplete (SNe Ia). 
+            The default is '
+            input/DESC_cohesive_strategy/m5_single_zcomp_paper.csv'.
+        m5_single_OS: pandas df, optional
+            array of m5 single visite value to correct nvisits_zcomp_file.
         Nf_combi : list(pairs), optional
             UD config (Nfields, Nseasons). The default is
             [(1, 3), (2, 2), (2, 3), (2, 4)].
@@ -594,6 +630,11 @@ class DD_Scenario:
         # load zlim vs nvisits
         dfa = pd.read_csv(nvisits_zcomp_file, comment='#')
 
+        # load single m5 visits used to estimate nvisits_zcomp_file
+        m5_single_zcomp = pd.read_csv(m5_single_zcomp_file, comment='#')
+
+        self.correct_SNR(dfa, m5_single_zcomp, m5_single_OS)
+
         # interpolators
         self.zlim_nvisits = interp1d(dfa['nvisits'], dfa['zcomp'],
                                      bounds_error=False, fill_value=0.)
@@ -607,6 +648,28 @@ class DD_Scenario:
             self.nvisits_zlim_band[b] = interp1d(dfa['zcomp'], dfa[b],
                                                  bounds_error=False,
                                                  fill_value=0.)
+
+    def correct_SNR(self, dfa, m5_single_zcomp, m5_single_OS):
+
+        print(dfa)
+        print(m5_single_zcomp)
+        print(m5_single_OS)
+        m5_single = m5_single_zcomp.merge(
+            m5_single_OS, left_on=['band'], right_on=['band'])
+        m5_single['delta_m5'] = m5_single['m5_med_single'] - \
+            m5_single['m5_single']
+
+        print(m5_single)
+        for io, row in m5_single.iterrows():
+            b = row['band']
+            k = 10**(-0.8*row['delta_m5'])
+            print(b, k)
+            if b == 'g' or b == 'r':
+                continue
+            dfa['{}_corr'.format(b)] = k*dfa['{}'.format(b)]
+
+        print(dfa)
+        print(test)
 
     def get_Nv_DD(self, Nf_UD, Ns_UD, Nv_UD, Nf_DD, Ns_DD, Nv_DD, k):
         """
@@ -829,7 +892,7 @@ class DD_Scenario:
                 ax.text(nv_DD-500, nv_UD-10, nameb, color='b', fontsize=12)
 
                 if pz_wl_req and Nf_UD >= 2:
-                    nv_DD_n = pz_wl_req['PZ_y2_y10'][1]
+                    nv_DD_n = pz_wl_req['WL_PZ_y2_y10'][1]
                     interpb = interp1d(
                         sel[varx], sel[vary], bounds_error=False)
                     nv_UD_n = interpb(nv_DD_n)
@@ -1224,6 +1287,7 @@ def get_final_scenario(grp, NDD, m5_resu, m5_nvisits_y1):
         sel_m5['frac_night']*sel_m5['nights_season']
 
     print(sel_m5.columns)
+
     sel_m5 = sel_m5.rename(
         columns={'nights_season': 'n_night_season',
                  'Nvisits_night': 'nvisits_night'})
@@ -1242,8 +1306,8 @@ def get_final_scenario(grp, NDD, m5_resu, m5_nvisits_y1):
 
     m5_nvisits_y1 = m5_nvisits_y1.rename(
         columns={'nights_season': 'n_night_season',
-                 'Nvisits_y1_night': 'nvisits_night'})
-    m5_nvisits_y1['nvisits_band_season'] = m5_nvisits_y1['Nvisits_y1_recalc']
+                 'Nvisits_WL_PZ_y1_night': 'nvisits_night'})
+    m5_nvisits_y1['nvisits_band_season'] = m5_nvisits_y1['Nvisits_WL_PZ_y1_recalc']
     m5_nvisits_y1['zcomp'] = 0.
     m5_nvisits_y1['name'] = name
 
@@ -1908,27 +1972,28 @@ class Delta_nvisits:
         idx = dfres['year'] == 1
         df_y1 = dfres[idx][['name', 'fieldType',
                             'band', 'nvisits_band_season']]
-        m5_nvisits_y1 = m5_nvisits[['band', 'Nvisits_y1']]
+        m5_nvisits_y1 = m5_nvisits[['band', 'Nvisits_WL_PZ_y1']]
 
         df_y1 = df_y1.merge(m5_nvisits_y1, left_on=['band'], right_on=['band'])
-        df_y1['ratio_nvisits'] = df_y1['nvisits_band_season']/df_y1['Nvisits_y1']
+        df_y1['ratio_nvisits'] = df_y1['nvisits_band_season'] / \
+            df_y1['Nvisits_WL_PZ_y1']
 
         df_y2_y10 = dfres[~idx]
-        m5_nvisits_y2_y10 = m5_nvisits[['band', 'Nvisits_y2_y10']]
+        m5_nvisits_y2_y10 = m5_nvisits[['band', 'Nvisits_WL_PZ_y2_y10']]
         df_y2_y10 = df_y2_y10.groupby(['name', 'band', 'fieldType'])[
             'nvisits_band_season'].sum().reset_index()
         df_y2_y10 = df_y2_y10.merge(m5_nvisits_y2_y10, left_on=['band'],
                                     right_on=['band'])
 
         df_y2_y10['ratio_nvisits'] = df_y2_y10['nvisits_band_season'] / \
-            df_y2_y10['Nvisits_y2_y10']
+            df_y2_y10['Nvisits_WL_PZ_y2_y10']
 
         self.plot_delta_nvisits(df_y1, figtitle='PZ requirements y1')
         self.plot_delta_nvisits(df_y2_y10)
 
     def plot_delta_nvisits(self, df, xvar='name', xlabel='',
                            yvar='ratio_nvisits',
-                           ylabel=r'$\frac{N_{visits}^{DD}}{N_{visits}^{PZ}}$',
+                           ylabel=r'$\frac{N_{visits}^{DD}}{N_{visits}^{WL+PZ}}$',
                            figtitle='PZ requirements y2_y10'):
         """
         Method to plot ratio of nvisits vs scenario
