@@ -62,8 +62,7 @@ class FiveSigmaDepth_Nvisits:
         self.m5_single_field = pd.DataFrame.from_records(
             self.get_median_m5_field())
 
-        print(self.m5_single_field)
-        print(test)
+        print('m5 single field', self.m5_single_field)
 
         msingle_calc, summary = self.get_Nvisits(
             self.msingle, self.m5_req)
@@ -591,7 +590,7 @@ class DD_Scenario:
             Nvisits<-> zcomplete (SNe Ia). The default is '
             input/DESC_cohesive_strategy/Nvisits_zcomp_paper.csv'.
         m5_single_zcomp_file : csv file, optional
-            m5 single visit used to estimate Nvisits <-> zcomplete (SNe Ia). 
+            m5 single visit used to estimate Nvisits <-> zcomplete (SNe Ia).
             The default is '
             input/DESC_cohesive_strategy/m5_single_zcomp_paper.csv'.
         m5_single_OS: pandas df, optional
@@ -633,43 +632,73 @@ class DD_Scenario:
         # load single m5 visits used to estimate nvisits_zcomp_file
         m5_single_zcomp = pd.read_csv(m5_single_zcomp_file, comment='#')
 
-        self.correct_SNR(dfa, m5_single_zcomp, m5_single_OS)
+        dfb = self.correct_SNR(dfa, m5_single_zcomp, m5_single_OS)
+
+        print(dfb)
 
         # interpolators
-        self.zlim_nvisits = interp1d(dfa['nvisits'], dfa['zcomp'],
+        self.zlim_nvisits = interp1d(dfb['nvisits'], dfb['zcomp'],
                                      bounds_error=False, fill_value=0.)
-        self.nvisits_zlim = interp1d(dfa['zcomp'], dfa['nvisits'],
+        self.nvisits_zlim = interp1d(dfb['zcomp'], dfb['nvisits'],
                                      bounds_error=False, fill_value=0.)
 
         # interpolators per band
         self.nvisits_zlim_band = {}
 
         for b in 'grizy':
-            self.nvisits_zlim_band[b] = interp1d(dfa['zcomp'], dfa[b],
+            self.nvisits_zlim_band[b] = interp1d(dfb['zcomp'], dfb[b],
                                                  bounds_error=False,
                                                  fill_value=0.)
 
     def correct_SNR(self, dfa, m5_single_zcomp, m5_single_OS):
+        """
+        Method to correct for the m5 single variations
+        between current m5 single (from a simulation) and m5 single used to
+        estimate the number of visits vs zcompleteness.
 
+        Parameters
+        ----------
+        dfa : pandas df
+            data to process.
+        m5_single_zcomp : pandas df
+            m5 single exp. values to estimate Nvisits <-> zcomplete.
+        m5_single_OS : pandas df
+            current m5 single exp..
+
+        Returns
+        -------
+        None.
+
+        """
+
+        """
         print(dfa)
         print(m5_single_zcomp)
         print(m5_single_OS)
+        """
+
         m5_single = m5_single_zcomp.merge(
             m5_single_OS, left_on=['band'], right_on=['band'])
         m5_single['delta_m5'] = m5_single['m5_med_single'] - \
             m5_single['m5_single']
 
-        print(m5_single)
+        # print(m5_single)
+
+        dfb = pd.DataFrame(dfa)
+        dfb['nvisits'] = 0
         for io, row in m5_single.iterrows():
             b = row['band']
             k = 10**(-0.8*row['delta_m5'])
             print(b, k)
             if b == 'g' or b == 'r':
+                dfb['nvisits'] += dfb['{}'.format(b)]
                 continue
-            dfa['{}_corr'.format(b)] = k*dfa['{}'.format(b)]
+            vval = '{}'.format(b)
+            dfb[vval] = k*dfb[vval]
+            dfb[vval] = dfb[vval].astype(int)
+            dfb['nvisits'] += dfb[vval]
 
-        print(dfa)
-        print(test)
+        return dfb
 
     def get_Nv_DD(self, Nf_UD, Ns_UD, Nv_UD, Nf_DD, Ns_DD, Nv_DD, k):
         """
@@ -729,7 +758,7 @@ class DD_Scenario:
             Ns_DD = (self.NDD*self.Nseason-self.Nf_DD_y1-Nf_UD*Ns_UD)
             Ns_DD /= (self.NDD-Nf_UD)
 
-            for k in np.arange(1., 22., 1.):
+            for k in np.arange(1., 10000., 1.):
                 res = self.get_Nv_DD(Nf_UD, Ns_UD, -1,
                                      self.NDD-Nf_UD, Ns_DD, -1, k)
                 print(k, res, k*res, self.cad_DD, self.sl_DD,
@@ -880,7 +909,8 @@ class DD_Scenario:
                 nv_UD = tag[0]
                 name = tag[1]
                 zcomp = tag[2]
-                interp = interp1d(sel[vary], sel[varx], bounds_error=False)
+                interp = interp1d(sel[vary], sel[varx],
+                                  bounds_error=False, fill_value=0.)
                 nv_DD = interp(nv_UD)
                 ax.plot([nv_DD], [nv_UD], marker='s', ms=20,
                         color='b', mfc='None', markeredgewidth=2)
