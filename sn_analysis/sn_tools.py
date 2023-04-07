@@ -463,11 +463,14 @@ def plotSN_effi(data, xvar='n_epochs_aft', bins=range(1, 20, 1),
     ax.plot(bins[:-1], effi, 'ko')
 
 
-def loadData_fakeSimu(theDir):
+def loadData_fakeSimu(theDir, theFile=''):
 
-    searchname = '{}/SN*.hdf5'.format(theDir)
-    print('searching for', searchname)
-    files = glob.glob(searchname)
+    if theFile == '':
+        searchname = '{}/SN*.hdf5'.format(theDir)
+        print('searching for', searchname)
+        files = glob.glob(searchname)
+    else:
+        files = ['{}/{}'.format(theDir, theFile)]
 
     #restot = pd.DataFrame()
     params = dict(zip(['objtype'], ['astropyTable']))
