@@ -67,7 +67,7 @@ class Calc_zlim:
         val = interpolate.interp1d(nsn_cum, self.zz,
                                    bounds_error=False, fill_value=0.)
 
-        return np.round(val(self.frac), 3)
+        return np.round(val(self.frac), 4)
 
     def plot_zlim(self, zlim):
         """
