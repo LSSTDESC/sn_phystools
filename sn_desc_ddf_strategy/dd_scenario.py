@@ -278,6 +278,7 @@ class FiveSigmaDepth_Nvisits:
             sela = self.data[idxa]
             for b in 'ugrizy':
                 idxb = sela['band'] == b
+                idxb &= sela['airmass'] <= 1.5
                 selb = sela[idxb]
                 print(b, np.median(selb['fiveSigmaDepth']))
                 r.append(
@@ -308,6 +309,7 @@ class FiveSigmaDepth_Nvisits:
 
         for b in 'ugrizy':
             idxb = self.data['band'] == b
+            idxb &= self.data['airmass'] <= 1.5
             selb = self.data[idxb]
             r.append((b, np.median(selb['fiveSigmaDepth'])))
 
@@ -633,7 +635,7 @@ class DD_Scenario:
         m5_single_zcomp = pd.read_csv(m5_single_zcomp_file, comment='#')
 
         dfb = self.correct_SNR(dfa, m5_single_zcomp, m5_single_OS)
-
+        #dfb = pd.DataFrame(dfa)
         print(dfb)
 
         # interpolators
@@ -675,6 +677,7 @@ class DD_Scenario:
         print(dfa)
         print(m5_single_zcomp)
         print(m5_single_OS)
+        print(test)
         """
 
         m5_single = m5_single_zcomp.merge(
@@ -758,7 +761,7 @@ class DD_Scenario:
             Ns_DD = (self.NDD*self.Nseason-self.Nf_DD_y1-Nf_UD*Ns_UD)
             Ns_DD /= (self.NDD-Nf_UD)
 
-            for k in np.arange(1., 10000., 1.):
+            for k in np.arange(1., 30., 1.):
                 res = self.get_Nv_DD(Nf_UD, Ns_UD, -1,
                                      self.NDD-Nf_UD, Ns_DD, -1, k)
                 print(k, res, k*res, self.cad_DD, self.sl_DD,
@@ -919,7 +922,7 @@ class DD_Scenario:
                     (nameb, zcomp, Nf_UD, Ns_UD, int(nv_UD), int(nv_DD),
                      self.cad_UD, self.sl_UD, 0))
 
-                ax.text(nv_DD-500, nv_UD-10, nameb, color='b', fontsize=12)
+                ax.text(nv_DD-500, nv_UD-12, nameb, color='b', fontsize=12)
 
                 if pz_wl_req and Nf_UD >= 2:
                     nv_DD_n = pz_wl_req['WL_PZ_y2_y10'][1]
@@ -928,7 +931,7 @@ class DD_Scenario:
                     nv_UD_n = interpb(nv_DD_n)
                     ax.plot([nv_DD_n], [nv_UD_n], marker='*', ms=20,
                             color='b', mfc='None', markeredgewidth=2)
-                    namec = '{}_WL'.format(name)
+                    namec = '{}_WZ'.format(name)
                     ax.text(nv_DD_n+50, nv_UD_n, namec,
                             color='b', fontsize=12)
                     for_res.append(
@@ -949,12 +952,13 @@ class DD_Scenario:
                         color='b', mfc='None', markeredgewidth=3.)
                 # ax.text(1.05*nv_DD, 1.05*nv_UD, name, color='b', fontsize=12)
                 if vx < 0:
-                    vx = np.abs(nv_DD-0.8*nv_DD)
+                    vx = np.abs(nv_DD-0.65*nv_DD)
                 if vy < 0:
                     vy = np.abs(nv_UD-0.95*nv_UD)
                 ax.text(nv_DD-vx, nv_UD-vy, namea, color='b', fontsize=12)
                 # print(name, int(nv_DD), int(nv_UD), vx, vy)
 
+        #xmin = np.max([np.min(restot[varx]), 500])
         xmin = np.min(restot[varx])
         xmax = np.max(restot[varx])
         ymin = np.min(restot[vary])
@@ -991,7 +995,7 @@ class DD_Scenario:
                     tt = 1.01*ymin
                     k = tt-ymin
                 ax.plot([xmin, xmax], [ymin, ymax], ls='dotted', color=coltext)
-                ax.text(0.895*xmax, ymin+k, key, fontsize=12, color=coltext)
+                ax.text(0.885*xmax, ymin+k, key, fontsize=12, color=coltext)
 
         if pz_wl_req:
             ymin, ymax = ax.get_ylim()
@@ -1443,14 +1447,14 @@ class Delta_m5:
             np.log10(res_y2_y10['nvisits_band_season'])-res_y2_y10['m5_y2_y10']
 
         print(res_y1)
-        self.plot_deltam5(res_y1, figtitle='PZ requirements y1')
+        self.plot_deltam5(res_y1, figtitle='WL+PZ requirements y1')
         print(res_y2_y10)
 
         self.plot_deltam5(res_y2_y10)
 
     def plot_deltam5(self, df, xvar='name', xlabel='', yvar='diff_m5',
                      ylabel='$\Delta m_5=m_5^{DD}-m_5^{PZ}$',
-                     figtitle='PZ requirements y2_y10'):
+                     figtitle='WL+PZ requirements y2_y10'):
         """
         Method to plot delta_m5 vs scenario
 
@@ -1467,7 +1471,7 @@ class Delta_m5:
         ylabel : str, optional
             y-axis label. The default is '$\Delta m_5=m_5^{DD}-m_5^{PZ}$'.
         figtitle : str, optional
-            fig title. The default is 'PZ requirements y2_y10'.
+            fig title. The default is 'WL+PZ requirements y2_y10'.
 
         Returns
         -------
@@ -2018,13 +2022,13 @@ class Delta_nvisits:
         df_y2_y10['ratio_nvisits'] = df_y2_y10['nvisits_band_season'] / \
             df_y2_y10['Nvisits_WL_PZ_y2_y10']
 
-        self.plot_delta_nvisits(df_y1, figtitle='PZ requirements y1')
+        self.plot_delta_nvisits(df_y1, figtitle='WL+PZ requirements y1')
         self.plot_delta_nvisits(df_y2_y10)
 
     def plot_delta_nvisits(self, df, xvar='name', xlabel='',
                            yvar='ratio_nvisits',
                            ylabel=r'$\frac{N_{visits}^{DD}}{N_{visits}^{WL+PZ}}$',
-                           figtitle='PZ requirements y2_y10'):
+                           figtitle='WL+PZ requirements y2_y10'):
         """
         Method to plot ratio of nvisits vs scenario
 
@@ -2041,7 +2045,7 @@ class Delta_nvisits:
         ylabel : str, optional
             y-axis label. The default is '$\Delta m_5=m_5^{DD}-m_5^{PZ}$'.
         figtitle : str, optional
-            fig title. The default is 'PZ requirements y2_y10'.
+            fig title. The default is 'WL+PZ requirements y2_y10'.
 
         Returns
         -------
