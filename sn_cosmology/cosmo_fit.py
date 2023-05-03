@@ -16,7 +16,7 @@ class CosmoFit(ABC):
     def __init__(self, x, y, sigma, parNames=[], cosmo_model='w0waCDM',
                  cosmo_default=dict(
                      zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])),
-                 prior={}):
+                 prior={}, par_protect_fit=[]):
         '''
         Initialize the class with the differents variables.
 
@@ -43,6 +43,7 @@ class CosmoFit(ABC):
         self.cosmo_model = cosmo_model
         self.cosmo_default = cosmo_default
         self.prior = prior
+        self.par_protect_fit = par_protect_fit
 
     @ abstractmethod
     def fit_function(self,  parameters, parNames=[]):
@@ -221,10 +222,16 @@ class CosmoFit(ABC):
         covariance_matrix : numpy.array of size [n_param x n_param]
             The covariance matrix.
         '''
-        covariance_matrix = np.linalg.inv(self.fisher(*parameters))
+        cov = np.linalg.inv(self.fisher(*parameters))
         # print('mat method \n',np.mat(self.fisher(*parameters)).I)
 
-        return covariance_matrix
+        dict_out = {}
+        for i, vala in enumerate(self.parNames):
+            for j, valb in enumerate(self.parNames):
+                if j <= i:
+                    dict_out['Cov_{}_{}_fisher'.format(vala, valb)] = cov[i, j]
+
+        return dict_out
 
     def fisher_uncertainty_matrix(self, *parameters):
         '''
@@ -252,7 +259,54 @@ class CosmoFit(ABC):
         '''
 
         m = Minuit(self.xi_square, *parameters, name=self.parNames)
-        m.limits['Om0'] = (0, None)
+        if self.par_protect_fit:
+            for vv in self.par_protect_fit:
+                m.limits[vv] = (0, None)
+
         m.migrad()
         m.hesse()
-        return m
+
+        # grab the results: param values
+        dict_out = {}
+        res = m.values
+        for name in self.parNames:
+            dict_out['{}_fit'.format(name)] = res[name]
+
+        # covariance matrix
+        cov = m.covariance
+        for i, vala in enumerate(self.parNames):
+            for j, valb in enumerate(self.parNames):
+                if j <= i:
+                    dict_out['Cov_{}_{}_fit'.format(vala, valb)] = cov[i, j]
+
+        return dict_out
+
+
+def fom(cov_a, cov_b, cov_ab, deltaXi2=6.17):
+    '''
+    Calculates the Figure of Merit such as : FoM = pi/A
+    A being : A = pi*(DeltaXi2) *sigma_w0 *sigma_wa *sqrt(1-pearson**2)
+    Parameters
+    ----------
+    covariance_matrix : numpy array of float
+        a covariance matrix 
+    DeltaXi2 : float, optional
+        The degree of confidence level wanted. The default is 6.3.
+        Note : 
+            1 sigma : CL : 68.3%, DeltaXi2 : 2.3
+            2 sigma : CL : 95,4%, DeltaXi2 : 6.17
+            3 sigma : CL : 9np.arange(0.01, 1.11, 0.01)9,7 % DeltaXi2 : 11.8
+    Returns
+    -------
+    Figure_of_merit : float
+        A numerical value indicating the accuracy of our covariance matrix.
+    '''
+
+    sigma_a = np.sqrt(cov_a)
+    sigma_b = np.sqrt(cov_b)
+    pearson = cov_ab/(sigma_a*sigma_b)
+
+    A = np.pi * deltaXi2 * sigma_a*sigma_b * np.sqrt(1-pearson**2)
+    FoM = np.pi/A
+
+    return FoM
