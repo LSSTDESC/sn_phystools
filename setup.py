@@ -14,7 +14,7 @@ setup(
     author='Philippe Gris',
     author_email='philippe.gris@clermont.in2p3.fr',
     license='BSD',
-    packages=['sn_desc_ddf_strategy', 'sn_analysis'],
+    packages=['sn_desc_ddf_strategy', 'sn_analysis', 'sn_cosmology'],
     # All files from folder sn_phystools_input
     # package_data={'sn_metrics_input': ['*.txt']},
     python_requires='>=3.5',
