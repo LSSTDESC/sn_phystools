@@ -10,62 +10,78 @@ Created on Wed May 3 09:40:35 2023
 import numpy as np
 from iminuit import Minuit
 from abc import ABC, abstractmethod
+import pandas as pd
 
 
 class CosmoFit(ABC):
-    def __init__(self, x, y, sigma, parNames=[], cosmo_model='w0waCDM',
+    def __init__(self, dataValues, dataNames, fitparNames=['w0', 'wa', 'Om0'],
+                 cosmo_model='w0waCDM',
                  cosmo_default=dict(
                      zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])),
-                 prior={}, par_protect_fit=[]):
-        '''
-        Initialize the class with the differents variables.
-
-        Parameters
-        ----------
-        x : array of numerical values
-            Our entry data.
-
-        y : array of numerical values
-            The results of the model with a small noise
-                    (e.g our observational data ?)
-
-        sigma : array of numerical values
-            The uncertainty on our data points.
-
-        h : a float.
-            Used for differentiating our Xisquare.
-        '''
-        self.x = x
-        self.y = y
-        self.sigma = sigma
-        self.h = 1.e-7
-        self.parNames = parNames
-        self.cosmo_model = cosmo_model
-        self.cosmo_default = cosmo_default
-        self.prior = prior
-        self.par_protect_fit = par_protect_fit
-
-    @ abstractmethod
-    def fit_function(self,  parameters, parNames=[]):
+                 prior=pd.DataFrame(), par_protect_fit=[]):
         """
-        Abstract method where the fit function is defined
+        Abstract class to estimate cosmoly parameters
 
         Parameters
         ----------
-        *parameters : list
-            Parameters to fit.
+        dataValues : list(array)
+            data to fit.
+        dataNames : list(str)
+            corresponding list names.
+        fitparNames : str, optional
+            List of parameters to fit. The default is ['w0','wa','Om0'].
+        cosmo_model : str, optional
+            Name of the cosmology model. The default is 'w0waCDM'.
+        cosmo_default : dict, optional
+            Default values for the cosmology model.
+            The default is dict(zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])).
+        prior : pd.DataFrame, optional
+            Priors to include in the chisquare. The default is pd.DataFrame().
+        par_protect_fit : list(str), optional
+            List of fit parameters that have to be protected (example: Om0 > 0)
+            The default is [].
 
         Returns
         -------
         None.
 
         """
+
+        for i, vals in enumerate(dataNames):
+            exec('self.{} = dataValues[{}]'.format(vals, i))
+
+        self.h = 1.e-7
+        self.fitparNames = fitparNames
+        self.cosmo_model = cosmo_model
+        self.cosmo_default = cosmo_default
+        self.prior = prior
+        self.par_protect_fit = par_protect_fit
+
+    @ abstractmethod
+    def fit_function(self,  parameters, fitparNames=[]):
+        """
+
+        Abstract method where the fit function is defined
+
+        Parameters
+        ----------
+        parameters : list(float)
+            parameters to fit.
+        fitparNames : list(str), optional
+            corresponding list of names. The default is [].
+
+        Returns
+        -------
+        None.
+
+        """
+
         pass
 
     @ abstractmethod
     def xi_square(self, *parameters):
         """
-        abstract method to define the ChiSquare
+        Abstract method to define the ChiSquare
 
         Parameters
         ----------
@@ -96,8 +112,8 @@ class CosmoFit(ABC):
         Returns
         -------
         D : Array of numerical values
-            Array of all the Xi_square calculated for each iterations, then used
-            for our fisher calculations.
+            Array of all the Xi_square calculated for each iterations,
+            then used for fisher calculations.
         '''
         D = np.zeros(len(i_list))
         for i in range(len(i_list)):
@@ -107,7 +123,8 @@ class CosmoFit(ABC):
             D[i] = self.xi_square(*parameters)
         return D
 
-    def updating_two_parameters(self, i_par, j_par, i_list, j_list, *parameters):
+    def updating_two_parameters(self, i_par, j_par, i_list, j_list,
+                                *parameters):
         '''
         Updates two parameter by an small amount and calculates the Xisquare
         for this change for the change. Does this following a sequence.
@@ -130,8 +147,8 @@ class CosmoFit(ABC):
         Returns
         -------
         D : Array of numerical values
-            Array of all the Xi_square calculated for each iterations, then used
-            for our fisher calculations.
+            Array of all the Xi_square calculated for each iterations,
+            then used for fisher calculations.
         '''
         D = np.zeros(len(i_list))
         for i in range(len(i_list)):
@@ -226,8 +243,8 @@ class CosmoFit(ABC):
         # print('mat method \n',np.mat(self.fisher(*parameters)).I)
 
         dict_out = {}
-        for i, vala in enumerate(self.parNames):
-            for j, valb in enumerate(self.parNames):
+        for i, vala in enumerate(self.fitparNames):
+            for j, valb in enumerate(self.fitparNames):
                 if j <= i:
                     dict_out['Cov_{}_{}_fisher'.format(vala, valb)] = cov[i, j]
 
@@ -249,16 +266,23 @@ class CosmoFit(ABC):
         return uncertainty_matrix
 
     def minuit_fit(self, parameters):
-        '''
+        """
         gives back the Minuit object from which one can get the parameters
         and the covariance matrix.
+
+        Parameters
+        ----------
+        parameters : tuple(float)
+            parameters to fit.
+
         Returns
         -------
-        m : iminuit.Minuit
-            iminuit object that can be used to extract data.
-        '''
+        dict_out : dict
+            output results.
 
-        m = Minuit(self.xi_square, *parameters, name=self.parNames)
+        """
+
+        m = Minuit(self.xi_square, *parameters, name=self.fitparNames)
         if self.par_protect_fit:
             for vv in self.par_protect_fit:
                 m.limits[vv] = (0, None)
@@ -269,13 +293,13 @@ class CosmoFit(ABC):
         # grab the results: param values
         dict_out = {}
         res = m.values
-        for name in self.parNames:
+        for name in self.fitparNames:
             dict_out['{}_fit'.format(name)] = res[name]
 
         # covariance matrix
         cov = m.covariance
-        for i, vala in enumerate(self.parNames):
-            for j, valb in enumerate(self.parNames):
+        for i, vala in enumerate(self.fitparNames):
+            for j, valb in enumerate(self.fitparNames):
                 if j <= i:
                     dict_out['Cov_{}_{}_fit'.format(vala, valb)] = cov[i, j]
 
@@ -283,28 +307,40 @@ class CosmoFit(ABC):
 
 
 def fom(cov_a, cov_b, cov_ab, deltaXi2=6.17):
-    '''
-    Calculates the Figure of Merit such as : FoM = pi/A
-    A being : A = pi*(DeltaXi2) *sigma_w0 *sigma_wa *sqrt(1-pearson**2)
+    """
+    Figure of Merit estimator : FoM = pi/A
+    A = pi*(deltaXi2) *sigma_a *sigma_b *sqrt(1-pearson**2)
+
     Parameters
     ----------
-    covariance_matrix : numpy array of float
-        a covariance matrix 
-    DeltaXi2 : float, optional
-        The degree of confidence level wanted. The default is 6.3.
+    cov_a : float
+        a covariance.
+    cov_b : float
+        b covariance.
+    cov_ab : float
+        ab covariance.
+    deltaXi2 : float, optional
+        degree of confidence level. The default is 6.17.
         Note : 
-            1 sigma : CL : 68.3%, DeltaXi2 : 2.3
-            2 sigma : CL : 95,4%, DeltaXi2 : 6.17
-            3 sigma : CL : 9np.arange(0.01, 1.11, 0.01)9,7 % DeltaXi2 : 11.8
+            1 sigma : CL : 68.3%, deltaXi2 : 2.3
+            2 sigma : CL : 95,4%, deltaXi2 : 6.17
+            3 sigma : CL : 9np.arange(0.01, 1.11, 0.01)9,7 % deltaXi2 : 11.8
     Returns
     -------
-    Figure_of_merit : float
-        A numerical value indicating the accuracy of our covariance matrix.
-    '''
+    FoM: float
+        Figure of Merit or -1 if anomalous data.
+
+    """
+
+    if cov_a < 0 or cov_b < 0:
+        return -1
 
     sigma_a = np.sqrt(cov_a)
     sigma_b = np.sqrt(cov_b)
     pearson = cov_ab/(sigma_a*sigma_b)
+
+    if np.abs(pearson) > 1:
+        return -1
 
     A = np.pi * deltaXi2 * sigma_a*sigma_b * np.sqrt(1-pearson**2)
     FoM = np.pi/A
