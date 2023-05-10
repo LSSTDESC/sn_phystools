@@ -18,6 +18,587 @@ class DDF:
 
 
 class FiveSigmaDepth_Nvisits:
+    def __init__(self, requirements='input/DESC_cohesive_strategy/pz_requirements.csv',
+                 Nvisits_WL_season=800,
+                 frac_band=dict(
+                     zip('ugrizy', [0.06, 0.09, 0.23, 0.23, 0.19, 0.20])),
+                 m5_single=dict(zip('ugrizy', [23.65, 24.38, 23.99, 23.55, 22.92, 22.16]))):
+        """
+        class to estimate Nvisits from m5 and m5 from Nvisits
+
+        Parameters
+        ----------
+        requirements : str, optional
+            csv file of requirements. The default is 'pz_requirements.csv'.
+        Nvisits_WL_season: int, optional.
+            Number of visits per season required by WL.
+        frac_band: dict, opt
+            filter allocation. The default is
+            dict(zip('ugrizy', [0.06, 0.09, 0.23, 0.23, 0.19, 0.20]))
+        m5_single: dict, opt
+            m5 single visit. The default is
+            dict(zip('ugrizy', [23.65, 24.38, 23.99, 23.55, 22.92, 22.16]
+
+        Returns
+        -------
+        None.
+
+        """
+        # filter allocation
+        self.frac_band = frac_band
+
+        # load requirements from csv file
+
+        self.m5_req = self.load_req(requirements)
+
+        # m5 single
+        m5_b = {}
+        for key, vals in m5_single.items():
+            m5_b[key] = [vals]
+
+        # transform dict in pandas df
+        self.msingle = pd.DataFrame(m5_single.keys(), columns=['band'])
+        self.msingle['m5_med_single'] = m5_single.values()
+
+        msingle_calc, summary = self.get_Nvisits(
+            self.msingle, self.m5_req)
+
+        # get Nvisits requirements from WL
+        nvisits_WL = self.filter_allocation(Nvisits_WL_season)
+
+        self.msingle_calc, self.summary = self.merge_reqs(
+            msingle_calc, nvisits_WL)
+
+    def load_req(self, requirements):
+        """
+        Method to load the requirements file
+
+        Parameters
+        ----------
+        requirements : str
+            requirement file name.
+
+        Returns
+        -------
+        df_pz : pandas df
+            array with requirement parameters
+
+        """
+
+        df_pz = pd.read_csv(requirements, comment='#')
+
+        ll = df_pz['m5_y2_y10'].to_list()
+        delta_mag = 0.05
+        ll = list(map(lambda x: x - delta_mag, ll))
+        df_pz['m5_y2_y10_m'] = ll
+
+        ll = list(map(lambda x: x + 2*delta_mag, ll))
+        df_pz['m5_y2_y10_p'] = ll
+
+        return df_pz
+
+    def filter_allocation(self, Nvisits=800):
+        """
+        Method to estimate filter allocation and estimate
+       the number of visits per band corresponding to Nvisits
+
+        Parameters
+        ----------
+        Nvisits : int, optional
+            number of reference visits. The default is 800.
+
+        Returns
+        -------
+        df : TYPE
+            DESCRIPTION.
+
+        """
+
+        r = []
+        for b in 'ugrizy':
+            b_alloc = self.frac_band[b]
+            nv = np.round(b_alloc*Nvisits, 0)
+            r.append((b, np.round(100.*b_alloc), nv))
+            print(b, np.round(100.*b_alloc, 1), int(nv))
+
+        df = pd.DataFrame(
+            r, columns=['band', 'filter_allocation', 'Nvisits_WL_season'])
+
+        return df
+
+    def merge_reqs(self, msingle_calc, nvisits_WL):
+        """
+        Method to merge reqs in terms of visits
+
+        Parameters
+        ----------
+        msingle_calc : pandas df
+            requirements from PZ.
+        nvisits_WL : pandas df
+            requirements from WL.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        var = ['band', 'm5_med_single', 'Nvisits_y1', 'Nvisits_y2_y10_p',
+               'Nvisits_y2_y10_m', 'Nvisits_y2_y10', 'nseason_y2_y10',
+               'm5_y1', 'm5_y2_y10']
+
+        msingle_PZ = msingle_calc[var]
+
+        msingle_all = msingle_PZ.merge(
+            nvisits_WL, left_on=['band'], right_on=['band'])
+
+        msingle_all['Nvisits_WL_y1'] = msingle_all['Nvisits_WL_season']
+        msingle_all['Nvisits_WL_y2_y10'] = msingle_all['Nvisits_WL_season'] * \
+            msingle_all['nseason_y2_y10']
+
+        for tt in ['y1', 'y2_y10']:
+            msingle_all['Nvisits_WL_PZ_{}'.format(tt)] = np.max(
+                msingle_all[['Nvisits_{}'.format(tt),
+                             'Nvisits_WL_{}'.format(tt)]], axis=1)
+
+        varb = ['band', 'Nvisits_y1',
+                'Nvisits_y2_y10', 'Nvisits_y2_y10_p', 'Nvisits_y2_y10_m',
+                'Nvisits_WL_y1', 'Nvisits_WL_y2_y10',
+                'Nvisits_WL_PZ_y1', 'Nvisits_WL_PZ_y2_y10']
+
+        # estimate m5 from WL_PZ reqs
+        for tt in ['y1', 'y2_y10']:
+            msingle_all['m5_WL_PZ_{}'.format(tt)] = \
+                msingle_all['m5_med_single']\
+                + 1.25*np.log10(msingle_all['Nvisits_WL_PZ_{}'.format(tt)])
+
+        # m5 +- 0.05
+        tt = 'y2_y10'
+        delta_m5 = 0.05
+        dm5 = dict(zip(['p', 'm'], [+1, -1]))
+
+        for key, vals in dm5.items():
+            msingle_all['m5_WL_PZ_{}_{}'.format(
+                tt, key)] = msingle_all['m5_WL_PZ_{}'.format(tt)]+vals*delta_m5
+
+        # Nvisits corresponding to m5+-0.05
+        for key, vals in dm5.items():
+            msingle_all['Nvisits_WL_PZ_{}_{}'.format(tt, key)] =\
+                10**(0.8*(msingle_all['m5_WL_PZ_{}_{}'.format(
+                    tt, key)]-msingle_all['m5_med_single']))
+
+        # restimate m5_y1 and m5_y2_y10
+
+        for tt in ['y1', 'y2_y10']:
+            msingle_calc['m5_{}'.format(
+                tt)] = msingle_all['m5_WL_PZ_{}'.format(tt)]
+
+        # print('icib', msingle_all[['Nvisits_WL_PZ_y2_y10',
+        #      'Nvisits_WL_PZ_y2_y10_p', 'Nvisits_WL_PZ_y2_y10_m']])
+
+        vv = ['Nvisits_WL_PZ_y1', 'Nvisits_WL_PZ_y2_y10',
+              'Nvisits_WL_PZ_y2_y10_p', 'Nvisits_WL_PZ_y2_y10_m', 'Nvisits_y1',
+              'Nvisits_y2_y10', 'Nvisits_y2_y10_p', 'Nvisits_y2_y10_m']
+
+        summary = msingle_all[vv].sum()
+
+        return msingle_all, summary
+
+    def get_Nvisits(self, msingle, df_pz):
+        """
+        Method to estimate the number of visits depending on m5
+
+        Parameters
+        ----------
+        msingle : pandas df
+            array with m5 single exp. values.
+        df_pz : pandas df
+            array with config (target) m5 values
+
+        Returns
+        -------
+        msingle : pandas df
+            array with m5 single exp. values+ target
+        summary : pandas df
+            array with sum of visits (over field and band)
+
+        """
+
+        msingle = msingle.merge(df_pz, left_on=['band'], right_on=['band'])
+
+        llv = []
+
+        ccols = df_pz.columns.to_list()
+        ccols.remove('band')
+        ccols = list(map(lambda it: it.split('m5_')[1], ccols))
+        nseas = dict(zip(ccols, [1, 9, 9, 9]))
+
+        for vv in ccols:
+            diff = msingle['m5_{}'.format(vv)]-msingle['m5_med_single']
+            Nv = 'Nvisits_{}'.format(vv)
+            msingle[Nv] = 10**(0.8 * diff)
+            msingle['nseason_{}'.format(vv)] = nseas[vv]
+            llv.append(Nv)
+        if 'field' in msingle.columns:
+            summary = msingle.groupby(['field'])[llv].sum().reset_index()
+        else:
+            summary = msingle[llv].sum()
+
+        return msingle, summary
+
+    def get_Nvisits_from_frac(self, Nvisits,
+                              col='Nvisits_WL_PZ_y2_y10'):
+        """
+        Method to estimate the number of visits per band from a ref
+
+        Parameters
+        ----------
+        Nvisits : int
+            number of visits (total).
+        col : str, optional
+            ref col to estimate filter allocation.
+            The default is 'Nvisits_y2_y10'.
+
+        Returns
+        -------
+        df : pandas df
+            array with the number of visits per band.
+
+        """
+
+        ntot = self.msingle_calc[col].sum()
+        r = []
+
+        for b in 'ugrizy':
+            idx = self.msingle_calc['band'] == b
+            frac = self.msingle_calc[idx][col].values/ntot
+            r.append((b, frac[0]*Nvisits))
+
+        df = pd.DataFrame(r, columns=['band', 'Nvisits'])
+
+        return df
+
+    def m5_from_Nvisits(self, Nvisits):
+        """
+
+
+        Parameters
+        ----------
+        Nvisits : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        df : TYPE
+            DESCRIPTION.
+
+        """
+
+        df = self.get_Nvisits_from_frac(Nvisits, col='Nvisits_WL_PZ_y2_y10')
+        df = df.merge(self.msingle, left_on=['band'], right_on=['band'])
+        df = df.merge(self.m5_req, left_on=['band'], right_on=['band'])
+        # df['m5'] = df['m5_med_single']+1.25*np.log10(df['Nvisits'])
+        # df['delta_m5'] = df['m5']-df['m5_y2_y10']
+
+        return df
+
+    def m5_band_from_Nvisits(self, m5_resu_orig, m5single, sl_DD=180., cad_DD=4,
+                             frac_moon=0.20, swap_filter_moon='z'):
+        """
+        Method to estimate m5 per band from the total number of visits
+
+        Parameters
+        ----------
+        m5_resu_orig : pandas df
+            m5 values.
+        sl_DD : float, optional
+            season length. The default is 180..
+        cad_DD : float, optional
+            cadence of observation. The default is 4.
+        frac_moon : float, optional
+            fraction of visits with no Moon. The default is 0.20.
+        swap_filter_moon: str, optional.
+            filter to swap with u for low moon phase nights. The default is z.
+
+        Returns
+        -------
+        m5_resu : pandas df
+            m5 results.
+        tt : pandas df
+            m5 results (y1).
+
+        """
+
+        m5_resu = pd.DataFrame(m5_resu_orig)
+
+        # m5_resu['Nvisits'] = m5_resu['Nvisits'].astype(int)
+
+        m5_resu = m5_resu[['name', 'band', 'Nvisits', 'Nseasons']]
+        m5_resu = self.visits_night_from_frac(m5_resu, sl=sl_DD,
+                                              cad=cad_DD, col='Nvisits',
+                                              colb='m5_y2_y10',
+                                              seasoncol='Nseasons',
+                                              frac_moon=frac_moon,
+                                              swap_filter_moon=swap_filter_moon)
+
+        topp = m5_resu[['name', 'band', 'Nvisits',
+                        'Nvisits_night']]
+
+        topp.to_csv('DD_res2.csv', index=False)
+
+        # now estimate the number of visits per night for y1
+
+        print('there man', m5single.columns)
+
+        tt = m5single[['band', 'Nvisits_y1', 'm5_y1', 'm5_med_single']]
+        tt = m5single[['band', 'Nvisits_WL_PZ_y1',
+                       'm5_WL_PZ_y1', 'm5_med_single']]
+        tt['Nseasons'] = 1
+
+        # tt['Nvisits_y1'] = tt['Nvisits_y1'].astype(int)
+
+        """
+        tt['Nvisits_y1_night'] = tt.apply(
+            lambda x: x['Nvisits_y1']/(fracs[x['band']]*Nnights_DD_season), axis=1)
+
+        tt['Nvisits_y1'] = tt['Nvisits_y1'].astype(int)
+        tt['Nvisits_y1_night'] = tt['Nvisits_y1_night'].astype(int)
+        """
+        tt = self.visits_night_from_frac(tt, sl=sl_DD,
+                                         cad=cad_DD, col='Nvisits_WL_PZ_y1',
+                                         colb='m5_WL_PZ_y1',
+                                         seasoncol='Nseasons',
+                                         frac_moon=frac_moon,
+                                         swap_filter_moon=swap_filter_moon)
+
+        return m5_resu, tt
+
+    def visits_night_from_frac(self, tab, sl, cad, col='Nvisits',
+                               colb='m5_y2_y10', seasoncol='Nseasons',
+                               frac_moon=0.20, swap_filter_moon='z'):
+        """
+        Method to estimate the number of visits per night according to moon frac
+
+        Parameters
+        ----------
+        tab : pandas df
+            data to process.
+        sl : float
+            season length.
+        cad : float
+            cadence of observation.
+        col : str, optional
+            visit col to process. The default is 'Nvisits'.
+        colb : str, optional
+            m5 col to process. The default is 'm5_y2_y10'.
+        frac_moon : float, optional
+            frac of nights with no moon. The default is 0.20.
+        swap_filter_moon: str, optional.
+            filter to swap with u for low moon phase nights. The default is z.
+
+        Returns
+        -------
+        tab : pandas df
+            array with visits and m5.
+
+        """
+
+        print('there we go', tab, swap_filter_moon)
+
+        nights_season = int(sl/cad)
+        bands = 'ugrizy'
+
+        fracs = {}
+        for b in bands:
+            fracs[b] = 1
+            if b == 'u':
+                fracs[b] = frac_moon
+            if b == swap_filter_moon:
+                fracs[b] = 1.-frac_moon
+        # frac_night = [frac_moon, 1., 1., 1., 1.-frac_moon, 1.]
+        # fracs = dict(zip(bands, frac_night))
+        tab['{}_night'.format(col)] = tab.apply(
+            lambda x: x[col]/x[seasoncol] /
+            (fracs[x['band']]*nights_season),
+            axis=1)
+
+        # tab['{}_night'.format(col)] = tab['{}_night'.format(col)].astype(int)
+        tab['cad'] = cad
+        tab['sl'] = sl
+        tab['nights_season'] = nights_season
+
+        frac_df = pd.DataFrame(list(bands), columns=['band'])
+        frac_night = []
+        for b in bands:
+            frac_night.append(fracs[b])
+
+        frac_df['frac_night'] = frac_night
+        tab['Nseasons'] = tab[seasoncol]
+        tab = tab.merge(frac_df, left_on=['band'], right_on=['band'])
+
+        tab = tab.round({'{}'.format(col): 0, '{}_night'.format(col): 0})
+        tab['{}_recalc'.format(col)] = tab['{}_night'.format(
+            col)]*tab['nights_season']*tab['frac_night']*tab['Nseasons']
+
+        """
+        tab['m5_recalc'] = 1.25 * \
+            np.log10(tab['{}_recalc'.format(col)])+tab['m5_med_single']
+        tab['diff_m5'] = tab['m5_recalc']-tab[colb]
+        """
+
+        return tab
+
+
+class DB_Infos:
+    def __init__(self, dbDir='../DB_Files',
+                 dbName='draft_connected_v2.99_10yrs.npy'):
+        """
+        Class to grab infos (m5 single exp values, filter allocation in the WFD)
+
+        Parameters
+        ----------
+        dbDir : TYPE, optional
+            DESCRIPTION. The default is '../DB_Files'.
+        dbName : TYPE, optional
+            DESCRIPTION. The default is 'draft_connected_v2.99_10yrs.npy'.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        # load data - DDF
+        self.data = self.load_DDF(dbDir, dbName)
+
+        # m5 single exp - median
+        m5_single = pd.DataFrame.from_records(
+            self.get_median_m5())
+
+        m5_single_dict = {}
+        for i, row in m5_single.iterrows():
+            m5_single_dict[row['band']] = row['m5_med_single']
+
+        self.m5_single = m5_single_dict
+
+        # get frac events Moon-on
+        nref = len(self.data)
+        idx = self.data['moonPhase'] <= 20.
+        frac_moon = len(self.data[idx])/len(self.data)
+
+        self.frac_moon = np.round(frac_moon, 2)
+
+        fa = self.filter_allocation(dbDir, dbName)
+
+        fa_dict = {}
+        for i, row in fa.iterrows():
+            fa_dict[row['band']] = row['filter_allocation']
+
+        self.filter_alloc = fa_dict
+
+    def load_DDF(self, dbDir, dbName, DDList=['COSMOS', 'ECDFS',
+                                              'EDFS_a', 'EDFS_b',
+                                              'ELAISS1', 'XMM_LSS']):
+        """
+        Method to load DDFs
+
+        Parameters
+        ----------
+        dbDir : str
+            location dir of the database.
+        dbName : str
+            db name (OS) to load.
+        DDList : list(str), optional
+            list of DDFs to consider. The default is ['COSMOS', 'ECDFS',
+                                                      'EDFS_a', 'EDFS_b',
+                                                      'ELAISS1', 'XMM_LSS'].
+
+        Returns
+        -------
+        data : array
+            DDF observations.
+
+        """
+
+        fullPath = '{}/{}'.format(dbDir, dbName)
+        tt = np.load(fullPath)
+
+        data = None
+        for field in DDList:
+            idx = tt['note'] == 'DD:{}'.format(field)
+            if data is None:
+                data = tt[idx]
+            else:
+                data = np.concatenate((data, tt[idx]))
+
+        return data
+
+    def filter_allocation(self, dbDir, dbName):
+        """
+        Method to estimate filter allocation and estimate
+       the number of visits per band corresponding to Nvisits
+
+        Parameters
+        ----------
+        dbDir : str
+            dbDir.
+        dbName : str
+            db name.
+        Nvisits : int, optional
+            number of reference visits. The default is 800.
+
+        Returns
+        -------
+        df : TYPE
+            DESCRIPTION.
+
+        """
+
+        fullPath = '{}/{}'.format(dbDir, dbName)
+        obs = np.load(fullPath)
+        ntot = len(obs)
+
+        r = []
+        for b in 'ugrizy':
+            idx = obs['band'] == b
+            sel = obs[idx]
+            b_alloc = len(sel)/ntot
+            r.append((b, b_alloc))
+
+        df = pd.DataFrame(
+            r, columns=['band', 'filter_allocation'])
+
+        return df
+
+    def get_median_m5(self):
+        """
+        Method to get the median m5 per band (all fields)
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        msingle : array
+            median m5 values (per band).
+
+        """
+
+        r = []
+
+        for b in 'ugrizy':
+            idxb = self.data['band'] == b
+            idxb &= self.data['airmass'] <= 1.5
+            selb = self.data[idxb]
+            r.append((b, np.median(selb['fiveSigmaDepth'])))
+
+        msingle = np.rec.fromrecords(r, names=['band', 'm5_med_single'])
+
+        return msingle
+
+
+class FiveSigmaDepth_Nvisits_fromdb_deprecated:
     def __init__(self, dbDir='../DB_Files',
                  dbName='draft_connected_v2.99_10yrs.npy',
                  requirements='input/DESC_cohesive_strategy/pz_requirements.csv',
@@ -70,6 +651,8 @@ class FiveSigmaDepth_Nvisits:
         # get Nvisits requirements from WL
         nvisits_WL = self.filter_allocation(
             dbDir, dbName, Nvisits_WL_season)
+
+        print('nvisits from filter_alloc', nvisits_WL)
 
         self.msingle_calc, self.summary = self.merge_reqs(
             msingle_calc, nvisits_WL)
@@ -416,7 +999,7 @@ class FiveSigmaDepth_Nvisits:
         return df
 
     def m5_band_from_Nvisits(self, m5_resu_orig, m5single, sl_DD=180., cad_DD=4,
-                             frac_moon=0.20):
+                             frac_moon=0.20, swap_filter_moon='z'):
         """
         Method to estimate m5 per band from the total number of visits
 
@@ -430,6 +1013,8 @@ class FiveSigmaDepth_Nvisits:
             cadence of observation. The default is 4.
         frac_moon : float, optional
             fraction of visits with no Moon. The default is 0.20.
+        swap_filter_moon: str, optional.
+            filter to swap with u for low moon phase nights. The default is z.
 
         Returns
         -------
@@ -449,9 +1034,8 @@ class FiveSigmaDepth_Nvisits:
                                               cad=cad_DD, col='Nvisits',
                                               colb='m5_y2_y10',
                                               seasoncol='Nseasons',
-                                              frac_moon=frac_moon)
-
-        print(m5_resu.columns)
+                                              frac_moon=frac_moon,
+                                              swap_filter_moon=swap_filter_moon)
 
         topp = m5_resu[['name', 'band', 'Nvisits',
                         'Nvisits_night']]
@@ -478,12 +1062,16 @@ class FiveSigmaDepth_Nvisits:
         """
         tt = self.visits_night_from_frac(tt, sl=sl_DD,
                                          cad=cad_DD, col='Nvisits_WL_PZ_y1',
-                                         colb='m5_WL_PZ_y1', seasoncol='Nseasons', frac_moon=frac_moon)
+                                         colb='m5_WL_PZ_y1',
+                                         seasoncol='Nseasons',
+                                         frac_moon=frac_moon,
+                                         swap_filter_moon=swap_filter_moon)
 
         return m5_resu, tt
 
     def visits_night_from_frac(self, tab, sl, cad, col='Nvisits',
-                               colb='m5_y2_y10', seasoncol='Nseasons', frac_moon=0.20):
+                               colb='m5_y2_y10', seasoncol='Nseasons',
+                               frac_moon=0.20, swap_filter_moon='z'):
         """
         Method to estimate the number of visits per night according to moon frac
 
@@ -501,6 +1089,8 @@ class FiveSigmaDepth_Nvisits:
             m5 col to process. The default is 'm5_y2_y10'.
         frac_moon : float, optional
             frac of nights with no moon. The default is 0.20.
+        swap_filter_moon: str, optional.
+            filter to swap with u for low moon phase nights. The default is z.
 
         Returns
         -------
@@ -509,12 +1099,20 @@ class FiveSigmaDepth_Nvisits:
 
         """
 
-        print('there we go', tab)
+        print('there we go', tab, swap_filter_moon)
 
         nights_season = int(sl/cad)
         bands = 'ugrizy'
-        frac_night = [frac_moon, 1., 1., 1., 1.-frac_moon, 1.]
-        fracs = dict(zip(bands, frac_night))
+
+        fracs = {}
+        for b in bands:
+            fracs[b] = 1
+            if b == 'u':
+                fracs[b] = frac_moon
+            if b == swap_filter_moon:
+                fracs[b] = 1.-frac_moon
+        # frac_night = [frac_moon, 1., 1., 1., 1.-frac_moon, 1.]
+        # fracs = dict(zip(bands, frac_night))
         tab['{}_night'.format(col)] = tab.apply(
             lambda x: x[col]/x[seasoncol] /
             (fracs[x['band']]*nights_season),
@@ -526,6 +1124,10 @@ class FiveSigmaDepth_Nvisits:
         tab['nights_season'] = nights_season
 
         frac_df = pd.DataFrame(list(bands), columns=['band'])
+        frac_night = []
+        for b in bands:
+            frac_night.append(fracs[b])
+
         frac_df['frac_night'] = frac_night
         tab['Nseasons'] = tab[seasoncol]
         tab = tab.merge(frac_df, left_on=['band'], right_on=['band'])
@@ -539,6 +1141,7 @@ class FiveSigmaDepth_Nvisits:
             np.log10(tab['{}_recalc'.format(col)])+tab['m5_med_single']
         tab['diff_m5'] = tab['m5_recalc']-tab[colb]
         """
+
         return tab
 
 
@@ -635,7 +1238,7 @@ class DD_Scenario:
         m5_single_zcomp = pd.read_csv(m5_single_zcomp_file, comment='#')
 
         dfb = self.correct_SNR(dfa, m5_single_zcomp, m5_single_OS)
-        #dfb = pd.DataFrame(dfa)
+        # dfb = pd.DataFrame(dfa)
         print(dfb)
 
         # interpolators
@@ -958,7 +1561,7 @@ class DD_Scenario:
                 ax.text(nv_DD-vx, nv_UD-vy, namea, color='b', fontsize=12)
                 # print(name, int(nv_DD), int(nv_UD), vx, vy)
 
-        #xmin = np.max([np.min(restot[varx]), 500])
+        # xmin = np.max([np.min(restot[varx]), 500])
         xmin = np.min(restot[varx])
         xmax = np.max(restot[varx])
         ymin = np.min(restot[vary])
@@ -1637,7 +2240,7 @@ class Budget_time:
 
 
 class Scenario_time:
-    def __init__(self, df):
+    def __init__(self, df, swap_filter_moon='z'):
         """
         class to plot scenario (ie nvisits/band/obs. night per year)
 
@@ -1645,6 +2248,8 @@ class Scenario_time:
         ----------
         df : pandas df
             data to plot.
+        swap_filter_moon: str, opt.
+           filter to swap wih u - low moon phases. The default is z.
 
         Returns
         -------
@@ -1652,12 +2257,12 @@ class Scenario_time:
 
         """
 
+        self.swap_filter_moon = swap_filter_moon
+
         res = df.groupby(['name']).apply(
             lambda x: self.scenario_fields(x)).reset_index()
 
         res['scen_type'] = res['name'].str.split('_').str.get(-1)
-
-        print('akkkk', res.columns)
 
         # plot it please
         for scen_type in res['scen_type'].unique():
@@ -1731,7 +2336,7 @@ class Scenario_time:
 
         import copy
         ff_moon = copy.deepcopy(ff)
-        ff_moon['z'] = 0
+        ff_moon[self.swap_filter_moon] = 0
         nv_moon = '/'.join(['{}'.format(int(ff_moon[key])) for key in bands])
         nv_moon_night = np.sum([int(ff_moon[key]) for key in bands])
 
@@ -2086,3 +2691,60 @@ class Delta_nvisits:
         # Rotate the tick labels and set their alignment.
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
                  rotation_mode="anchor")
+
+
+def moon_recovery(df, swap_filter_moon='z'):
+    """
+    Function to compensate for moon swapping filter
+
+    Parameters
+    ----------
+    df : pandas df
+        data to process.
+    swap_filter_moon : str, optional
+        Filter removed during low moon phases. The default is 'z'.
+
+    Returns
+    -------
+    dfb : pandas df
+        Resulting data.
+
+    """
+
+    idx = df['band'] == swap_filter_moon
+    sel = df[idx]
+
+    # correct for the number of visits on the swap filter
+    sel['nvisits_night'] /= sel['frac_night']
+
+    sel['nvisits_night'] = sel['nvisits_night'].astype(int)
+
+    dfb = df[~idx]
+    dfb = pd.concat((dfb, sel))
+
+    return dfb
+
+
+def reverse_df(df):
+    """
+    Function to modify df struct
+
+    Parameters
+    ----------
+    df : pandas df
+        data to process.
+
+    Returns
+    -------
+    pandas df
+        restructured df.
+
+    """
+
+    outDict = {}
+    for b in 'ugrizy':
+        idx = df['band'] == b
+        sel = df[idx]
+        outDict[b] = sel['nvisits_night'].to_list()
+
+    return pd.DataFrame.from_dict(outDict)
