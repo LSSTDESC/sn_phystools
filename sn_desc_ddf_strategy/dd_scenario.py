@@ -1294,6 +1294,8 @@ class DD_Scenario:
         dfb['nvisits'] = 0
         for io, row in m5_single.iterrows():
             b = row['band']
+            if b == 'u':
+                continue
             k = 10**(-0.8*row['delta_m5'])
             print(b, k)
             if b == 'g' or b == 'r':
