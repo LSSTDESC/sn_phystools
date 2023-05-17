@@ -1458,7 +1458,7 @@ class DD_Scenario:
              vary='Nv_UD_night',
              legy='N$_{visits}^{UD}/obs. night}$', scenario={}, figtitle='',
              zcomp_req={}, pz_wl_req={},
-             pz_wl_req_err={}, zcomp_req_err={}):
+             pz_wl_req_err={}, zcomp_req_err={}, deep_universal={}):
         """
         Method to plot the results
 
@@ -1486,6 +1486,8 @@ class DD_Scenario:
             pz_wl req errors. The default is {}.
         zcomp_req_err : dict, optional
             zcomp requirement errors. The default is {}.
+        deep_universal: dict, optional
+            deep universal scenario result. The default is {}.
 
         Returns
         -------
@@ -1615,6 +1617,13 @@ class DD_Scenario:
                 ax.plot([xmin, xmax], [ymin, ymax], ls='dotted', color=coltext)
                 ax.text(xmin+k, x, key, fontsize=12, rotation=270,
                         color=coltext, va='top')
+        if deep_universal:
+            for key, vals in deep_universal.items():
+                x = vals[0]
+                y = vals[1]
+                ax.plot([x]*2, [ymin, ymax], color='g', ls='dotted')
+                ax.text(1.005*x, y, key, fontsize=12, rotation=270,
+                        color='g', va='top')
 
         ax.legend(bbox_to_anchor=(1.0, 0.55),
                   ncol=1, frameon=False, fontsize=13)
