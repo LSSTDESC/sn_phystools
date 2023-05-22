@@ -20,6 +20,7 @@ def gime_zlim(df, dict_sel, selvar):
     plot_effi(df, sel, leg='test', fig='tt', ax=ax)
     plot_2D(df)
     """
+
     effival = effi(df, sel)
     mycl = Calc_zlim(effival)
     zlim = mycl.zlim
@@ -35,7 +36,7 @@ def plot_2D(res, varx='z', legx='$', vary='sigmaC',
     if fig is None:
         fig, ax = plt.subplots()
 
-    ax.plot(res[varx], res[vary], 'ko')
+    ax.plot(res[varx], res[vary], 'k.')
 
     # plt.show()
 

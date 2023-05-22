@@ -9,6 +9,7 @@ from scipy import interpolate
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from scipy.interpolate import interp1d
 
 
 class Calc_zlim:
@@ -119,13 +120,13 @@ def effi(resa, resb, xvar='z', bins=np.arange(0.01, 1.1, 0.02)):
     return df
 
 
-def plot_effi(resa, resb, xvar='z', leg='',
+def plot_effi(effival, xvar='z', leg='',
               bins=np.arange(0.01, 1.1, 0.01), fig=None, ax=None):
 
     if fig is None:
         fig, ax = plt.subplots(figsize=(10, 8))
 
-    effival = effi(resa, resb, xvar=xvar, bins=bins)
+    #effival = effi(resa, resb, xvar=xvar, bins=bins)
 
     x = effival[xvar]
     y = effival['effi']
@@ -181,3 +182,40 @@ def histSN_params(data, vars=['x1', 'color', 'z', 'daymax']):
         ax[vals].hist(data[key])
         ax[vals].set_xlabel(key)
         ax[vals].set_ylabel('Number of Entries')
+
+
+def zlimit(tab, covcc_col='Cov_colorcolor', z_col='z', sigmaC=0.04):
+    """
+    Function to estimate zlim for sigmaC value
+
+    Parameters
+    ---------------
+    tab: astropy table
+      data to process: columns covcc_col and z_col should be in this tab
+    covcc_col: str, opt
+        name of the column corresponding to the cov_colorcolor value (default: Cov_colorcolor)
+    z_col: str, opt
+       name of the column corresponding to the redshift value (default: z)
+    sigmaC: float, opt
+      sigma_color value to estimate zlimit from (default: 0.04)
+
+    Returns
+    ----------
+    The zlimit value corresponding to sigmaC
+
+    """
+    interp = interp1d(np.sqrt(tab[covcc_col]),
+                      tab[z_col], bounds_error=False, fill_value=0.)
+
+    interpv = interp1d(tab[z_col], np.sqrt(tab[covcc_col]),
+                       bounds_error=False, fill_value=0.)
+
+    zmin = tab[z_col].min()
+    zmax = tab[z_col].max()
+    zvals = np.arange(zmin, zmax, 0.005)
+
+    colors = interpv(zvals)
+    ii = np.argmin(np.abs(colors-sigmaC))
+    res = interp(sigmaC)
+    # print(colors)
+    return np.round(res, 4)
