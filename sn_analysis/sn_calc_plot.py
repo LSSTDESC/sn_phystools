@@ -207,15 +207,6 @@ def zlimit(tab, covcc_col='Cov_colorcolor', z_col='z', sigmaC=0.04):
     interp = interp1d(np.sqrt(tab[covcc_col]),
                       tab[z_col], bounds_error=False, fill_value=0.)
 
-    interpv = interp1d(tab[z_col], np.sqrt(tab[covcc_col]),
-                       bounds_error=False, fill_value=0.)
-
-    zmin = tab[z_col].min()
-    zmax = tab[z_col].max()
-    zvals = np.arange(zmin, zmax, 0.005)
-
-    colors = interpv(zvals)
-    ii = np.argmin(np.abs(colors-sigmaC))
     res = interp(sigmaC)
     # print(colors)
     return np.round(res, 4)
