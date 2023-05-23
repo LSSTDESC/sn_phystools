@@ -22,7 +22,9 @@ class FiveSigmaDepth_Nvisits:
                  Nvisits_WL_season=800,
                  frac_band=dict(
                      zip('ugrizy', [0.06, 0.09, 0.23, 0.23, 0.19, 0.20])),
-                 m5_single=dict(zip('ugrizy', [23.65, 24.38, 23.99, 23.55, 22.92, 22.16]))):
+                 m5_single=dict(
+                     zip('ugrizy', [23.65, 24.38, 23.99, 23.55, 22.92, 22.16])),
+                 Ns_y2_y10=9):
         """
         class to estimate Nvisits from m5 and m5 from Nvisits
 
@@ -38,6 +40,8 @@ class FiveSigmaDepth_Nvisits:
         m5_single: dict, opt
             m5 single visit. The default is
             dict(zip('ugrizy', [23.65, 24.38, 23.99, 23.55, 22.92, 22.16]
+        Ns_y2_y10: int, opt.
+            number of season to reach to y2_y10 req. The default is 9.
 
         Returns
         -------
@@ -46,6 +50,9 @@ class FiveSigmaDepth_Nvisits:
         """
         # filter allocation
         self.frac_band = frac_band
+
+        # Nseasons to reach y2_y10 req
+        self.Ns_y2_y10 = Ns_y2_y10
 
         # load requirements from csv file
 
@@ -231,7 +238,7 @@ class FiveSigmaDepth_Nvisits:
         ccols = df_pz.columns.to_list()
         ccols.remove('band')
         ccols = list(map(lambda it: it.split('m5_')[1], ccols))
-        nseas = dict(zip(ccols, [1, 9, 9, 9]))
+        nseas = dict(zip(ccols, [1]+[self.Ns_y2_y10]*3))
 
         for vv in ccols:
             diff = msingle['m5_{}'.format(vv)]-msingle['m5_med_single']
@@ -1148,7 +1155,7 @@ class FiveSigmaDepth_Nvisits_fromdb_deprecated:
 class DD_Scenario:
     def __init__(self, Nv_LSST=2100000,  # total number of visits
                  budget_DD=0.07,  # DD budget
-                 NDD=5,  # 5 DDFs
+                 NDDF=5,  # 5 DDFs
                  Nseason=10,  # number of season of observation
                  sl_UD=180.,  # season length UD fields
                  cad_UD=2.,  # cadence of observation UD fields
@@ -1156,6 +1163,7 @@ class DD_Scenario:
                  sl_DD=180.,  # season length DD fields
                  Nf_DD_y1=3,  # number of DDF year 1
                  Nv_DD_y1=998,  # number of DD visits year 1
+                 Ns_DD=9,
                  # nvisits vs zcomp
                  nvisits_zcomp_file='input/DESC_cohesive_strategy/Nvisits_zcomp_paper.csv',
                  m5_single_zcomp_file='input/DESC_cohesive_strategy/m5_single_zcomp_paper.csv',
@@ -1175,8 +1183,8 @@ class DD_Scenario:
             Total number of LSST visits (10 yrs). The default is 2100000.
         budget_DD : float, optional
             DD budget. The default is 0.07.
-        NDD : int, optional
-            Total number of DD fields. The default is 5.
+        NDDF : int, optional
+            Total number of DDFs. The default is 5.
         Nseason : int, optional
             Total number of seasons. The default is 10.
         sl_UD : float, optional
@@ -1191,6 +1199,8 @@ class DD_Scenario:
             Number of Deep fields in y1. The default is 3.
         Nv_DD_y1 : int, optional
             Number of DD visits in y1/field. The default is 998.
+        Ns_DD: int, optional
+            number of season of observations of the DD fields. The default is 9.
         nvisits_zcomp_file : csv file, optional
             Nvisits<-> zcomplete (SNe Ia). The default is '
             input/DESC_cohesive_strategy/Nvisits_zcomp_paper.csv'.
@@ -1219,12 +1229,13 @@ class DD_Scenario:
 
         self.Nv_LSST = Nv_LSST
         self.budget_DD = budget_DD
-        self.NDD = NDD
+        self.NDDF = NDDF
         self.Nseason = Nseason
         self.sl_UD = sl_UD
         self.cad_UD = cad_UD
         self.cad_DD = cad_DD
         self.sl_DD = sl_DD
+        self.Ns_DD = Ns_DD
         self.Nf_DD_y1 = Nf_DD_y1
         self.Nv_DD_y1 = Nv_DD_y1
         self.Nf_combi = Nf_combi
@@ -1339,12 +1350,12 @@ class DD_Scenario:
         # UD = DDF(Nf_UD, Ns_UD, Nv_UD, cad_UD, sl_UD, -1)
         # DD = DDF(NDD-Nf_UD, Ns_DD, -1, cad_DD, sl_DD, -1)
         UD = DDF(Nf_UD, Ns_UD, Nv_UD)
-        DD = DDF(self.NDD-Nf_UD, Ns_DD, Nv_DD)
+        DD = DDF(self.NDDF-Nf_UD, Ns_DD, Nv_DD)
 
         Nv_DD = self.budget_DD*self.Nv_LSST
         Nv_DD -= self.Nf_DD_y1*self.Nv_DD_y1
         Nv_DD -= UD.Nf*UD.Ns*UD.Nv
-        Nv_DD /= (self.NDD-UD.Nf)*DD.Ns+k*UD.Nf*UD.Ns
+        Nv_DD /= (self.NDDF-UD.Nf)*DD.Ns+k*UD.Nf*UD.Ns
 
         return Nv_DD
 
@@ -1360,26 +1371,62 @@ class DD_Scenario:
         """
 
         r = []
+        dftot = pd.DataFrame()
         for combi in self.Nf_combi:
             Nf_UD = combi[0]
             Ns_UD = combi[1]
-            Ns_DD = (self.NDD*self.Nseason-self.Nf_DD_y1-Nf_UD*Ns_UD)
-            Ns_DD /= (self.NDD-Nf_UD)
+            print('hello combi', Nf_UD, Ns_UD)
+            """
+            Ns_DD = (self.NDDF*self.Nseason-self.Nf_DD_y1-Nf_UD*Ns_UD)
+            Ns_DD /= (self.NDDF-Nf_UD)
 
-            for k in np.arange(1., 30., 1.):
+            for k in np.arange(1., 60., 1.):
                 res = self.get_Nv_DD(Nf_UD, Ns_UD, -1,
-                                     self.NDD-Nf_UD, Ns_DD, -1, k)
+                                     self.NDDF-Nf_UD, Ns_DD, -1, k)
                 print(k, res, k*res, self.cad_DD, self.sl_DD,
                       self.cad_UD, self.sl_UD, Nf_UD, Ns_UD)
                 r.append((k, res, k*res, res*self.cad_DD/self.sl_DD,
                           k*res*self.cad_UD/self.sl_UD, Nf_UD, Ns_UD,
                           self.zlim_nvisits(res*self.cad_DD/self.sl_DD)))
+            """
+            Nv_DD = np.arange(100., 8000., 100)
+            df = pd.DataFrame(Nv_DD, columns=['Nv_DD'])
+            Nv_UD_season = self.get_Nv_UD_season(
+                self.budget_DD, self.Nv_LSST, self.NDDF,
+                Nf_UD, Ns_UD, Nv_DD, self.Ns_DD, self.Nv_DD_y1)
+            df['Nv_UD_night'] = Nv_UD_season*self.cad_UD/self.sl_UD
+            print(Nv_UD_season)
+            df['Nf_UD'] = Nf_UD
+            df['Ns_UD'] = Ns_UD
+            df['Nv_UD'] = Nv_UD_season
+            df['Nv_DD_night'] = df['Nv_DD']*self.cad_DD/self.sl_DD
+            df['zcomp'] = self.zlim_nvisits(df['Nv_UD_night'])
 
+            df['Nf_UD'] = df['Nf_UD'].astype(int)
+            df['Ns_UD'] = df['Ns_UD'].astype(int)
+            dftot = pd.concat((dftot, df))
+        """
         restot = np.rec.fromrecords(r, names=[
             'k', 'Nv_DD', 'Nv_UD', 'Nv_DD_night',
             'Nv_UD_night', 'Nf_UD', 'Ns_UD', 'zcomp'])
-
+        """
+        restot = dftot.to_records(index=False)
         return restot
+
+    def get_Nv_UD_season(self, budget_DD, Nv_LSST, NDDF,
+                         Nf_UD, Ns_UD, Nv_DD, Ns_DD, Nv_DD_y1):
+
+        res = budget_DD*Nv_LSST
+        res -= (NDDF-Nf_UD)*Nv_DD*Ns_DD
+        Ns_UD_DD = Ns_DD-Ns_UD
+        if Ns_UD_DD < 0:
+            Ns_UD_DD = 0.
+        res -= Nf_UD*Nv_DD*Ns_UD_DD
+        res -= NDDF*Nv_DD_y1
+
+        res /= (Ns_UD*Nf_UD)
+
+        return res
 
     def get_scenario(self):
         """
@@ -1685,7 +1732,7 @@ class DD_Scenario:
         for b in bands:
             df_res['{}_season'.format(b)] = df_res['{}'.format(b)]*nights_UD
 
-        n_DD = self.NDD*self.Nseason
+        n_DD = self.NDDF*self.Nseason
         n_DD -= self.Nf_DD_y1
         n_DD -= df_res['Nf_UD']*df_res['Ns_UD']
         n_DD *= df_res['nvisits_DD_season']
@@ -1721,7 +1768,7 @@ class DD_Scenario:
                 to = year <= Ns_UD+1
                 nn = to*1
                 n_UD = Nf_UD*nn*row['nvisits_UD_night']*self.sl_UD/self.cad_UD
-                n_DD = (self.NDD-Nf_UD*nn)*row['nvisits_DD_season']
+                n_DD = (self.NDDF-Nf_UD*nn)*row['nvisits_DD_season']
                 if year == 1:
                     n_DD = self.Nf_DD_y1*self.Nv_DD_y1
                     n_UD = 0
