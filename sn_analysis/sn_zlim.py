@@ -5,6 +5,7 @@ from sn_analysis.sn_calc_plot import Calc_zlim, select
 from sn_analysis.sn_calc_plot import effi
 import pandas as pd
 from . import plt, filtercolors
+from sn_tools.sn_utils import multiproc
 
 
 def gime_zlim(df, dict_sel, selvar):
@@ -61,14 +62,25 @@ def plot_res(df, fig=None, ax=None, label='', color='b', lst='solid', mark='None
     # ax.grid()
 
 
-def get_data(theDir, fis):
+def get_data(theDir, fis, nproc=8):
 
+    params = {}
+    params['theDir'] = theDir
+
+    outResu = multiproc(fis, params, get_data_indiv, nproc)
+
+    return outResu
+
+
+def get_data_indiv(fis, params, j, output_q):
+
+    theDir = params['theDir']
     df_dict = {}
     for fi in fis:
         print('processing', fi)
         ffi = fi.split('/')[-1]
-        hname = ffi.split('_')[4]
-        bb = ffi.split('_')[2]
+        hname = ffi.split('_')[2]
+        bb = ffi.split('_')[1]
         df = loadData_fakeSimu(theDir, ffi)
         key = '{}_{}'.format(bb, hname)
         if key not in df_dict.keys():
@@ -76,7 +88,10 @@ def get_data(theDir, fis):
         else:
             df_dict[key] = pd.concat((df, df_dict[key]))
 
-    return df_dict
+    if output_q is not None:
+        return output_q.put({j: df_dict})
+    else:
+        return df_dict
 
 
 def plot_delta_zlim(df_dict, dict_sel, selvar):
