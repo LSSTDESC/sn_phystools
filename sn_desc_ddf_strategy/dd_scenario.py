@@ -1173,7 +1173,9 @@ class DD_Scenario:
                  scen_names=['DDF_SCOC', 'DDF_DESC_0.80',
                              'DDF_DESC_0.75',
                              'DDF_DESC_0.70'],  # scenario name
-                 frac_moon=0.20):
+                 frac_moon=0.20,
+                 obs_UD_DD=1,
+                 Nv_DD_max=4000):
         """
         class to estimate DD scenarios
 
@@ -1220,7 +1222,10 @@ class DD_Scenario:
                                          'DDF_DESC_0.75','DDF_DESC_0.70'].
         frac_moon : float, optional
             fraction of nights with no moon. The default is 0.20.
-
+        obs_UD_DD : int, optional
+            To observe UD fields as DD. The default is 1.
+        Nv_DD_max : int, optional
+           Max number of Nvisits per DD field/season. The default is 4000.
         Returns
         -------
         None.
@@ -1241,6 +1246,8 @@ class DD_Scenario:
         self.Nf_combi = Nf_combi
         self.zcomp = zcomp
         self.scen_names = scen_names
+        self.obs_UD_DD = obs_UD_DD
+        self.Nv_DD_max = Nv_DD_max
 
         # load zlim vs nvisits
         dfa = pd.read_csv(nvisits_zcomp_file, comment='#')
@@ -1389,7 +1396,7 @@ class DD_Scenario:
                           k*res*self.cad_UD/self.sl_UD, Nf_UD, Ns_UD,
                           self.zlim_nvisits(res*self.cad_DD/self.sl_DD)))
             """
-            Nv_DD = np.arange(100., 8000., 100)
+            Nv_DD = np.arange(100., self.Nv_DD_max, 100)
             df = pd.DataFrame(Nv_DD, columns=['Nv_DD'])
             Nv_UD_season = self.get_Nv_UD_season(
                 self.budget_DD, self.Nv_LSST, self.NDDF,
@@ -1421,6 +1428,8 @@ class DD_Scenario:
         Ns_UD_DD = Ns_DD-Ns_UD
         if Ns_UD_DD < 0:
             Ns_UD_DD = 0.
+        if self.obs_UD_DD == 0:
+            Ns_UD_DD = 0.0
         res -= Nf_UD*Nv_DD*Ns_UD_DD
         res -= NDDF*Nv_DD_y1
 
@@ -1505,7 +1514,7 @@ class DD_Scenario:
              vary='Nv_UD_night',
              legy='N$_{visits}^{UD}/obs. night}$', scenario={}, figtitle='',
              zcomp_req={}, pz_wl_req={},
-             pz_wl_req_err={}, zcomp_req_err={}, deep_universal={}):
+             pz_wl_req_err={}, zcomp_req_err={}, deep_universal={}, scoc_pII={}):
         """
         Method to plot the results
 
@@ -1649,7 +1658,7 @@ class DD_Scenario:
                     tt = 1.01*ymin
                     k = tt-ymin
                 ax.plot([xmin, xmax], [ymin, ymax], ls='dotted', color=coltext)
-                ax.text(0.885*xmax, ymin+k, key, fontsize=12, color=coltext)
+                ax.text(0.85*xmax, ymin+k, key, fontsize=12, color=coltext)
 
         if pz_wl_req:
             ymin, ymax = ax.get_ylim()
@@ -1670,6 +1679,13 @@ class DD_Scenario:
                 y = vals[1]
                 ax.plot([x]*2, [ymin, ymax], color='g', ls='dotted')
                 ax.text(1.005*x, y, key, fontsize=12, rotation=270,
+                        color='g', va='top')
+        if scoc_pII:
+            for key, vals in scoc_pII.items():
+                x = vals[0]
+                y = vals[1]
+                ax.plot(x, y, color='g', marker='*')
+                ax.text(1.01*x, y, key, fontsize=12,
                         color='g', va='top')
 
         ax.legend(bbox_to_anchor=(1.0, 0.55),
