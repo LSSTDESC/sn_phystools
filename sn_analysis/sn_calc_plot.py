@@ -103,6 +103,26 @@ class Calc_zlim:
 
 
 def effi(resa, resb, xvar='z', bins=np.arange(0.01, 1.1, 0.02)):
+    """
+    Function to estimate efficiencies
+
+    Parameters
+    ----------
+    resa : array
+        ref data.
+    resb : array
+        selected data.
+    xvar : str, optional
+        x-axis var. The default is 'z'.
+    bins : list(float), optional
+        x var range. The default is np.arange(0.01, 1.1, 0.02).
+
+    Returns
+    -------
+    df : pandas df
+        result: efficiencies and error vs x var.
+
+    """
 
     groupa = resa.groupby(pd.cut(resa[xvar], bins))
     groupb = resb.groupby(pd.cut(resb[xvar], bins))
@@ -120,8 +140,58 @@ def effi(resa, resb, xvar='z', bins=np.arange(0.01, 1.1, 0.02)):
     return df
 
 
-def plot_effi(effival, xvar='z', leg='',
-              bins=np.arange(0.01, 1.1, 0.01), fig=None, ax=None):
+def bin_it(res, xvar='z', bins=np.arange(0.01, 1.1, 0.02), norm_factor=1):
+    """
+    Function to make a binned histogram
+
+    Parameters
+    ----------
+    res : pandas df
+        data to process.
+    xvar : str, optional
+        x-axis var. The default is 'z'.
+    bins : list(float), optional
+        x var bins. The default is np.arange(0.01, 1.1, 0.02).   
+    norm_factor : float, optional
+        normalization factor. The default is 1.
+
+    Returns
+    -------
+    df : pandas df
+        result.
+
+    """
+
+    group = res.groupby(pd.cut(res[xvar], bins))
+    bin_centers = (bins[: -1] + bins[1:])/2
+    df = pd.DataFrame(bin_centers, columns=[xvar])
+    df['N'] = group.size().to_list()
+    df['N'] /= norm_factor
+    return df
+
+
+def plot_effi(effival, xvar='z', leg='', fig=None, ax=None):
+    """
+    Function to plot efficiency vs xvar
+
+    Parameters
+    ----------
+    effival : array
+        data to plot.
+    xvar : str, optional
+        x-axis var. The default is 'z'.
+    leg : str, optional
+        leg for the plot. The default is ''.
+    fig : matplotlib figure, optional
+        figure for the plot. The default is None.
+    ax : matplotlib axis, optional
+        axis for the plot. The default is None.
+
+    Returns
+    -------
+    None.
+
+    """
 
     if fig is None:
         fig, ax = plt.subplots(figsize=(10, 8))
@@ -132,6 +202,20 @@ def plot_effi(effival, xvar='z', leg='',
     y = effival['effi']
     yerr = effival['effi_err']
     ax.errorbar(x, y, yerr=yerr, label=leg, marker='o', color='k')
+
+
+def plot_NSN(df, xvar='z', bins=np.arange(0.01, 1.1, 0.02),
+             norm_factor=1, fig=None, axis=None):
+
+    fields = df['field'].unique()
+
+    fig, ax = plt.subplots()
+
+    for field in fields:
+        idx = df['field'] == field
+        sel = df[idx]
+        Nz = bin_it(sel, 'z', bins, norm_factor)
+        ax.plot(Nz['z'], Nz['N'])
 
 
 def select(res, list_sel):

@@ -265,7 +265,8 @@ def loadData(theDir, dbName, inDir, field='COSMOS'):
     return restot
 
 
-def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3):
+def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
+                         listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb'):
     """
 
 
@@ -290,7 +291,6 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3):
     """
 
     res = pd.DataFrame()
-    listDDF = 'COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb'
     fields = listDDF.split(',')
     for field in fields:
         ll = loadData(dbDir, dbName, inDir, field)
