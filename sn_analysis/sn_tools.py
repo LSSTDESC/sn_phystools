@@ -255,14 +255,15 @@ def loadData(theDir, dbName, inDir, field='COSMOS'):
 
     #restot = pd.DataFrame()
     params = dict(zip(['objtype'], ['astropyTable']))
-    restot = multiproc(files, params, loopStack_params, 8).to_pandas()
+    restot = multiproc(files, params, loopStack_params, 8)
+    restot.convert_bytestring_to_unicode()
 
     """
     for fi in files:
         res = loopStack([fi], objtype='astropyTable').to_pandas()
         restot = pd.concat((restot, res))
         """
-    return restot
+    return restot.to_pandas()
 
 
 def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
@@ -323,15 +324,18 @@ def complete_df(res, alpha=0.4, beta=3):
     """
 
     # get dmu_over_dz vs z
+    """
     dmu_dz = dmu_over_dz(plot=True)
     # make 1d interpolator out of it
     interp_dmudz = interp1d(dmu_dz['z'], dmu_dz['dmu_over_dz'],
                             bounds_error=False, fill_value=0.)
     res['deriv_mu_z'] = interp_dmudz(res['z'])
-
+    
     print(res.columns)
+    """
     res['sigmaC'] = np.sqrt(res['Cov_colorcolor'])
     res['sigmat0'] = np.sqrt(res['Cov_t0t0'])
+    res['sigmax1'] = np.sqrt(res['Cov_x1x1'])
     res['Cov_mbmb'] = (
         2.5 / (res['x0_fit']*np.log(10)))**2*res['Cov_x0x0']
     res['Cov_x1mb'] = -2.5*res['Cov_x0x1'] / \
