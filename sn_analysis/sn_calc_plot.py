@@ -204,18 +204,34 @@ def plot_effi(effival, xvar='z', leg='', fig=None, ax=None):
     ax.errorbar(x, y, yerr=yerr, label=leg, marker='o', color='k')
 
 
-def plot_NSN(df, xvar='z', bins=np.arange(0.01, 1.1, 0.02),
-             norm_factor=1, fig=None, axis=None):
+def plot_NSN(df, xvar='z', xlabel='z', yvar='N', ylabel='NSN',
+             bins=np.arange(0.01, 1.1, 0.02),
+             norm_factor=1, fig=None, axis=None,
+             loopvar='field', dict_sel={}, cumul=False):
 
-    fields = df['field'].unique()
+    if dict_sel:
+        df = select(df, dict_sel['select'])
+    fields = df[loopvar].unique()
 
-    fig, ax = plt.subplots()
+    if fig is None:
+        fig, ax = plt.subplots(figsize=(10, 8))
 
     for field in fields:
-        idx = df['field'] == field
+        idx = df[loopvar] == field
         sel = df[idx]
-        Nz = bin_it(sel, 'z', bins, norm_factor)
-        ax.plot(Nz['z'], Nz['N'])
+        if bins is not None:
+            sel = bin_it(sel, 'z', bins, norm_factor)
+        yplot = sel[yvar]
+        if cumul:
+            yplot = np.cumsum(yplot)
+        ax.plot(sel[xvar], yplot)
+
+    ax.grid()
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    xmin = df[xvar].min()
+    xmax = df[xvar].max()
+    ax.set_xlim(xmin, xmax)
 
 
 def select(res, list_sel):
