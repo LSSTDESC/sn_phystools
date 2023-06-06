@@ -208,6 +208,42 @@ def plot_NSN(df, xvar='z', xlabel='z', yvar='N', ylabel='NSN',
              bins=np.arange(0.01, 1.1, 0.02),
              norm_factor=1, fig=None, axis=None,
              loopvar='field', dict_sel={}, cumul=False):
+    """
+    Function to plot NSN vs z
+
+    Parameters
+    ----------
+    df : pandas df
+        data to process.
+    xvar : str, optional
+        x-axis var. The default is 'z'.
+    xlabel : str, optional
+        x-axis label. The default is 'z'.
+    yvar : str, optional
+        y-axis var. The default is 'N'.
+    ylabel : str, optional
+        y-axis label. The default is 'NSN'.
+    bins : list(float), optional
+        List of bins to draxw a binned-x plot. 
+        The default is np.arange(0.01, 1.1, 0.02).
+    norm_factor : float, optional
+        Normalization factor. The default is 1.
+    fig : matplotlib figure, optional
+        Figure plot. The default is None.
+    axis : matplotlib axis, optional
+        axis for the plot. The default is None.
+    loopvar : str, optional
+        Loop var for the plot. The default is 'field'.
+    dict_sel : dict, optional
+        Selection dict for the plot. The default is {}.
+    cumul : bool, optional
+        To plot a cumulative y-var. The default is False.
+
+    Returns
+    -------
+    None.
+
+    """
 
     if dict_sel:
         df = select(df, dict_sel['select'])
@@ -217,14 +253,20 @@ def plot_NSN(df, xvar='z', xlabel='z', yvar='N', ylabel='NSN',
         fig, ax = plt.subplots(figsize=(10, 8))
 
     for field in fields:
+        print('field', field)
         idx = df[loopvar] == field
         sel = df[idx]
         if bins is not None:
             sel = bin_it(sel, 'z', bins, norm_factor)
-        yplot = sel[yvar]
+            norm_factor = 1
+        yplot = sel[yvar]/norm_factor
         if cumul:
             yplot = np.cumsum(yplot)
-        ax.plot(sel[xvar], yplot)
+        ls = sel['ls'].unique()[0]
+        marker = sel['marker'].unique()[0]
+        color = sel['color'].unique()[0]
+        ax.plot(sel[xvar], yplot, linestyle=ls, marker=marker,
+                label=field, mfc='None', color=color)
 
     ax.grid()
     ax.set_xlabel(xlabel)
@@ -232,6 +274,7 @@ def plot_NSN(df, xvar='z', xlabel='z', yvar='N', ylabel='NSN',
     xmin = df[xvar].min()
     xmax = df[xvar].max()
     ax.set_xlim(xmin, xmax)
+    ax.legend(fontsize=12)
 
 
 def select(res, list_sel):
