@@ -207,7 +207,8 @@ def plot_effi(effival, xvar='z', leg='', fig=None, ax=None):
 def plot_NSN(df, xvar='z', xlabel='z', yvar='N', ylabel='NSN',
              bins=np.arange(0.01, 1.1, 0.02),
              norm_factor=1, fig=None, axis=None,
-             loopvar='field', dict_sel={}, cumul=False):
+             loopvar='field', dict_sel={}, cumul=False, title='',
+             plotDir='', plotName=''):
     """
     Function to plot NSN vs z
 
@@ -252,6 +253,9 @@ def plot_NSN(df, xvar='z', xlabel='z', yvar='N', ylabel='NSN',
     if fig is None:
         fig, ax = plt.subplots(figsize=(10, 8))
 
+    if title != '':
+        fig.suptitle(title)
+
     for field in fields:
         print('field', field)
         idx = df[loopvar] == field
@@ -269,12 +273,15 @@ def plot_NSN(df, xvar='z', xlabel='z', yvar='N', ylabel='NSN',
                 label=field, mfc='None', color=color)
 
     ax.grid()
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel, fontweight='bold')
+    ax.set_ylabel(ylabel, fontweight='bold')
     xmin = df[xvar].min()
     xmax = df[xvar].max()
     ax.set_xlim(xmin, xmax)
     ax.legend(fontsize=12)
+
+    if plotName != '':
+        plt.savefig('{}/{}'.format(plotDir, plotName))
 
 
 def select(res, list_sel):
