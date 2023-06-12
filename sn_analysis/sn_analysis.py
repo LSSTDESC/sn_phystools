@@ -8,6 +8,7 @@ Created on Thu Jun  8 08:52:27 2023
 import os
 import pandas as pd
 from sn_analysis.sn_calc_plot import select
+from sn_analysis.sn_tools import load_complete_dbSimu
 
 
 class sn_load_select:
