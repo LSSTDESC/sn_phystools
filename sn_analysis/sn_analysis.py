@@ -13,7 +13,8 @@ from sn_analysis.sn_tools import load_complete_dbSimu
 
 class sn_load_select:
     def __init__(self, dbDir, dbName, prodType,
-                 listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb'):
+                 listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
+                 fDir=''):
         """
         class to load and select sn data and make some stats
 
@@ -28,6 +29,8 @@ class sn_load_select:
         listDDF : str, optional
             List of DDF to process.
             The default is 'COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb'.
+        fDir: str, opt.
+            Location dir of the files. The default is ''
 
         Returns
         -------
@@ -35,7 +38,7 @@ class sn_load_select:
 
         """
 
-        outName_stack = 'SN_{}.hdf5'.format(dbName)
+        outName_stack = '{}/SN_{}.hdf5'.format(fDir, dbName)
         # load the data
         if not os.path.exists(outName_stack):
             data = load_complete_dbSimu(
