@@ -253,6 +253,9 @@ def loadData(theDir, dbName, inDir, field='COSMOS'):
     print('searching for', searchname)
     files = glob.glob(searchname)
 
+    if len(files) == 0:
+        return pd.DataFrame()
+
     #restot = pd.DataFrame()
     params = dict(zip(['objtype'], ['astropyTable']))
     restot = multiproc(files, params, loopStack_params, 8)
@@ -356,7 +359,10 @@ def complete_df(res, alpha=0.4, beta=3):
             + 2.*res.deriv_mu_z*res.Cov_mbz\
             + 2.*alpha*res.deriv_mu_z*res.Cov_x1z\
             - 2.*beta*res.deriv_mu_z*res.Cov_colorz
+
     res['sigma_mu'] = np.sqrt(res['sigma_mu'])
+    res['mb_fit'] = -2.5*np.log10(res['x0_fit'])+10.635
+    res['mu'] = res['mb_fit']+alpha*res['x1_fit']-beta*res['color_fit']
 
     return res
 
