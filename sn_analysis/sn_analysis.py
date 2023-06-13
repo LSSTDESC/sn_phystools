@@ -14,7 +14,7 @@ from sn_analysis.sn_tools import load_complete_dbSimu
 class sn_load_select:
     def __init__(self, dbDir, dbName, prodType,
                  listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
-                 fDir=''):
+                 fDir='', norm_factor=1):
         """
         class to load and select sn data and make some stats
 
@@ -31,6 +31,8 @@ class sn_load_select:
             The default is 'COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb'.
         fDir: str, opt.
             Location dir of the files. The default is ''
+        norm_factor: float, optional
+            normalization factor in the simulation. The default is 1.
 
         Returns
         -------
@@ -50,6 +52,7 @@ class sn_load_select:
         # selectc only fitted LC
         # idx = data['fitstatus'] == 'fitok'
         res = data
+        self.norm_factor = norm_factor
         self.printRes(res)
 
         res['dbName'] = dbName
@@ -79,17 +82,23 @@ class sn_load_select:
         res['season'] = res['season'].astype(int)
         res['healpixID'] = res['healpixID'].astype(int)
 
+        print('res', res)
+
         rr = res.groupby(['field', 'season']).apply(
             lambda x: self.sn_stat(x, survey_area)).reset_index()
         rr = rr.to_records(index=False)
-        print(rr[['field', 'season', 'NSN', 'survey_area']])
+        print(rr[['field', 'season', 'NSN', 'NSN_explod', 'survey_area']])
 
     def sn_stat(self, grp, survey_area):
 
-        nsn = grp['NSN'].sum()
+        # nsn = grp['NSN'].sum()
+        nsn = len(grp)
+        nsn_exp = nsn/self.norm_factor
         nheal = len(grp['healpixID'].unique())
 
-        return pd.DataFrame({'NSN': [nsn], 'survey_area': [nheal*survey_area]})
+        return pd.DataFrame({'NSN': [nsn],
+                             'NSN_explod': [int(nsn_exp)],
+                             'survey_area': [nheal*survey_area]})
 
     def sn_selection(self, dict_sel={}):
         """
@@ -145,3 +154,57 @@ def get_nsn(data_dict, grpby=['field'], norm_factor=1):
 
     # nsn_fields['dbName'] = self.dbName
     return nsn_fields
+
+
+def processNSN(dd, dbDir, prodType, listDDF, dict_sel, fDir, norm_factor):
+    """
+    Function to process Data
+
+    Parameters
+    ----------
+    dd : pandas df
+        list of DB to process.
+    dbDir : str
+        location dir of OS.
+    prodType : str
+        production type.
+    listDDF : str
+        list of DDF to process.
+    dict_sel : dict
+        Selection dict.
+    fDir: str
+       location dir of the files
+    norm_factor: float
+      normalization factor
+
+    Returns
+    -------
+    None.
+
+    """
+    sn_field = pd.DataFrame()
+    sn_field_season = pd.DataFrame()
+
+    for io, row in dd.iterrows():
+        dbName = row['dbName']
+
+        dd = sn_load_select(dbDir, dbName, prodType,
+                            listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
+                            fDir=fDir)
+        data_dict = dd.sn_selection(dict_sel)
+
+        # estimate the number of SN
+        fa = get_nsn(data_dict,
+                     grpby=['dbName', 'field'], norm_factor=norm_factor)
+        sn_field = pd.concat((sn_field, fa))
+        fb = get_nsn(data_dict, grpby=['dbName', 'field', 'season'],
+                     norm_factor=norm_factor)
+
+        sn_field_season = pd.concat((sn_field_season, fb))
+
+    # save in hdf5 files
+    sn_field.to_hdf('{}/sn_field.hdf5'.format(fDir), key='sn')
+    sn_field_season.to_hdf('{}/sn_field_season.hdf5'.format(fDir), key='sn')
+
+    print(sn_field)
+    print(sn_field_season)
