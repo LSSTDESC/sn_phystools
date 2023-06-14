@@ -1159,7 +1159,7 @@ class DD_Scenario:
                  Nseason=10,  # number of season of observation
                  sl_UD=180.,  # season length UD fields
                  cad_UD=2.,  # cadence of observation UD fields
-                 cad_DD=4.,  # cadence of observation DD fields
+                 cad_DD=3.,  # cadence of observation DD fields
                  sl_DD=180.,  # season length DD fields
                  Nf_DD_y1=3,  # number of DDF year 1
                  Nv_DD_y1=998,  # number of DD visits year 1
@@ -1680,6 +1680,11 @@ class DD_Scenario:
                 ax.plot([x]*2, [ymin, ymax], color='g', ls='dotted')
                 ax.text(1.005*x, y, key, fontsize=12, rotation=270,
                         color='g', va='top')
+                Nv_UD_night = x*self.cad_DD/self.sl_DD
+                for_res.append(('DDF_Universal', 0.5, 0, 1,
+                                int(Nv_UD_night), int(x), self.cad_DD, self.sl_DD, 3))
+                for_res.append(('DDF_U_SN', 0.5, 0, 5,
+                                int(Nv_UD_night), int(x), self.cad_DD, self.sl_DD, 3))
         if scoc_pII:
             for key, vals in scoc_pII.items():
                 x = vals[0]
@@ -1687,6 +1692,8 @@ class DD_Scenario:
                 ax.plot(x, y, color='g', marker='*')
                 ax.text(1.01*x, y, key, fontsize=12,
                         color='g', va='top')
+                for_res.append(('DDF_SCOC_pII', 0.5, 1, 3,
+                                int(y), int(x), self.cad_DD, self.sl_DD, 3))
 
         ax.legend(bbox_to_anchor=(1.0, 0.55),
                   ncol=1, frameon=False, fontsize=13)
@@ -2291,8 +2298,11 @@ class Budget_time:
         fig, ax = plt.subplots(figsize=(14, 8))
 
         names = np.unique(res['name'])
-        ls = dict(zip(['0.70', '0.75', '0.80'], ['solid', 'dotted', 'dashed']))
-        colors = dict(zip(range(9), ['blue', 'k', 'red']*3))
+        keys = ['0.70', '0.75', '0.80', 'pII', 'Universal', 'USN']
+        lss = ['solid', 'dotted', 'dashed', 'solid', 'solid', 'solid']
+        ls = dict(zip(keys, lss))
+        colors = dict(
+            zip(range(12), ['blue', 'k', 'red']*3+['m', 'green', 'orange']))
         res = res.sort_values(by=['name'])
         for io, nn in enumerate(names):
             lst = 'None'
@@ -2302,6 +2312,7 @@ class Budget_time:
             idx = res['name'] == nn
             sel = res[idx]
             sel = sel.sort_values(by=['year'])
+            print('hhh', nn, lst, colors[io])
             ax.plot(sel['year'], sel['budget_per'], linestyle=lst,
                     color=colors[io], label=nn)
 
