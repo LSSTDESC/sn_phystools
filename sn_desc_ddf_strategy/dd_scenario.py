@@ -1681,9 +1681,9 @@ class DD_Scenario:
                 ax.text(1.005*x, y, key, fontsize=12, rotation=270,
                         color='g', va='top')
                 Nv_UD_night = x*self.cad_DD/self.sl_DD
-                for_res.append(('DDF_Universal', 0.5, 0, 1,
+                for_res.append(('DDF_Univ_WZ', 0.5, 0, 1,
                                 int(Nv_UD_night), int(x), self.cad_DD, self.sl_DD, 3))
-                for_res.append(('DDF_U_SN', 0.5, 0, 5,
+                for_res.append(('DDF_Univ_SN', 0.5, 2, 9,
                                 int(Nv_UD_night), int(x), self.cad_DD, self.sl_DD, 3))
         if scoc_pII:
             for key, vals in scoc_pII.items():
@@ -2298,7 +2298,7 @@ class Budget_time:
         fig, ax = plt.subplots(figsize=(14, 8))
 
         names = np.unique(res['name'])
-        keys = ['0.70', '0.75', '0.80', 'pII', 'Universal', 'USN']
+        keys = ['0.70', '0.75', '0.80', 'pII', 'Univ_WZ', 'Univ_SN']
         lss = ['solid', 'dotted', 'dashed', 'solid', 'solid', 'solid']
         ls = dict(zip(keys, lss))
         colors = dict(
@@ -2321,7 +2321,7 @@ class Budget_time:
         ax.set_ylabel('DDF budget [%]')
         ax.legend(frameon=False)
         ax.set_xlim(0, 10)
-        ax.set_ylim(0., 7.)
+        ax.set_ylim(0., 7.5)
 
 
 class Scenario_time:
@@ -2636,7 +2636,7 @@ def reshuffle(df_res, m5_resu, sl_UD, cad_UD, frac_moon):
 
     df_resb = pd.DataFrame(r, columns=bbval+['band', 'nvisits_night'])
     fracs = pd.DataFrame(list('ugrizy'), columns=['band'])
-    fracs['frac_night'] = [frac_moon, 1., 1., 1., 1.-frac_moon, 1.]
+    fracs['frac_night'] = [frac_moon, 1., 1., 1., 1., 1.-frac_moon]
 
     df_resb = df_resb.merge(fracs, left_on=['band'], right_on=['band'])
 
@@ -2798,13 +2798,15 @@ def moon_recovery(df, swap_filter_moon='z'):
 
     idx = df['band'] == swap_filter_moon
     sel = df[idx]
+    dfb = df[~idx]
 
+    # print('hhh', sel[['frac_night', 'fieldType', 'band', 'year']])
     # correct for the number of visits on the swap filter
     sel['nvisits_night'] /= sel['frac_night']
 
     sel['nvisits_night'] = sel['nvisits_night'].astype(int)
+    sel.loc[sel['nvisits_night'] == 1, 'nvisits_night'] = 2
 
-    dfb = df[~idx]
     dfb = pd.concat((dfb, sel))
 
     return dfb
@@ -2833,3 +2835,35 @@ def reverse_df(df):
         outDict[b] = sel['nvisits_night'].to_list()
 
     return pd.DataFrame.from_dict(outDict)
+
+
+def uniformize(dfres, name='DDF_Univ_SN'):
+    """
+    Function to make a unifor survey from UD fields
+
+    Parameters
+    ----------
+    dfres : pandas df
+        Data to process.
+    name : str, optional
+        survey to modify. The default is 'DDF_Univ_SN'.
+
+    Returns
+    -------
+    df_fi : pandas df
+        Modified dataFrame.
+
+    """
+
+    idx = dfres['name'] == 'DDF_Univ_SN'
+    seldf = dfres[idx]
+    idxb = seldf['fieldType'] == 'UD'
+    seldfa = seldf[idxb]
+    seldfb = seldf[idxb]
+    seldfb.loc[:, 'fieldType'] = 'DD'
+
+    seldfa = pd.concat((seldfa, seldfb))
+    df_fi = dfres[~idx]
+    df_fi = pd.concat((df_fi, seldfa))
+
+    return df_fi
