@@ -1683,8 +1683,9 @@ class DD_Scenario:
                 Nv_UD_night = x*self.cad_DD/self.sl_DD
                 for_res.append(('DDF_Univ_WZ', 0.5, 0, 1,
                                 int(Nv_UD_night), int(x), self.cad_DD, self.sl_DD, 3))
-                for_res.append(('DDF_Univ_SN', 0.5, 2, 9,
-                                int(Nv_UD_night), int(x), self.cad_DD, self.sl_DD, 3))
+                Nv_UD_night = x*self.cad_UD/self.sl_UD
+                for_res.append(('DDF_Univ_SN', 0.5, 5, 9,
+                                int(Nv_UD_night), int(x), self.cad_UD, self.sl_UD, 3))
         if scoc_pII:
             for key, vals in scoc_pII.items():
                 x = vals[0]
@@ -1727,7 +1728,6 @@ class DD_Scenario:
         df_res = pd.DataFrame.from_records(res)
         df_res['zcomp_new'] = self.zlim_nvisits(
             df_res['nvisits_UD_night']/self.cad_UD)
-
         df_res['delta_z'] = df_res['zcomp']-df_res['zcomp_new']
 
         bands = 'grizy'
@@ -1739,6 +1739,7 @@ class DD_Scenario:
 
         df_res['nvisits_UD_night_recalc'] = df_res[list(bands)].sum(axis=1)
 
+        # print('recalc', df_res[list(bands)].sum(axis=1))
         # if mismatch between Nvisits and Nvisits_recalc-> diff on z-band
         df_res['z'] += df_res['nvisits_UD_night'] - \
             df_res['nvisits_UD_night_recalc']
@@ -1748,9 +1749,12 @@ class DD_Scenario:
         df_res = df_res[idx]
         df_res = df_res.round({'delta_z': 2})
 
+        # print(df_res.columns)
         nights_UD = self.sl_UD/self.cad_UD
         n_UD = df_res['Nf_UD']*df_res['Ns_UD'] * \
             df_res['nvisits_UD_night']*nights_UD
+        # print('alors', df_res['Nf_UD'].values, df_res['Ns_UD'].values,
+        #      df_res['nvisits_UD_night'].values, nights_UD)
         df_res['nvisits_UD_season'] = df_res['nvisits_UD_night']*nights_UD
         for b in bands:
             df_res['{}_season'.format(b)] = df_res['{}'.format(b)]*nights_UD
@@ -1759,6 +1763,7 @@ class DD_Scenario:
         n_DD -= self.Nf_DD_y1
         n_DD -= df_res['Nf_UD']*df_res['Ns_UD']
         n_DD *= df_res['nvisits_DD_season']
+        #print('hello', n_UD.values, n_DD.values, self.Nf_DD_y1*self.Nv_DD_y1)
         df_res['Nvisits'] = n_UD+n_DD+self.Nf_DD_y1*self.Nv_DD_y1
         df_res['budget'] = df_res['Nvisits']/self.Nv_LSST
 
@@ -2588,7 +2593,7 @@ class Scenario_time:
                 ax.legend(ncol=2, bbox_to_anchor=(0.1, 0.95), frameon=False)
 
 
-def reshuffle(df_res, m5_resu, sl_UD, cad_UD, frac_moon):
+def reshuffle(df_res, m5_resu, sl_UD, cad_UD, frac_moon, swap_filter_moon):
     """
     Functio to write the input df in a more usable way
 
@@ -2615,9 +2620,9 @@ def reshuffle(df_res, m5_resu, sl_UD, cad_UD, frac_moon):
     df_res['u_season'] = frac_moon*df_res['z_season']
     # df_res['z_season'] = (1.-frac_moon)*df_res['z_season']
     df_res['n_night_season'] = df_res['sl']/df_res['cad']
-    df_res['u_recalc'] = df_res['u_season']/frac_moon/df_res['n_night_season']
-    df_res['z_recalc'] = df_res['z_season'] / \
-        (1.-frac_moon)/df_res['n_night_season']
+    # df_res['u_recalc'] = df_res['u_season']/frac_moon/df_res['n_night_season']
+    # df_res['z_recalc'] = df_res['z_season'] / \
+    #    (1.-frac_moon)/df_res['n_night_season']
     for io, row in df_res.iterrows():
         ra = []
         for vv in bbval:
@@ -2635,8 +2640,17 @@ def reshuffle(df_res, m5_resu, sl_UD, cad_UD, frac_moon):
         r.append(ra+['u', np.round(nu_night[0], 0)])
 
     df_resb = pd.DataFrame(r, columns=bbval+['band', 'nvisits_night'])
-    fracs = pd.DataFrame(list('ugrizy'), columns=['band'])
-    fracs['frac_night'] = [frac_moon, 1., 1., 1., 1., 1.-frac_moon]
+    bands = 'ugrizy'
+    fracs = pd.DataFrame(list(bands), columns=['band'])
+    ro = []
+    for b in bands:
+        ffrac_b = 1
+        if b == 'u':
+            ffrac_b = frac_moon
+        if b == swap_filter_moon:
+            ffrac_b = 1.-frac_moon
+        ro.append(ffrac_b)
+    fracs['frac_night'] = ro
 
     df_resb = df_resb.merge(fracs, left_on=['band'], right_on=['band'])
 
