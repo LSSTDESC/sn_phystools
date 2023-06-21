@@ -310,7 +310,7 @@ class FiveSigmaDepth_Nvisits:
         return df
 
     def m5_band_from_Nvisits(self, m5_resu_orig, m5single, sl_DD=180., cad_DD=4,
-                             frac_moon=0.20, swap_filter_moon='z'):
+                             frac_moon=0.20, swap_filter_moon='y'):
         """
         Method to estimate m5 per band from the total number of visits
 
@@ -360,6 +360,7 @@ class FiveSigmaDepth_Nvisits:
         tt = m5single[['band', 'Nvisits_y1', 'm5_y1', 'm5_med_single']]
         tt = m5single[['band', 'Nvisits_WL_PZ_y1',
                        'm5_WL_PZ_y1', 'm5_med_single']]
+        tt = pd.DataFrame(tt)
         tt['Nseasons'] = 1
 
         # tt['Nvisits_y1'] = tt['Nvisits_y1'].astype(int)
@@ -424,6 +425,7 @@ class FiveSigmaDepth_Nvisits:
                 fracs[b] = 1.-frac_moon
         # frac_night = [frac_moon, 1., 1., 1., 1.-frac_moon, 1.]
         # fracs = dict(zip(bands, frac_night))
+        tab = pd.DataFrame(tab)
         tab['{}_night'.format(col)] = tab.apply(
             lambda x: x[col]/x[seasoncol] /
             (fracs[x['band']]*nights_season),
@@ -440,7 +442,7 @@ class FiveSigmaDepth_Nvisits:
             frac_night.append(fracs[b])
 
         frac_df['frac_night'] = frac_night
-        tab['Nseasons'] = tab[seasoncol]
+        tab.loc[:, 'Nseasons'] = tab[seasoncol]
         tab = tab.merge(frac_df, left_on=['band'], right_on=['band'])
 
         tab = tab.round({'{}'.format(col): 0, '{}_night'.format(col): 0})
@@ -1763,7 +1765,7 @@ class DD_Scenario:
         n_DD -= self.Nf_DD_y1
         n_DD -= df_res['Nf_UD']*df_res['Ns_UD']
         n_DD *= df_res['nvisits_DD_season']
-        #print('hello', n_UD.values, n_DD.values, self.Nf_DD_y1*self.Nv_DD_y1)
+        # print('hello', n_UD.values, n_DD.values, self.Nf_DD_y1*self.Nv_DD_y1)
         df_res['Nvisits'] = n_UD+n_DD+self.Nf_DD_y1*self.Nv_DD_y1
         df_res['budget'] = df_res['Nvisits']/self.Nv_LSST
 
@@ -2244,13 +2246,14 @@ class Budget_time:
         """
 
         self.Nv_LSST = Nv_LSST
+        print('there aaaaaaaaaaa',
+              df[['band', 'nvisits_band_season']])
         budget = df.groupby('name').apply(
             lambda x: self.budget_scenario(x)).reset_index()
 
         print(budget)
 
         budget['budget_per'] = 100.*budget['budget']
-        print(budget.columns)
         budget = budget.sort_values(by=['year'])
         self.plot_budget_time(budget)
 
@@ -2272,6 +2275,8 @@ class Budget_time:
 
         grp['nvisits_field'] = grp['nvisits_band_season']*grp['Nfields']
 
+        print('there mmmmm',
+              grp[['band', 'nvisits_field', 'nvisits_band_season']])
         nv = grp.groupby(
             ['year'])['nvisits_field'].sum().reset_index()
 
@@ -2301,7 +2306,7 @@ class Budget_time:
         """
 
         fig, ax = plt.subplots(figsize=(14, 8))
-
+        fig.subplots_adjust(right=0.85)
         names = np.unique(res['name'])
         keys = ['0.70', '0.75', '0.80', 'pII', 'Univ_WZ', 'Univ_SN']
         lss = ['solid', 'dotted', 'dashed', 'solid', 'solid', 'solid']
@@ -2317,14 +2322,15 @@ class Budget_time:
             idx = res['name'] == nn
             sel = res[idx]
             sel = sel.sort_values(by=['year'])
-            print('hhh', nn, lst, colors[io])
+            # print('hhh', nn, lst, colors[io])
             ax.plot(sel['year'], sel['budget_per'], linestyle=lst,
                     color=colors[io], label=nn)
 
         ax.grid()
-        ax.set_xlabel('Year')
-        ax.set_ylabel('DDF budget [%]')
-        ax.legend(frameon=False)
+        ax.set_xlabel('Year', fontweight='bold')
+        ax.set_ylabel('DDF budget [%]', fontweight='bold')
+        ax.legend(bbox_to_anchor=(1.05, 0.7),
+                  ncol=1, fontsize=12, frameon=False)
         ax.set_xlim(0, 10)
         ax.set_ylim(0., 7.5)
 
@@ -2617,8 +2623,9 @@ def reshuffle(df_res, m5_resu, sl_UD, cad_UD, frac_moon, swap_filter_moon):
              'nvisits_UD_night_recalc', 'nvisits_UD_season', 'n_night_season']
 
     # get u-visits from z-visits
-    df_res['u_season'] = frac_moon*df_res['z_season']
+    # df_res['u_season'] = frac_moon*df_res['z_season']
     # df_res['z_season'] = (1.-frac_moon)*df_res['z_season']
+    df_res = pd.DataFrame(df_res)
     df_res['n_night_season'] = df_res['sl']/df_res['cad']
     # df_res['u_recalc'] = df_res['u_season']/frac_moon/df_res['n_night_season']
     # df_res['z_recalc'] = df_res['z_season'] / \
@@ -2851,9 +2858,11 @@ def reverse_df(df):
     return pd.DataFrame.from_dict(outDict)
 
 
-def uniformize(dfres, name='DDF_Univ_SN'):
+def uniformize(dfres, name='DDF_Univ_SN', Nv_LSST=2.1e6, budget=0.07):
     """
-    Function to make a unifor survey from UD fields
+    Function to make a uniform survey from UD fields (converted to DD at the end)
+    and correct for u-band to
+    fit in the budget
 
     Parameters
     ----------
@@ -2861,23 +2870,74 @@ def uniformize(dfres, name='DDF_Univ_SN'):
         Data to process.
     name : str, optional
         survey to modify. The default is 'DDF_Univ_SN'.
+    Nv_LSST : float, optional
+        Total number of LSST visits. The default is 2.1e6.
+    budget : float, optional
+        DD budget. The default is 0.07.
 
     Returns
     -------
-    df_fi : pandas df
-        Modified dataFrame.
+    df_calc : pandas df
+        Processed data.
 
     """
 
-    idx = dfres['name'] == 'DDF_Univ_SN'
+    idx = dfres['name'] == name
+    df_other = dfres[~idx]
+
+    idx &= dfres['fieldType'] == 'UD'
     seldf = dfres[idx]
-    idxb = seldf['fieldType'] == 'UD'
-    seldfa = seldf[idxb]
-    seldfb = seldf[idxb]
-    seldfb.loc[:, 'fieldType'] = 'DD'
 
-    seldfa = pd.concat((seldfa, seldfb))
-    df_fi = dfres[~idx]
-    df_fi = pd.concat((df_fi, seldfa))
+    df_UD = pd.DataFrame(seldf)
 
-    return df_fi
+    idxa = df_UD['year'] > 1
+
+    # estimate number of visits - y1
+    df_UD_y1 = pd.DataFrame(df_UD[~idxa])
+    df_UD_y1['nvisits_season'] = df_UD_y1['nvisits_band_season'] * \
+        df_UD_y1['Nfields']
+
+    N_y1 = df_UD_y1['nvisits_season'].sum()
+
+    # estimate number of visits y2 to y10 - no u-band
+    df_UD_y2_y10 = pd.DataFrame(df_UD[idxa])
+    idxb = df_UD_y2_y10['band'] != 'u'
+
+    df_UD_y2_y10_no_u = pd.DataFrame(df_UD_y2_y10[idxb])
+    df_UD_y2_y10_no_u['nvisits_season'] = df_UD_y2_y10_no_u['nvisits_band_season'] * \
+        df_UD_y2_y10_no_u['Nfields']
+
+    N_y2_y10_no_u = df_UD_y2_y10_no_u['nvisits_season'].sum()
+
+    # estimate remaining number of u-visits to fit the budget
+    Nvisits_u = budget*Nv_LSST-N_y1-N_y2_y10_no_u
+
+    idxf = df_UD['year'] > 1
+    idxf &= df_UD['band'] == 'u'
+    Nfields = df_UD[idxf]['Nfields'].mean()
+    df_UD.loc[idxf, 'nvisits_band_season'] = Nvisits_u/9./Nfields
+    df_UD.loc[idxf, 'nvisits_season'] = df_UD[idxf]['nvisits_band_season']*Nfields
+
+    df_UD.loc[idxf, 'nvisits_night'] = df_UD[idxf]['nvisits_band_season'] / \
+        df_UD[idxf]['n_night_season']/df_UD[idxf]['frac_night']
+
+    # int it
+    for vv in ['nvisits_night', 'nvisits_band_season']:
+        #df_UD.loc[idx, vv] *= cad_UD*sl_UD/(cad_DD*sl_DD)
+        df_UD[vv] = df_UD[vv].astype(int)
+
+    df_UD['fieldType'] = 'DD'
+    df_calc = pd.concat((df_UD, df_other))
+
+    # estimate budget here
+    """
+    df_calc = pd.DataFrame(df_UD)
+
+    df_calc['nvisits_season'] = df_calc['nvisits_night'] * \
+        df_calc['n_night_season']*df_calc['Nfields']*df_calc['frac_night']
+
+    rr_ud = df_calc.groupby(['year'])['nvisits_season'].sum().reset_index()
+
+    print('finally', np.sum(df_calc['nvisits_season'])/Nv_LSST)
+    """
+    return df_calc
