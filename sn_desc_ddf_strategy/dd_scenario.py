@@ -1685,9 +1685,9 @@ class DD_Scenario:
                 Nv_UD_night = x*self.cad_DD/self.sl_DD
                 for_res.append(('DDF_Univ_WZ', 0.5, 0, 1,
                                 int(Nv_UD_night), int(x), self.cad_DD, self.sl_DD, 3))
-                Nv_UD_night = x*self.cad_UD/self.sl_UD
+                Nv_UD_night = x*self.cad_DD/self.sl_DD
                 for_res.append(('DDF_Univ_SN', 0.5, 5, 9,
-                                int(Nv_UD_night), int(x), self.cad_UD, self.sl_UD, 3))
+                                int(Nv_UD_night), int(x), self.cad_DD, self.sl_DD, 3))
         if scoc_pII:
             for key, vals in scoc_pII.items():
                 x = vals[0]
