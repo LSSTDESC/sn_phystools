@@ -140,7 +140,8 @@ def effi(resa, resb, xvar='z', bins=np.arange(0.01, 1.1, 0.02)):
     return df
 
 
-def bin_it(res, xvar='z', bins=np.arange(0.01, 1.1, 0.02), norm_factor=1):
+def bin_it(res, xvar='z', bins=np.arange(0.01, 1.1, 0.02),
+           norm_factor=1, outvar='NSN'):
     """
     Function to make a binned histogram
 
@@ -165,8 +166,8 @@ def bin_it(res, xvar='z', bins=np.arange(0.01, 1.1, 0.02), norm_factor=1):
     group = res.groupby(pd.cut(res[xvar], bins))
     bin_centers = (bins[: -1] + bins[1:])/2
     df = pd.DataFrame(bin_centers, columns=[xvar])
-    df['N'] = group.size().to_list()
-    df['N'] /= norm_factor
+    df[outvar] = group.size().to_list()
+    df[outvar] /= norm_factor
     return df
 
 

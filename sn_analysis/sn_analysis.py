@@ -9,6 +9,8 @@ import os
 import pandas as pd
 from sn_analysis.sn_calc_plot import select
 from sn_analysis.sn_tools import load_complete_dbSimu
+from sn_analysis.sn_calc_plot import bin_it
+import numpy as np
 
 
 class sn_load_select:
@@ -44,7 +46,12 @@ class sn_load_select:
         # load the data
         if not os.path.exists(outName_stack):
             data = load_complete_dbSimu(
-                dbDir, dbName, prodType, listDDF=listDDF)
+                dbDir, dbName, prodType,
+                listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb')
+            data = data[data.columns.drop(list(data.filter(regex='mask')))]
+            data = data.drop(columns=['selected'])
+            # data.info(verbose=True)
+
             data.to_hdf(outName_stack, key='SN')
         else:
             data = pd.read_hdf(outName_stack, key='SN', mode='r')
@@ -53,9 +60,10 @@ class sn_load_select:
         # idx = data['fitstatus'] == 'fitok'
         res = data
         self.norm_factor = norm_factor
-        self.printRes(res)
+        # self.printRes(res)
 
         res['dbName'] = dbName
+        res = res[res['field'].isin(listDDF.split(','))]
         self.data = res
 
     def printRes(self, data):
@@ -135,7 +143,7 @@ def get_nsn(data_dict, grpby=['field'], norm_factor=1):
     grpby : list(str), optional
         Used for the groupby df analysis. The default is ['field'].
     norm_factor : int, optional
-         Normalization factor. The default is 1.   
+         Normalization factor. The default is 1.
 
     Returns
     -------
@@ -208,3 +216,192 @@ def processNSN(dd, dbDir, prodType, listDDF, dict_sel, fDir, norm_factor):
 
     print(sn_field)
     print(sn_field_season)
+
+
+def nsn_vs_sel(dd, dbDir, prodType, listDDF, dict_sel, fDir, norm_factor):
+    """
+    Function to estimate the number of SN vs selection criteria
+
+    Parameters
+    ----------
+    dd : pandas df
+        data to process.
+    dbDir : str
+        location of the file to process.
+    prodType : str
+        production type.
+    listDDF : list(str)
+        list of DDFs to process.
+    dict_sel : dict
+        selection criteria.
+    fDir : str
+        output dir.
+    norm_factor : float
+        normalization factor.
+
+    Returns
+    -------
+    None.
+
+    """
+
+    outName = '{}/nsn_selcriteria.hdf5'.format(fDir)
+
+    if os.path.exists(outName):
+        res = pd.read_hdf(outName)
+        return res
+
+    res = pd.DataFrame()
+    for io, row in dd.iterrows():
+        dbName = row['dbName']
+
+        dd = sn_load_select(dbDir, dbName, prodType,
+                            listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
+                            fDir=fDir).data
+
+        nsn_all = dd.groupby(['field', 'season']).apply(
+            lambda x: nsn_per_sel(x, dict_sel)).reset_index()
+        nsn_all = dd.groupby(['field', 'season']).apply(
+            lambda x: nsn_per_sel(x, dict_sel)).reset_index()
+        nsn_all = nsn_all.groupby(['seldict', 'sel', 'cutnum'])[
+            'NSN'].sum().reset_index()
+
+        nsn_all = nsn_stat(nsn_all, norm_factor, grpcol=[])
+        nsn_all['name'] = dbName
+        res = pd.concat((res, nsn_all))
+
+    res.to_hdf(outName, key='SN')
+
+    return res
+
+
+def nsn_per_sel(grp, dict_sel):
+    """
+    Function to estimate the number of SN passing selection cuts
+
+    Parameters
+    ----------
+    grp : pandas df
+        data to process.
+    dict_sel : dict
+        selection criteria.
+
+    Returns
+    -------
+    res : pandas df
+        estimated data.
+
+    """
+
+    r = []
+    for key, vals in dict_sel.items():
+        idx = True
+        for valsb in vals:
+            idx &= valsb[1](grp[valsb[0]], valsb[2])
+            r.append((key, valsb[0], len(grp[idx]), valsb[3]))
+
+    res = pd.DataFrame(r, columns=['seldict', 'sel', 'NSN', 'cutnum'])
+    res['NSN'] = res['NSN'].astype(int)
+
+    return res
+
+
+def nsn_stat(grp, norm_factor, grpcol=['field', 'season']):
+    """
+    Function to estimate the number of SN and associated error
+
+    Parameters
+    ----------
+    grp : pandas df
+        data to process.
+    norm_factor : float
+        normalization factor.
+    grpcol : list(str), optional
+        List of cols for NSN estimation. The default is ['field', 'season'].
+
+    Returns
+    -------
+    df : pandas df
+        output result.
+
+    """
+
+    import numpy as np
+
+    idx = grp['seldict'] == 'nosel'
+
+    df_ref = pd.DataFrame(grp[idx])
+
+    df = pd.DataFrame(grp[~idx])
+
+    if grpcol:
+        df = df.merge(df_ref, left_on=grpcol,
+                      right_on=grpcol, suffixes=['', '_ref'])
+    else:
+        df.loc[:, 'NSN_ref'] = df_ref['NSN'].sum()
+
+    print('kooo', df_ref['NSN'])
+    df['err_NSN'] = np.sqrt(
+        df['NSN']*(1.-df['NSN']/df['NSN_ref']))/df['NSN_ref']
+    df['err_NSN'] *= df['NSN_ref']/norm_factor
+    df['NSN'] /= norm_factor
+    df['NSN_ref'] /= norm_factor
+    df['NSN'] = df['NSN'].astype(int)
+    df['err_NSN'] = df['err_NSN'].astype(int)
+    print(df.columns)
+    return df
+
+
+def processNSN_z(dd, dbDir, prodType, listDDF, dict_sel, fDir,
+                 norm_factor, seldict='G10_JLA'):
+    """
+    Function to process Data
+
+    Parameters
+    ----------
+    dd : pandas df
+        list of DB to process.
+    dbDir : str
+        location dir of OS.
+    prodType : str
+        production type.
+    listDDF : str
+        list of DDF to process.
+    dict_sel : dict
+        Selection dict.
+    fDir: str
+       location dir of the files
+    norm_factor: float
+      normalization factor
+
+    Returns
+    -------
+    None.
+
+    """
+    sn_field = pd.DataFrame()
+    sn_field_season = pd.DataFrame()
+
+    df = pd.DataFrame()
+    for io, row in dd.iterrows():
+        dbName = row['dbName']
+
+        ddb = sn_load_select(dbDir, dbName, prodType,
+                             listDDF=listDDF,
+                             fDir=fDir)
+
+        data_dict = ddb.sn_selection(dict_sel)
+
+        vv = data_dict[seldict]
+
+        print(vv['field'].unique())
+
+        res = bin_it(vv, bins=np.arange(0.01, 1.1, 0.05),
+                     norm_factor=norm_factor)
+
+        res['dbName'] = dbName
+
+        df = pd.concat((df, res))
+        # break
+
+    return df
