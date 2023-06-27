@@ -245,7 +245,8 @@ def nsn_vs_sel(dd, dbDir, prodType, listDDF, dict_sel, fDir, norm_factor):
 
     """
 
-    outName = '{}/nsn_selcriteria.hdf5'.format(fDir)
+    strDDF = '_'.join(listDDF.split(','))
+    outName = '{}/nsn_selcriteria_{}.hdf5'.format(fDir, strDDF)
 
     if os.path.exists(outName):
         res = pd.read_hdf(outName)
@@ -256,7 +257,7 @@ def nsn_vs_sel(dd, dbDir, prodType, listDDF, dict_sel, fDir, norm_factor):
         dbName = row['dbName']
 
         dd = sn_load_select(dbDir, dbName, prodType,
-                            listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
+                            listDDF=listDDF,
                             fDir=fDir).data
 
         nsn_all = dd.groupby(['field', 'season']).apply(
@@ -266,6 +267,8 @@ def nsn_vs_sel(dd, dbDir, prodType, listDDF, dict_sel, fDir, norm_factor):
         nsn_all = nsn_all.groupby(['seldict', 'sel', 'cutnum'])[
             'NSN'].sum().reset_index()
 
+        print('processing', dbName, dd['field'].unique())
+        print(dd.groupby(['field']).size())
         nsn_all = nsn_stat(nsn_all, norm_factor, grpcol=[])
         nsn_all['name'] = dbName
         res = pd.concat((res, nsn_all))
