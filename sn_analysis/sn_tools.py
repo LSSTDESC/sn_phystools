@@ -363,8 +363,9 @@ def complete_df(res, alpha=0.4, beta=3, Mb=-19.1):
             - 2.*beta*res.deriv_mu_z*res.Cov_colorz
 
     res['sigma_mu'] = np.sqrt(res['sigma_mu'])
-    res['mb_fit'] = -2.5*np.log10(res['x0_fit'])+10.635
-    res['mu'] = res['mb_fit']+alpha*res['x1_fit']-beta*res['color_fit']-Mb
+    res['mb_fit'] = -2.5*np.log10(res['x0_fit']) + 10.635
+    res['mu'] = res['mb_fit']+alpha * \
+        res['x1_fit']-beta*res['color_fit']-Mb
 
     return res
 
