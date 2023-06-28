@@ -171,6 +171,38 @@ def bin_it(res, xvar='z', bins=np.arange(0.01, 1.1, 0.02),
     return df
 
 
+def bin_it_mean(res, xvar='z', yvar='mu',
+                bins=np.arange(0.01, 1.1, 0.02)):
+    """
+
+
+    Parameters
+    ----------
+    res : pandas df
+        Data to process.
+    xvar : str, optional
+        x-axis var. The default is 'z'.
+    yvar : str, optional
+        y-axis var. The default is 'sigma_mu'.
+    bins : list(float), optional
+        binning values. The default is np.arange(0.01, 1.1, 0.02).
+
+    Returns
+    -------
+    df : pandas df
+        binned data + std.
+
+    """
+
+    group = res.groupby(pd.cut(res[xvar], bins))
+    bin_centers = (bins[: -1] + bins[1:])/2
+    df = pd.DataFrame(bin_centers, columns=[xvar])
+
+    df[yvar] = group[yvar].mean().to_list()
+    df['{}_std'.format(yvar)] = group[yvar].std().to_list()
+    return df
+
+
 def select(res, list_sel):
     """
     Function to select a pandas df
