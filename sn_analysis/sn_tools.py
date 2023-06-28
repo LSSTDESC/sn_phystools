@@ -306,7 +306,7 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
     return res
 
 
-def complete_df(res, alpha=0.4, beta=3):
+def complete_df(res, alpha=0.4, beta=3, Mb=-19.1):
     """
     Function to complete df infos
 
@@ -315,9 +315,11 @@ def complete_df(res, alpha=0.4, beta=3):
     res : pandas df
         df to complete.
     alpha : floar, optional
-        alpha parameter for the estimation of sigma_mu. The default is 0.4.
+        alpha parameter for the estimation of mu,sigma_mu. The default is 0.4.
     beta : float, optional
-        beta parameter for the estimation of sigma_mu. The default is 3.
+        beta parameter for the estimation of mu,sigma_mu. The default is 3.
+    Mb: float, optional
+        Mb parameter for the estimation of mu. The default is -19.1
 
     Returns
     -------
@@ -362,7 +364,7 @@ def complete_df(res, alpha=0.4, beta=3):
 
     res['sigma_mu'] = np.sqrt(res['sigma_mu'])
     res['mb_fit'] = -2.5*np.log10(res['x0_fit'])+10.635
-    res['mu'] = res['mb_fit']+alpha*res['x1_fit']-beta*res['color_fit']
+    res['mu'] = res['mb_fit']+alpha*res['x1_fit']-beta*res['color_fit']-Mb
 
     return res
 
