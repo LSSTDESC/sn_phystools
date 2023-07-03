@@ -229,7 +229,7 @@ class CosmoDist:
         return mbfit+alpha*x1-beta*color-self.mu(z, Om, w0, wa)-Mb
 
 
-def loadData(theDir, dbName, inDir, field='COSMOS'):
+def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*'):
     """
     Funtion to load data
 
@@ -240,8 +240,9 @@ def loadData(theDir, dbName, inDir, field='COSMOS'):
     dbName : str
         dbName.
     field : str, opt
-        field to process
-
+        field to process. The default is 'COSMOS'.
+    seasons: str, opt
+        list of seasons to process. The default is * (all seasons). 
     Returns
     -------
     res : astropytable
@@ -249,9 +250,14 @@ def loadData(theDir, dbName, inDir, field='COSMOS'):
 
     """
 
-    searchname = '{}/{}/{}/SN*{}*.hdf5'.format(theDir, dbName, inDir, field)
-    print('searching for', searchname)
-    files = glob.glob(searchname)
+    seas = seasons.split(',')
+
+    files = []
+    for sea in seas:
+        searchname = '{}/{}/{}/SN*{}*_{}.hdf5'.format(
+            theDir, dbName, inDir, field, sea)
+        print('searching for', searchname)
+        files += glob.glob(searchname)
 
     if len(files) == 0:
         return pd.DataFrame()
@@ -270,7 +276,8 @@ def loadData(theDir, dbName, inDir, field='COSMOS'):
 
 
 def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
-                         listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb'):
+                         listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
+                         seasons='*'):
     """
 
 
@@ -286,6 +293,8 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
         DESCRIPTION. The default is 0.4.
     beta : TYPE, optional
         DESCRIPTION. The default is 3.
+    seasons: str, opt.
+        list of seasons to process. The default is * (all seasons).
 
     Returns
     -------
@@ -297,7 +306,7 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
     res = pd.DataFrame()
     fields = listDDF.split(',')
     for field in fields:
-        ll = loadData(dbDir, dbName, inDir, field)
+        ll = loadData(dbDir, dbName, inDir, field, seasons=seasons)
         ll['field'] = field
         res = pd.concat((res, ll))
     print('loaded', len(res), len(res['healpixID'].unique()))
