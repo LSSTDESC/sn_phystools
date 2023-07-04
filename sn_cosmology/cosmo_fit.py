@@ -11,6 +11,8 @@ import numpy as np
 from iminuit import Minuit
 from abc import ABC, abstractmethod
 import pandas as pd
+from astropy.cosmology import w0waCDM
+from scipy import optimize
 
 
 class CosmoFit(ABC):
@@ -346,3 +348,191 @@ def fom(cov_a, cov_b, cov_ab, deltaXi2=6.17):
     FoM = np.pi/A
 
     return FoM
+
+
+class MyFit(CosmoFit):
+
+    def fit_function(self,  *parameters):
+        '''
+        Calculates the function given at the end of the parameters.
+
+        Parameters
+        ----------
+        *parameters : tuple of differents types of entries.
+            It presents as : (a, b)
+            a and b must be a numerical value.
+        Returns
+        -------
+        f : array of numerical values
+            Results of the array x in the funcion chosen in the parameters
+            via the
+            parameters given.
+        '''
+
+        # instance of the cosmology model
+        to_import = 'from astropy.cosmology import {}'.format(self.cosmo_model)
+        exec(to_import)
+
+        import copy
+        # set default parameters
+        parDict = copy.deepcopy(self.cosmo_default)
+
+        # change the parameters that have to be changes
+
+        if len(parameters) > 0:
+            # for i, val in enumerate(self.fitparNames):
+            for vv in ['w0', 'wa', 'Om0']:
+                try:
+                    ind = self.fitparNames.index(vv)
+                    parDict[vv] = parameters[ind]
+                except Exception:
+                    continue
+
+        cosmo = eval(
+            '{}(H0=70, Om0={}, Ode0=0.7,w0={}, wa={})'.format(self.cosmo_model,
+                                                              parDict['Om0'],
+                                                              parDict['w0'],
+                                                              parDict['wa']))
+
+        f = cosmo.distmod(self.z.to_list()).value
+        self.h = np.max(f) * (10**-8)
+
+        return f
+
+    def xi_square(self, *parameters):
+        '''
+        Calculate Xi_square for a data set of value x and y and a function.
+        Parameters
+        ----------
+        *parameters : tuple of differents types of entries.
+            see the definition in function()
+        Returns
+        -------
+        X : numerical value
+            The Xi_square value.
+        '''
+        # Numerical calculations for each entry
+        # X_mat = np.sum(((self.y-self.function(*parameters))**2)/self.sigma**2)
+        # diag_sigma = np.linalg.inv(np.diag(self.sigma**2))
+        if 'alpha' in self.fitparNames:
+            alpha = parameters[self.fitparNames.index('alpha')]
+            beta = parameters[self.fitparNames.index('beta')]
+            Mb = parameters[self.fitparNames.index('Mb')]
+
+            mu = self.mb+alpha*self.x1-beta*self.color-Mb
+            var_mu = self.Cov_mbmb\
+                + (alpha**2)*self.Cov_x1x1\
+                + (beta**2)*self.Cov_colorcolor\
+                + 2*alpha*self.Cov_x1mb\
+                - 2*beta*self.Cov_colormb\
+                - 2*alpha*beta*self.Cov_x1color
+
+            sigma_mu = np.sqrt(var_mu)
+
+            rind = []
+            for vv in ['w0', 'wa', 'Om0']:
+                try:
+                    ind = self.fitparNames.index(vv)
+                    rind.append(ind)
+                except Exception:
+                    continue
+            idf = np.max(rind)+1
+            fitparams = parameters[:idf]
+            mu_th = self.fit_function(*fitparams)
+
+        else:
+            mu = self.mu_SN
+            mu_th = self.fit_function(*parameters)
+            sigma_mu = self.sigma_mu
+        denom = sigma_mu**2
+
+        if 'sigmaInt' in self.fitparNames:
+            sigmaInt = parameters[self.fitparNames.index('sigmaInt')]
+
+        # sigmaInt = 0.12
+        denom += self.sigmaInt**2
+        # print(var_mu)
+        f = mu - mu_th
+        # Matrix calculation of Xisquare
+        # X_mat = np.matmul(f * f, sigma_mu**-2)
+        X_mat = np.sum(f**2/denom)
+        # prior to be set here
+
+        if not self.prior.empty:
+            idx = self.prior['varname'].isin(self.fitparNames)
+            for io, row in self.prior[idx].iterrows():
+                ref_val = row['refvalue']
+                sigma_val = row['sigma']
+                i = self.fitparNames.index(row['varname'])
+                if len(parameters) > 0:
+                    X_mat += ((parameters[i] - ref_val)**2)/sigma_val**2
+
+        return X_mat
+
+    def get_sigmaInt(self):
+        """
+        Method to estimate the sigma_int parameter
+        to get a chisquare equal to 1
+
+        Returns
+        ----------
+        sigma_int parameter
+         """
+        return optimize.newton(self.chi2ndf_sigmaInt, 0.01)
+
+    def chi2ndf_sigmaInt(self, sigmaInt):
+        """
+        Method to estimate the sigma_int parameter
+        to get a chisquare equal to 1
+
+        Parameters
+        ---------------
+        sigma_int: float
+          sigma_int param
+
+        Returns
+        ----------
+        fitted parameters
+        """
+        Om, w0,  wa = 0.3, -1.0, 0.0
+        z = self.z.to_list()
+        mu_SN = self.mu_SN
+        mu_th = self.mu_astro(z, Om, w0, wa)
+        sigma_mu = self.sigma_mu
+        rr = np.sum((mu_SN-mu_th)**2/(self.sigma_mu**2+sigmaInt**2))
+        ndf = len(self.mu_SN)-3
+        res = rr-ndf
+        return res
+
+    def mu_astro(self, z, Om, w0, wa, H0=70):
+        """
+        Method to estimate the cosmological distance modulus
+
+        Parameters
+        ----------
+        z : array
+            Redshifts.
+        Om : float
+            Om parameter.
+        w0 : float
+            w0 parameter.
+        wa : float
+            wa parameter.
+
+        Returns
+        -------
+        array
+            Cosmological distance modulus.
+
+        """
+
+        cosmology = w0waCDM(H0=H0,
+                            Om0=Om,
+                            Ode0=1.-Om,
+                            w0=w0, wa=wa)
+
+        return cosmology.distmod(z).value
+
+    def set_sigmaInt(self, sigmaInt):
+
+        self.sigmaInt = sigmaInt
