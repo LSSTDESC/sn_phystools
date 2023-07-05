@@ -534,5 +534,18 @@ class MyFit(CosmoFit):
         return cosmology.distmod(z).value
 
     def set_sigmaInt(self, sigmaInt):
+        """
+        Method to set sigmaInt
+
+        Parameters
+        ----------
+        sigmaInt : float
+            sigmaInt.
+
+        Returns
+        -------
+        None.
+
+        """
 
         self.sigmaInt = sigmaInt
