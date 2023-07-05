@@ -23,22 +23,32 @@ class HD_random:
                             'mu_SN', 'sigma_mu_SN'],
                  fitconfig={},
                  par_protect_fit=['Om0'],
-                 prior=pd.DataFrame({'varname': ['Om0'], 'refvalue': [0.3], 'sigma': [0.0073]})):
+                 prior=pd.DataFrame({'varname': ['Om0'],
+                                     'refvalue': [0.3], 'sigma': [0.0073]})):
         """
 
 
         Parameters
         ----------
         vardf : TYPE, optional
-            DESCRIPTION. The default is ['z', 'x1_fit', 'color_fit', 'mbfit', 'Cov_x1x1',                        'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',                        'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',                        'mu_SN', 'sigma_mu_SN'].
+            DESCRIPTION. The default is ['z', 'x1_fit', 'color_fit', 'mbfit',
+                                         'Cov_x1x1','Cov_x1color',
+                                         'Cov_colorcolor', 'Cov_mbmb',
+                                         'Cov_x1mb', 'Cov_colormb', 'mu',
+                                         'sigma_mu','mu_SN', 'sigma_mu_SN'].
         dataNames : TYPE, optional
-            DESCRIPTION. The default is ['z', 'x1', 'color', 'mb', 'Cov_x1x1',                            'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',                            'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',                            'mu_SN', 'sigma_mu_SN'].
+            DESCRIPTION. The default is ['z', 'x1', 'color', 'mb', 'Cov_x1x1',                            
+                                         'Cov_x1color', 'Cov_colorcolor',
+                                         'Cov_mbmb','Cov_x1mb', 'Cov_colormb',
+                                         'mu', 'sigma_mu','mu_SN', 
+                                         'sigma_mu_SN'].
         fitconfig : TYPE, optional
             DESCRIPTION. The default is {}.
         par_protect_fit : TYPE, optional
             DESCRIPTION. The default is ['Om0'].
         prior : TYPE, optional
-            DESCRIPTION. The default is pd.DataFrame({'varname': ['Om0'],'refvalue':[0.3], 'sigma':[0.0073]}).
+            DESCRIPTION. The default is 
+        pd.DataFrame({'varname': ['Om0'],'refvalue':[0.3], 'sigma':[0.0073]}).
 
         Returns
         -------
@@ -134,11 +144,11 @@ class HD_random:
                 cov_b = dict_fit['Cov_wa_wa_fit']
                 cov_ab = dict_fit['Cov_wa_w0_fit']
                 dict_fit['MoM'] = fom(cov_a, cov_b, cov_ab)
-            print(dict_fit)
+            # print(dict_fit)
             # fisher estimation
             # fisher_cov = myfit.covariance_fisher(fitparams)
             # print('Fisher', fisher_cov)
-            print('')
+            # print('')
             dict_fits[key] = dict_fit
 
         return dict_fits
