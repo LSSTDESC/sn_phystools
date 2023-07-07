@@ -1557,17 +1557,22 @@ class DD_Scenario:
         fig, ax = plt.subplots(figsize=(14, 8))
         fig.suptitle(figtitle)
         fig.subplots_adjust(right=0.8)
-        ls = dict(zip([1, 2, 3], ['solid', 'dotted', 'dashed']))
-        mark = dict(zip([2, 3, 4], ['s', 'o', '^']))
+        # ls = dict(zip([1, 2, 3], ['solid', 'dotted', 'dashed']))
+        # mark = dict(zip([2, 3, 4,5,6], ['s', 'o', '^']))
+        ls = ['solid', 'dotted', 'dashed']
+        mark = ['s', 'o', '^']
         vx = -1
         vy = -1
         for_res = []
-        for (Nf_UD, Ns_UD) in np.unique(restot[['Nf_UD', 'Ns_UD']]):
+        for it, (Nf_UD, Ns_UD) in enumerate(np.unique(restot[['Nf_UD', 'Ns_UD']])):
             idx = restot['Nf_UD'] == Nf_UD
             idx &= restot['Ns_UD'] == Ns_UD
             sel = restot[idx]
-            lstyle = ls[Nf_UD]
-            mmark = mark[Ns_UD]
+            # lstyle = ls[Nf_UD]
+            # mmark = mark[Ns_UD]
+            lstyle = ls[it]
+            mmark = mark[it]
+
             label = '$(N_f^{UD},N_{season}^{UD})$'
             lab = '{} = ({},{})'.format(label, Nf_UD, Ns_UD)
             ax.plot(sel[varx], sel[vary], label=lab, marker=mmark,
@@ -2228,7 +2233,7 @@ class Delta_m5:
 
 
 class Budget_time:
-    def __init__(self, df, Nv_LSST):
+    def __init__(self, df, Nv_LSST, budget_DD):
         """
         class to estimate and plot the budget vs time
 
@@ -2238,6 +2243,8 @@ class Budget_time:
             data to process.
         Nv_LSST : int
             total number of LSST visits (10 years).
+        budget_DD: float
+            DDF allocated budget
 
         Returns
         -------
@@ -2255,7 +2262,7 @@ class Budget_time:
 
         budget['budget_per'] = 100.*budget['budget']
         budget = budget.sort_values(by=['year'])
-        self.plot_budget_time(budget)
+        self.plot_budget_time(budget, budget_DD)
 
     def budget_scenario(self, grp):
         """
@@ -2288,16 +2295,16 @@ class Budget_time:
 
         return nv
 
-    def plot_budget_time(self, res):
+    def plot_budget_time(self, res, budget_DD):
         """
         Method to plot the budget vs time
 
         Parameters
         ----------
-        sel : TYPE
-            DESCRIPTION.
-        df : TYPE
-            DESCRIPTION.
+        res: pandas df
+            Data to plot.
+        budget_DD: float
+            Reference DD budget
 
         Returns
         -------
@@ -2327,12 +2334,15 @@ class Budget_time:
                     color=colors[io], label=nn)
 
         ax.grid()
-        ax.set_xlabel('Year', fontweight='bold')
+        ax.set_xlabel('Season', fontweight='bold')
         ax.set_ylabel('DDF budget [%]', fontweight='bold')
         ax.legend(bbox_to_anchor=(1.05, 0.7),
                   ncol=1, fontsize=12, frameon=False)
         ax.set_xlim(0, 10)
-        ax.set_ylim(0., 7.5)
+        budget_max = np.max(sel['budget_per'])
+        ax.set_ylim(0., 1.01*budget_max)
+
+        ax.plot([0, 10], [100.*budget_DD]*2, linestyle='dashed', color='k')
 
 
 class Scenario_time:
