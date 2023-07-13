@@ -480,31 +480,64 @@ class Random_survey:
                 ida = nsn_field_season['field'] == field
                 ida &= nsn_field_season['season'] == season
                 nsn = int(nsn_field_season[ida]['nsn'].mean())
-
                 nsn = np.min([nsn, nsn_max_season])
+
+                # get survey info
+                zmax, sigmaC, season_min, season_max = self.get_info(
+                    survey, field)
+
                 # get data
                 idb = sn_data['field'] == field
                 idb &= sn_data['season'] == season
+                idb &= sn_data['sigmaC'] <= sigmaC
                 sel_sn = sn_data[idb]
 
-                # grab the random sample
-                res = sel_sn.sample(n=nsn)
+                if nsn >= len(sel_sn):
+                    res = sel_sn
+                else:
+                    # grab the random sample
+                    res = sel_sn.sample(n=nsn)
 
-                # filter here
-                idx = survey['field'] == field
-                zmax = survey[idx]['zmax'].values[0]
-                sigmaC = survey[idx]['sigmaC'].values[0]
-                season_min = survey[idx]['season_min'].values[0]
-                season_max = survey[idx]['season_max'].values[0]
-
+                # select data according to the survey parameters
                 idb = res['z'] <= zmax
-                idb &= res['sigmaC'] <= sigmaC
                 idb &= res['season'] >= season_min
                 idb &= res['season'] <= season_max
 
                 df_res = pd.concat((df_res, res[idb]))
 
         return df_res
+
+    def get_info(self, survey, field):
+        """
+        Method to grab survey info
+
+        Parameters
+        ----------
+        survey : pandas df
+            Survey infos.
+        field : str
+            Field to consider.
+
+        Returns
+        -------
+        zmax : float
+            Max redshift for the field.
+        sigmaC : float
+            sigma color max value.
+        season_min : int
+            Min season of observation.
+        season_max : int
+            Max season of observation.
+
+        """
+
+        idx = survey['field'] == field
+        zmax = survey[idx]['zmax'].values[0]
+        sigmaC = survey[idx]['sigmaC'].values[0]
+        season_min = survey[idx]['season_min'].values[0]
+        season_max = survey[idx]['season_max'].values[0]
+
+        return zmax, sigmaC, season_min, season_max
 
 
 def analyze_data(data):
