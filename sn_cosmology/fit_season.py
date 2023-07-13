@@ -64,13 +64,15 @@ class Fit_seasons:
         # dict_fi = {}
         resfi = pd.DataFrame()
         n_season_max = 12
+        n_random = 50
         # n_season_max = 3
+        # n_random = 1
         for seas_max in range(2, n_season_max):
             seasons = range(1, seas_max)
 
             params = {}
             params['seasons'] = seasons
-            nrandom = range(50)
+            nrandom = range(n_random)
             # res = self.fit_seasons(seasons, params, self.fit_seasons, nproc=8)
             res = multiproc(nrandom, params, self.fit_seasons, nproc=8)
             resfi = pd.concat((resfi, res))
