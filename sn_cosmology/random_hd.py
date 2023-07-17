@@ -483,7 +483,7 @@ class Random_survey:
                 nsn = np.min([nsn, nsn_max_season])
 
                 # get survey info
-                zmax, sigmaC, season_min, season_max = self.get_info(
+                zmax, sigmaC, season_min, season_max, frac_sigmaC = self.get_info(
                     survey, field)
 
                 # get data
@@ -496,7 +496,18 @@ class Random_survey:
                     res = sel_sn
                 else:
                     # grab the random sample
-                    res = sel_sn.sample(n=nsn)
+                    if frac_sigmaC <= 0.20:
+                        res = sel_sn.sample(n=nsn)
+                    else:
+                        # sample build out of two: sigma_C<=0.04 and sigma_C>=0.04
+
+                        nsn_frac = int(nsn*frac_sigmaC)
+                        idx = sel_sn['sigmaC'] <= 0.04
+                        sela = sel_sn[idx]
+                        selb = sel_sn[~idx]
+                        resa = sela.sample(n=nsn_frac)
+                        resb = selb.sample(n=nsn-nsn_frac)
+                        res = pd.concat((resa, resb))
 
                 # select data according to the survey parameters
                 idb = res['z'] <= zmax
@@ -532,15 +543,17 @@ class Random_survey:
         """
 
         idx = survey['field'] == field
-        zmax = survey[idx]['zmax'].values[0]
-        sigmaC = survey[idx]['sigmaC'].values[0]
-        season_min = survey[idx]['season_min'].values[0]
-        season_max = survey[idx]['season_max'].values[0]
+        sel = survey[idx]
+        zmax = sel['zmax'].values[0]
+        sigmaC = sel['sigmaC'].values[0]
+        season_min = sel['season_min'].values[0]
+        season_max = sel['season_max'].values[0]
+        frac_sigmaC = sel['frac_sigmaC'].values[0]
 
-        return zmax, sigmaC, season_min, season_max
+        return zmax, sigmaC, season_min, season_max, frac_sigmaC
 
 
-def analyze_data(data):
+def analyze_data(data, add_str=''):
     """
     Function to analyze data
 
@@ -548,6 +561,8 @@ def analyze_data(data):
     ----------
     data : pandas df
         data to process.
+    add_str: str, opt
+        to add a str to the columns. The default is ''
 
     Returns
     -------
@@ -567,8 +582,8 @@ def analyze_data(data):
     for i, row in resb.iterrows():
         field = row['field']
         nsn = row['NSN']
-        outdict[field] = nsn
+        outdict['{}{}'.format(field, add_str)] = nsn
         nsn_tot += nsn
 
-    outdict['all_Fields'] = nsn_tot
+    outdict['all_Fields{}'.format(add_str)] = nsn_tot
     return outdict
