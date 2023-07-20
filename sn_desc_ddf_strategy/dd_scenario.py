@@ -1419,6 +1419,10 @@ class DD_Scenario:
             'k', 'Nv_DD', 'Nv_UD', 'Nv_DD_night',
             'Nv_UD_night', 'Nf_UD', 'Ns_UD', 'zcomp'])
         """
+        # select combis with Nv_UD_night > 0
+        idx = dftot['Nv_UD_night'] > 0
+        dftot = dftot[idx]
+
         restot = dftot.to_records(index=False)
         return restot
 
@@ -1622,7 +1626,9 @@ class DD_Scenario:
                         color='b', mfc='None', markeredgewidth=3.)
                 # ax.text(1.05*nv_DD, 1.05*nv_UD, name, color='b', fontsize=12)
                 if vx < 0:
-                    vx = np.abs(nv_DD-0.65*nv_DD)
+                    dd = 0.75
+
+                    vx = np.abs(nv_DD-dd*nv_DD)
                 if vy < 0:
                     vy = np.abs(nv_UD-0.95*nv_UD)
                 ax.text(nv_DD-vx, nv_UD-vy, namea, color='b', fontsize=12)
