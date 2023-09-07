@@ -229,7 +229,7 @@ class CosmoDist:
         return mbfit+alpha*x1-beta*color-self.mu(z, Om, w0, wa)-Mb
 
 
-def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*'):
+def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8):
     """
     Funtion to load data
 
@@ -243,6 +243,9 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*'):
         field to process. The default is 'COSMOS'.
     seasons: str, opt
         list of seasons to process. The default is * (all seasons). 
+    nproc: int, optional.
+     number of procs for multiprocessing. The default is 8.
+
     Returns
     -------
     res : astropytable
@@ -264,7 +267,7 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*'):
 
     #restot = pd.DataFrame()
     params = dict(zip(['objtype'], ['astropyTable']))
-    restot = multiproc(files, params, loopStack_params, 8)
+    restot = multiproc(files, params, loopStack_params, nproc)
     restot.convert_bytestring_to_unicode()
 
     """
@@ -277,7 +280,7 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*'):
 
 def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
                          listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
-                         seasons='*'):
+                         seasons='*', nproc=8):
     """
 
 
@@ -293,8 +296,10 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
         DESCRIPTION. The default is 0.4.
     beta : TYPE, optional
         DESCRIPTION. The default is 3.
-    seasons: str, opt.
+    seasons: str, optional.
         list of seasons to process. The default is * (all seasons).
+    nproc: int, optional.
+        number of procs for multiprocessing. The default is 8.
 
     Returns
     -------
@@ -306,7 +311,8 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
     res = pd.DataFrame()
     fields = listDDF.split(',')
     for field in fields:
-        ll = loadData(dbDir, dbName, inDir, field, seasons=seasons)
+        ll = loadData(dbDir, dbName, inDir, field,
+                      seasons=seasons, nproc=nproc)
         ll['field'] = field
         res = pd.concat((res, ll))
     print('loaded', len(res), len(res['healpixID'].unique()))
