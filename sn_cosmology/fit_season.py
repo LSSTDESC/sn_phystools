@@ -13,7 +13,8 @@ from sn_tools.sn_utils import multiproc
 
 class Fit_seasons:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
-                 dataDir_WFD, dbName_WFD, dictsel, survey, prior):
+                 dataDir_WFD, dbName_WFD, dictsel, survey,
+                 prior, host_effi):
         """
         Class to perform fits for sets of season
 
@@ -35,6 +36,8 @@ class Fit_seasons:
             Survey.
         prior : pandas df
             prior for the fit.
+        host_effi: dict
+            dict of 1D interpolators for host effi vs z.
 
         Returns
         -------
@@ -50,6 +53,7 @@ class Fit_seasons:
         self.dictsel = dictsel
         self.survey = survey
         self.prior = prior
+        self.host_effi = host_effi
 
     def __call__(self):
         """
@@ -65,8 +69,8 @@ class Fit_seasons:
         resfi = pd.DataFrame()
         n_season_max = 12
         n_random = 50
-        # n_season_max = 3
-        # n_random = 1
+        n_season_max = 3
+        n_random = 1
         for seas_max in range(2, n_season_max):
             seasons = range(1, seas_max)
 
@@ -108,12 +112,14 @@ class Fit_seasons:
         # print('process', j, nrandom)
         for i in nrandom:
 
+            # get the data
             data = Random_survey(self.dataDir_DD, self.dbName_DD,
                                  self.dataDir_WFD, self.dbName_WFD,
                                  self.dictsel, seasons,
-                                 survey=self.survey).data
+                                 survey=self.survey, host_effi=self.host_effi).data
 
             # print('nsn', len(data))
+            # analyze the data
             dict_ana = analyze_data(data)
             # get Nsn with sigmaC <= 0.04
             idx = data['sigmaC'] <= 0.04
@@ -123,8 +129,10 @@ class Fit_seasons:
             dict_ana['season'] = np.max(seasons)+1
             # print(dict_ana)
 
+            # fit the data
             res = hd_fit(data)
 
+            # fitted values in a df
             for key, vals in res.items():
                 vals.update(dict_ana)
                 res = pd.DataFrame.from_dict(transform(vals))
