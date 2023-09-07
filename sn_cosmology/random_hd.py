@@ -144,7 +144,7 @@ class HD_random:
                 cov_b = dict_fit['Cov_wa_wa_fit']
                 cov_ab = dict_fit['Cov_wa_w0_fit']
                 dict_fit['MoM'] = fom(cov_a, cov_b, cov_ab)
-            # print(dict_fit)
+            print(dict_fit)
             # fisher estimation
             # fisher_cov = myfit.covariance_fisher(fitparams)
             # print('Fisher', fisher_cov)
@@ -160,7 +160,7 @@ class Random_survey:
                  survey=pd.DataFrame([('COSMOS', 1.1, 1.e8, 1, 10)],
                                      columns=['field', 'zmax', 'sigmaC',
                                               'season_min', 'season_max']),
-                 sigmaInt=0.12):
+                 sigmaInt=0.12, host_effi={}):
         """
         Class to build a complete (WFD+DDF) random survey
 
@@ -185,6 +185,8 @@ class Random_survey:
                                   'season_min', 'season_max']).
         sigmaInt: float, opt.
           SN intrinsic dispersion. The default is 0.12.
+         host_effi: dict, opt
+          1D interpolators of host_effi vs z. The default is {}.
 
         Returns
         -------
@@ -200,6 +202,7 @@ class Random_survey:
         self.seasons = seasons
         self.survey = survey
         self.sigmaInt = sigmaInt
+        self.host_effi = host_effi
 
         # load data per season
         self.data = self.build_random_sample()
@@ -227,11 +230,13 @@ class Random_survey:
 
             nsn_wfd = self.load_nsn_summary(
                 self.dataDir_WFD, self.dbName_WFD, 'WFD_spectroz')
+
             nsn = pd.concat((nsn_ddf, nsn_wfd))
             nsn['nsn'] = nsn['nsn'].astype(int)
             sn_data = pd.concat((ddf, wfd))
 
             sn_samp = self.random_sample(nsn, sn_data, self.survey, [seas])
+
             sn_samp = self.correct_mu(sn_samp)
 
             # self.plot_mu(sn_samp, 'mu_SN')
@@ -483,8 +488,8 @@ class Random_survey:
                 nsn = np.min([nsn, nsn_max_season])
 
                 # get survey info
-                zmax, sigmaC, season_min, season_max, frac_sigmaC = self.get_info(
-                    survey, field)
+                host_effi_key, sigmaC, season_min,\
+                    season_max, frac_sigmaC = self.get_info(survey, field)
 
                 # get data
                 idb = sn_data['field'] == field
@@ -510,11 +515,17 @@ class Random_survey:
                         res = pd.concat((resa, resb))
 
                 # select data according to the survey parameters
-                idb = res['z'] <= zmax
-                idb &= res['season'] >= season_min
-                idb &= res['season'] <= season_max
+                #idb = res['z'] <= zmax
+                idb = res['season'] >= season_min
+                idb = res['season'] <= season_max
 
-                df_res = pd.concat((df_res, res[idb]))
+                sela = res[idb]
+                # correct for zhost efficiency
+                res_host = self.effi_zhost(
+                    sela, host_effi_key)
+                # self.plot_sample_zhost(sela, res_host, field)
+
+                df_res = pd.concat((df_res, res_host))
 
         return df_res
 
@@ -544,13 +555,83 @@ class Random_survey:
 
         idx = survey['field'] == field
         sel = survey[idx]
-        zmax = sel['zmax'].values[0]
+        zmax = sel['host_effi'].values[0]
         sigmaC = sel['sigmaC'].values[0]
         season_min = sel['season_min'].values[0]
         season_max = sel['season_max'].values[0]
         frac_sigmaC = sel['frac_sigmaC'].values[0]
 
         return zmax, sigmaC, season_min, season_max, frac_sigmaC
+
+    def effi_zhost(self, data, host_effi_key):
+        """
+        Method to apply zhost efficiencies on SN distribution
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        host_effi_key: str
+          key dict for host_effi
+
+        Returns
+        -------
+        data_new : pandas df
+            data with host effi applied.
+
+        """
+        if not self.host_effi:
+            return data
+
+        bin_width = 0.1
+        zmin = 0.0
+        zmax = 1.2
+        bins = np.arange(zmin, zmax, bin_width)
+        bins_center = (bins[:-1] + bins[1:])/2
+        group = data.groupby(pd.cut(data['z'], bins))
+        df = pd.DataFrame(group.size().to_list(), columns=['nsn'])
+
+        df['effi'] = self.host_effi[host_effi_key](bins_center)
+        df['nsn_effi'] = (df['nsn']*df['effi']).apply(np.ceil).astype(int)
+        df['zmin'] = bins_center-bin_width/2.
+        df['zmax'] = bins_center+bin_width/2.
+
+        data_new = pd.DataFrame()
+        for io, row in df.iterrows():
+            zmin = row['zmin']
+            zmax = row['zmax']
+            nsn = int(row['nsn_effi'])
+            if nsn <= 0:
+                continue
+            idx = data['z'] >= zmin
+            idx &= data['z'] < zmax
+            sel = data[idx]
+            if not sel.empty:
+                dd = sel.sample(nsn)
+                data_new = pd.concat((data_new, dd))
+
+        return data_new
+
+    def plot_sample_zhost(self, data, data_new, field):
+
+        import matplotlib.pyplot as plt
+        from sn_analysis.sn_calc_plot import bin_it
+
+        bins = np.arange(0.0, 1.2, 0.1)
+        group = data.groupby(pd.cut(data['z'], bins))
+        group_new = data_new.groupby(pd.cut(data_new['z'], bins))
+        print('before', group.size())
+        print('after', group_new.size())
+
+        fig, ax = plt.subplots()
+        fig.suptitle(field)
+
+        df = bin_it(data, bins=bins)
+        dfb = bin_it(data_new, bins=bins)
+        ax.plot(df['z'], df['NSN'], marker='o', mfc='None', color='k')
+        ax.plot(dfb['z'], dfb['NSN'], marker='*', color='r')
+
+        plt.show()
 
 
 def analyze_data(data, add_str=''):
