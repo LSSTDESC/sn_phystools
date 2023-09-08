@@ -24,38 +24,8 @@ class HD_random:
                  fitconfig={},
                  par_protect_fit=['Om0'],
                  prior=pd.DataFrame({'varname': ['Om0'],
-                                     'refvalue': [0.3], 'sigma': [0.0073]})):
-        """
-
-
-        Parameters
-        ----------
-        vardf : TYPE, optional
-            DESCRIPTION. The default is ['z', 'x1_fit', 'color_fit', 'mbfit',
-                                         'Cov_x1x1','Cov_x1color',
-                                         'Cov_colorcolor', 'Cov_mbmb',
-                                         'Cov_x1mb', 'Cov_colormb', 'mu',
-                                         'sigma_mu','mu_SN', 'sigma_mu_SN'].
-        dataNames : TYPE, optional
-            DESCRIPTION. The default is ['z', 'x1', 'color', 'mb', 'Cov_x1x1',                            
-                                         'Cov_x1color', 'Cov_colorcolor',
-                                         'Cov_mbmb','Cov_x1mb', 'Cov_colormb',
-                                         'mu', 'sigma_mu','mu_SN', 
-                                         'sigma_mu_SN'].
-        fitconfig : TYPE, optional
-            DESCRIPTION. The default is {}.
-        par_protect_fit : TYPE, optional
-            DESCRIPTION. The default is ['Om0'].
-        prior : TYPE, optional
-            DESCRIPTION. The default is 
-        pd.DataFrame({'varname': ['Om0'],'refvalue':[0.3], 'sigma':[0.0073]}).
-
-        Returns
-        -------
-        None.
-
-        """
-
+                                     'refvalue': [0.3], 'sigma': [0.0073]}),
+                 test_mode=0):
         """
         Class to perform cosmological fits
 
@@ -78,6 +48,8 @@ class HD_random:
             Prior to apply to the Chisquare. 
             The default is 
             pd.DataFrame({'varname': ['Om0'],'refvalue':[0.3], 'sigma':[0.0073]}).
+         test_mode: int, optional.
+          To activate the program in test mode. The default is 0.
 
         Returns
         -------
@@ -90,6 +62,7 @@ class HD_random:
         self.fitconfig = fitconfig
         self.par_protect_fit = par_protect_fit
         self.prior = prior
+        self.test_mode = test_mode
 
     def __call__(self, data):
         """
@@ -144,7 +117,8 @@ class HD_random:
                 cov_b = dict_fit['Cov_wa_wa_fit']
                 cov_ab = dict_fit['Cov_wa_w0_fit']
                 dict_fit['MoM'] = fom(cov_a, cov_b, cov_ab)
-            print(dict_fit)
+            if self.test_mode:
+                print(dict_fit)
             # fisher estimation
             # fisher_cov = myfit.covariance_fisher(fitparams)
             # print('Fisher', fisher_cov)
@@ -160,7 +134,8 @@ class Random_survey:
                  survey=pd.DataFrame([('COSMOS', 1.1, 1.e8, 1, 10)],
                                      columns=['field', 'zmax', 'sigmaC',
                                               'season_min', 'season_max']),
-                 sigmaInt=0.12, host_effi={}):
+                 sigmaInt=0.12, host_effi={},
+                 frac_WFD_low_sigmaC=0.8, max_sigmaC=0.04, test_mode=0):
         """
         Class to build a complete (WFD+DDF) random survey
 
@@ -185,8 +160,15 @@ class Random_survey:
                                   'season_min', 'season_max']).
         sigmaInt: float, opt.
           SN intrinsic dispersion. The default is 0.12.
-         host_effi: dict, opt
+        host_effi: dict, opt
           1D interpolators of host_effi vs z. The default is {}.
+        frac_WFD_low_sigmaC : float, optional
+             fraction of WFD SNe Ia with low sigmaC. The default is 0.8.
+        max_sigmaC : float, optional
+             Max sigmaC value defining the low sigmaC sample.
+             The default is 0.04.
+        test_mode: int, optional
+            to run the program in test mode. The default is 0.
 
         Returns
         -------
@@ -203,6 +185,9 @@ class Random_survey:
         self.survey = survey
         self.sigmaInt = sigmaInt
         self.host_effi = host_effi
+        self.frac_WFD_low_sigmaC = frac_WFD_low_sigmaC
+        self.max_sigmaC = max_sigmaC
+        self.test_mode = test_mode
 
         # load data per season
         self.data = self.build_random_sample()
@@ -232,7 +217,12 @@ class Random_survey:
                 self.dataDir_WFD, self.dbName_WFD, 'WFD_spectroz')
 
             nsn = pd.concat((nsn_ddf, nsn_wfd))
+            nsn = nsn.fillna(0)
+
             nsn['nsn'] = nsn['nsn'].astype(int)
+            nsn['nsn_z_0.1'] = nsn['nsn_z_0.1'].astype(int)
+            nsn['nsn_z_0.2'] = nsn['nsn_z_0.2'].astype(int)
+
             sn_data = pd.concat((ddf, wfd))
 
             sn_samp = self.random_sample(nsn, sn_data, self.survey, [seas])
@@ -484,22 +474,25 @@ class Random_survey:
                 # grab the number of sn
                 ida = nsn_field_season['field'] == field
                 ida &= nsn_field_season['season'] == season
-                nsn = int(nsn_field_season[ida]['nsn'].mean())
-                nsn = np.min([nsn, nsn_max_season])
+                nsn_exp = int(nsn_field_season[ida]['nsn'].mean())
+                nsn = np.min([nsn_exp, nsn_max_season])
+
+                nsn_z_0_1 = int(nsn_field_season[ida]['nsn_z_0.1'].mean())
+                nsn_z_0_2 = int(nsn_field_season[ida]['nsn_z_0.2'].mean())
 
                 # get survey info
-                host_effi_key, sigmaC, season_min,\
-                    season_max, frac_sigmaC = self.get_info(survey, field)
+                host_effi_key, season_min,\
+                    season_max = self.get_info(survey, field)
 
                 # get data
                 idb = sn_data['field'] == field
                 idb &= sn_data['season'] == season
-                idb &= sn_data['sigmaC'] <= sigmaC
                 sel_sn = sn_data[idb]
 
                 # grab sn sample
 
-                res = self.sn_sample(sel_sn, nsn, frac_sigmaC, field)
+                res = self.sn_sample(
+                    sel_sn, nsn_exp, nsn, field, nsn_z_0_1, zlow=0.1)
 
                 # select data according to the survey parameters
                 #idb = res['z'] <= zmax
@@ -510,13 +503,14 @@ class Random_survey:
                 # correct for zhost efficiency
                 res_host = self.effi_zhost(
                     sela, host_effi_key)
-                # self.plot_sample_zhost(sela, res_host, field)
+                if self.test_mode:
+                    self.plot_sample_zhost(sela, res_host, field)
 
                 df_res = pd.concat((df_res, res_host))
 
         return df_res
 
-    def sn_sample(self, data, nsn, frac_sigmaC, field):
+    def sn_sample(self, data, nsn_exp, nsn, field, nsn_lowz=0, zlow=0.1):
         """
         Method to grab the sn sample
 
@@ -524,12 +518,18 @@ class Random_survey:
         ----------
         data : pandas df
             Data to process.
+        nsn_exp: int
+           Number of expected SN
         nsn : int
             number of sn to get.
         frac_sigmaC : float
             frac of SN with sigmaC<0.04 to get.
         field: str
             field name
+        nsn_lowz : int, optional
+           Number of low-z SN. The default is 0.
+        zlow : float, optional
+           Redshift defining the low-z sample. The default is 0.1.
 
         Returns
         -------
@@ -543,24 +543,97 @@ class Random_survey:
             res = data
         else:
             # grab the random sample
-            if frac_sigmaC <= 0.20:
+            if field != 'WFD':
                 res = data.sample(n=nsn)
             else:
                 # sample build out of two: sigma_C<=0.04 and sigma_C>=0.04
+                if nsn > nsn_exp:
+                    nsn = nsn_exp
 
-                nsn_frac = int(nsn*frac_sigmaC)
-                idx = data['sigmaC'] <= 0.04
+                frac = self.get_sigmaC_fraction_in_data(data)
+                nsn_exp_low_sigmaC = int(nsn_exp*frac)
+                nsn_exp_high_sigmaC = int(nsn_exp*(1-frac))
+                nsn_wanted_low_sigmaC = nsn*self.frac_WFD_low_sigmaC
+                nsn_wanted_high_sigmaC = nsn-nsn_wanted_low_sigmaC
+
+                nsn_frac = np.min([nsn_exp_low_sigmaC, nsn_wanted_low_sigmaC])
+                nsn = int(nsn)
+                nsn_frac = int(nsn_frac)
+
+                idx = data['sigmaC'] <= self.max_sigmaC
                 sela = data[idx]
                 selb = data[~idx]
-                resa = sela.sample(n=nsn_frac)
-                resb = selb.sample(n=nsn-nsn_frac)
+                resa = self.sample_max_lowz(
+                    data[idx], nsn_frac, nsn_lowz, zlow)
+                resb = self.sample_max_lowz(
+                    data[~idx], nsn-nsn_frac, nsn_lowz=0, zlow=zlow)
                 res = pd.concat((resa, resb))
 
-        print(field, len(res))
-        if field == 'WFD':
-            idx = res['z'] <= 0.1
-            idb = data['z'] <= 0.1
-            print('hello', len(data), len(data[idb]), len(res[idx]))
+        if self.test_mode:
+            print(field, len(res))
+            if field == 'WFD':
+                idx = res['z'] <= 0.1
+                idb = data['z'] <= 0.1
+                idc = res['sigmaC'] <= self.max_sigmaC
+                print('hello', len(data), len(data[idb]), len(
+                    res[idx]), len(res[idc]))
+
+        return res
+
+    def get_sigmaC_fraction_in_data(self, data):
+        """
+        Method to estimate the fraction of SNe Ia with sigmaC < max_sigmaC
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+
+        Returns
+        -------
+        float
+            SNe fraction with sigmaC<=0.04 in data.
+
+        """
+
+        idx = data['sigmaC'] <= self.max_sigmaC
+
+        frac = len(data[idx])/len(data)
+
+        return np.round(frac, 3)
+
+    def sample_max_lowz(self, data, nsn, nsn_lowz, zlow):
+        """
+        Method to choose a sample maximizing lowz sn
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        nsn : int
+            total number of SNe Ia.
+        nsn_lowz : int
+            Number of low-z SNe Ia.
+        zlow : float
+            Max redshift for low-z SNe Ia.
+
+        Returns
+        -------
+        res : pandas df
+            Result.
+
+        """
+
+        idx = data['z'] <= zlow
+        if nsn_lowz > 0:
+            res = data[idx].sample(nsn_lowz)
+        else:
+            res = pd.DataFrame()
+
+        nsn_rem = nsn-nsn_lowz
+        resb = data[~idx].sample(nsn_rem)
+        res = pd.concat((res, resb))
+
         return res
 
     def get_info(self, survey, field):
@@ -590,12 +663,10 @@ class Random_survey:
         idx = survey['field'] == field
         sel = survey[idx]
         zmax = sel['host_effi'].values[0]
-        sigmaC = sel['sigmaC'].values[0]
         season_min = sel['season_min'].values[0]
         season_max = sel['season_max'].values[0]
-        frac_sigmaC = sel['frac_sigmaC'].values[0]
 
-        return zmax, sigmaC, season_min, season_max, frac_sigmaC
+        return zmax, season_min, season_max
 
     def effi_zhost(self, data, host_effi_key):
         """
