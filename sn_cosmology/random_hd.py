@@ -497,22 +497,9 @@ class Random_survey:
                 idb &= sn_data['sigmaC'] <= sigmaC
                 sel_sn = sn_data[idb]
 
-                if nsn >= len(sel_sn):
-                    res = sel_sn
-                else:
-                    # grab the random sample
-                    if frac_sigmaC <= 0.20:
-                        res = sel_sn.sample(n=nsn)
-                    else:
-                        # sample build out of two: sigma_C<=0.04 and sigma_C>=0.04
+                # grab sn sample
 
-                        nsn_frac = int(nsn*frac_sigmaC)
-                        idx = sel_sn['sigmaC'] <= 0.04
-                        sela = sel_sn[idx]
-                        selb = sel_sn[~idx]
-                        resa = sela.sample(n=nsn_frac)
-                        resb = selb.sample(n=nsn-nsn_frac)
-                        res = pd.concat((resa, resb))
+                res = self.sn_sample(sel_sn, nsn, frac_sigmaC, field)
 
                 # select data according to the survey parameters
                 #idb = res['z'] <= zmax
@@ -528,6 +515,53 @@ class Random_survey:
                 df_res = pd.concat((df_res, res_host))
 
         return df_res
+
+    def sn_sample(self, data, nsn, frac_sigmaC, field):
+        """
+        Method to grab the sn sample
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        nsn : int
+            number of sn to get.
+        frac_sigmaC : float
+            frac of SN with sigmaC<0.04 to get.
+        field: str
+            field name
+
+        Returns
+        -------
+        res : pandas df
+            Sampled data.
+
+        """
+
+        res = pd.DataFrame()
+        if nsn >= len(data):
+            res = data
+        else:
+            # grab the random sample
+            if frac_sigmaC <= 0.20:
+                res = data.sample(n=nsn)
+            else:
+                # sample build out of two: sigma_C<=0.04 and sigma_C>=0.04
+
+                nsn_frac = int(nsn*frac_sigmaC)
+                idx = data['sigmaC'] <= 0.04
+                sela = data[idx]
+                selb = data[~idx]
+                resa = sela.sample(n=nsn_frac)
+                resb = selb.sample(n=nsn-nsn_frac)
+                res = pd.concat((resa, resb))
+
+        print(field, len(res))
+        if field == 'WFD':
+            idx = res['z'] <= 0.1
+            idb = data['z'] <= 0.1
+            print('hello', len(data), len(data[idb]), len(res[idx]))
+        return res
 
     def get_info(self, survey, field):
         """
@@ -613,6 +647,23 @@ class Random_survey:
         return data_new
 
     def plot_sample_zhost(self, data, data_new, field):
+        """
+        Method to plot (check) nsn vs z for two sets of data
+
+        Parameters
+        ----------
+        data : pandas df
+            First set of data.
+        data_new : pandas df
+            second set of data.
+        field : str
+            Field name.
+
+        Returns
+        -------
+        None.
+
+        """
 
         import matplotlib.pyplot as plt
         from sn_analysis.sn_calc_plot import bin_it
