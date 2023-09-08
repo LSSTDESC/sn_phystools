@@ -135,12 +135,16 @@ class Fit_seasons:
                                  max_sigmaC=self.max_sigmaC,
                                  test_mode=self.test_mode).data
 
-            # print('nsn', len(data))
+            if self.test_mode:
+                print('nsn for this run', len(data))
             # analyze the data
             dict_ana = analyze_data(data)
             # get Nsn with sigmaC <= 0.04
-            idx = data['sigmaC'] <= 0.04
+            idx = data['sigmaC'] <= self.max_sigmaC
             dict_ana_b = analyze_data(data[idx], add_str='_sigmaC')
+            if self.test_mode:
+                print(dict_ana)
+                print(dict_ana_b)
             dict_ana.update(dict_ana_b)
             # print(dict_ana)
             dict_ana['season'] = np.max(seasons)+1
