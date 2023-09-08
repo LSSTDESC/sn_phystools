@@ -14,7 +14,8 @@ from sn_tools.sn_utils import multiproc
 class Fit_seasons:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
                  dataDir_WFD, dbName_WFD, dictsel, survey,
-                 prior, host_effi):
+                 prior, host_effi, frac_WFD_low_sigmaC=0.8,
+                 max_sigmaC=0.04, test_mode=0):
         """
         Class to perform fits for sets of season
 
@@ -38,6 +39,13 @@ class Fit_seasons:
             prior for the fit.
         host_effi: dict
             dict of 1D interpolators for host effi vs z.
+        frac_WFD_low_sigmaC : float, optional
+             fraction of WFD SNe Ia with low sigmaC. The default is 0.8.
+         max_sigmaC : float, optional
+             Max sigmaC value defining the low sigmaC sample.
+             The default is 0.04.
+        test_mode: int, optional
+          to run the program in test mode. The default is 0.
 
         Returns
         -------
@@ -54,6 +62,9 @@ class Fit_seasons:
         self.survey = survey
         self.prior = prior
         self.host_effi = host_effi
+        self.frac_WFD_low_sigmaC = frac_WFD_low_sigmaC
+        self.max_sigmaC = max_sigmaC
+        self.test_mode = test_mode
 
     def __call__(self):
         """
@@ -69,8 +80,10 @@ class Fit_seasons:
         resfi = pd.DataFrame()
         n_season_max = 12
         n_random = 50
-        n_season_max = 3
-        n_random = 1
+        if self.test_mode:
+            n_season_max = 3
+            n_random = 1
+
         for seas_max in range(2, n_season_max):
             seasons = range(1, seas_max)
 
@@ -105,7 +118,8 @@ class Fit_seasons:
 
         """
         seasons = params['seasons']
-        hd_fit = HD_random(fitconfig=self.fitconfig, prior=self.prior)
+        hd_fit = HD_random(fitconfig=self.fitconfig,
+                           prior=self.prior, test_mode=self.test_mode)
 
         dict_res = {}
 
@@ -116,7 +130,10 @@ class Fit_seasons:
             data = Random_survey(self.dataDir_DD, self.dbName_DD,
                                  self.dataDir_WFD, self.dbName_WFD,
                                  self.dictsel, seasons,
-                                 survey=self.survey, host_effi=self.host_effi).data
+                                 survey=self.survey, host_effi=self.host_effi,
+                                 frac_WFD_low_sigmaC=self.frac_WFD_low_sigmaC,
+                                 max_sigmaC=self.max_sigmaC,
+                                 test_mode=self.test_mode).data
 
             # print('nsn', len(data))
             # analyze the data
