@@ -503,9 +503,11 @@ class Random_survey:
                 # correct for zhost efficiency
                 res_host = self.effi_zhost(
                     sela, host_effi_key)
+
+                """
                 if self.test_mode:
                     self.plot_sample_zhost(sela, res_host, field)
-
+                """
                 df_res = pd.concat((df_res, res_host))
 
         return df_res
