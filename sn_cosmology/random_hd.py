@@ -135,7 +135,8 @@ class Random_survey:
                                      columns=['field', 'zmax', 'sigmaC',
                                               'season_min', 'season_max']),
                  sigmaInt=0.12, host_effi={},
-                 frac_WFD_low_sigmaC=0.8, max_sigmaC=0.04, test_mode=0):
+                 frac_WFD_low_sigmaC=0.8, max_sigmaC=0.04,
+                 test_mode=0, lowz_optimize=0.1):
         """
         Class to build a complete (WFD+DDF) random survey
 
@@ -169,6 +170,8 @@ class Random_survey:
              The default is 0.04.
         test_mode: int, optional
             to run the program in test mode. The default is 0.
+        lowz_optimize: float, opt.
+           z-value where the number of SN should be maximized.
 
         Returns
         -------
@@ -188,6 +191,7 @@ class Random_survey:
         self.frac_WFD_low_sigmaC = frac_WFD_low_sigmaC
         self.max_sigmaC = max_sigmaC
         self.test_mode = test_mode
+        self.lowz_optimize = lowz_optimize
 
         # load data per season
         self.data = self.build_random_sample()
@@ -477,8 +481,10 @@ class Random_survey:
                 nsn_exp = int(nsn_field_season[ida]['nsn'].mean())
                 nsn = np.min([nsn_exp, nsn_max_season])
 
-                nsn_z_0_1 = int(nsn_field_season[ida]['nsn_z_0.1'].mean())
-                nsn_z_0_2 = int(nsn_field_season[ida]['nsn_z_0.2'].mean())
+                nsn_z_opti = 0
+                if self.lowz_optimize > 0:
+                    vv = 'nsn_z_{}'.format(np.round(self.lowz_optimize, 1))
+                    nsn_z_opti = int(nsn_field_season[ida][vv].mean())
 
                 # get survey info
                 host_effi_key, season_min,\
@@ -492,7 +498,8 @@ class Random_survey:
                 # grab sn sample
 
                 res = self.sn_sample(
-                    sel_sn, nsn_exp, nsn, field, nsn_z_0_1, zlow=0.1)
+                    sel_sn, nsn_exp, nsn, field,
+                    nsn_z_opti, zlow=self.lowz_optimize)
 
                 # select data according to the survey parameters
                 #idb = res['z'] <= zmax
@@ -554,17 +561,15 @@ class Random_survey:
 
                 frac = self.get_sigmaC_fraction_in_data(data)
                 nsn_exp_low_sigmaC = int(nsn_exp*frac)
-                nsn_exp_high_sigmaC = int(nsn_exp*(1-frac))
+                # nsn_exp_high_sigmaC = int(nsn_exp*(1-frac))
                 nsn_wanted_low_sigmaC = nsn*self.frac_WFD_low_sigmaC
-                nsn_wanted_high_sigmaC = nsn-nsn_wanted_low_sigmaC
+                # nsn_wanted_high_sigmaC = nsn-nsn_wanted_low_sigmaC
 
                 nsn_frac = np.min([nsn_exp_low_sigmaC, nsn_wanted_low_sigmaC])
                 nsn = int(nsn)
                 nsn_frac = int(nsn_frac)
 
                 idx = data['sigmaC'] <= self.max_sigmaC
-                sela = data[idx]
-                selb = data[~idx]
                 resa = self.sample_max_lowz(
                     data[idx], nsn_frac, nsn_lowz, zlow)
                 resb = self.sample_max_lowz(

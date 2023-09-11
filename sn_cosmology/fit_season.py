@@ -15,7 +15,7 @@ class Fit_seasons:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
                  dataDir_WFD, dbName_WFD, dictsel, survey,
                  prior, host_effi, frac_WFD_low_sigmaC=0.8,
-                 max_sigmaC=0.04, test_mode=0):
+                 max_sigmaC=0.04, test_mode=0, lowz_optimize=0.1):
         """
         Class to perform fits for sets of season
 
@@ -46,6 +46,8 @@ class Fit_seasons:
              The default is 0.04.
         test_mode: int, optional
           to run the program in test mode. The default is 0.
+        lowz_optimize: float, opt.
+           z-value where the number of SN should be maximized.
 
         Returns
         -------
@@ -65,6 +67,7 @@ class Fit_seasons:
         self.frac_WFD_low_sigmaC = frac_WFD_low_sigmaC
         self.max_sigmaC = max_sigmaC
         self.test_mode = test_mode
+        self.lowz_optimize = lowz_optimize
 
     def __call__(self):
         """
@@ -133,7 +136,8 @@ class Fit_seasons:
                                  survey=self.survey, host_effi=self.host_effi,
                                  frac_WFD_low_sigmaC=self.frac_WFD_low_sigmaC,
                                  max_sigmaC=self.max_sigmaC,
-                                 test_mode=self.test_mode).data
+                                 test_mode=self.test_mode,
+                                 lowz_optimize=self.lowz_optimize).data
 
             if self.test_mode:
                 print('nsn for this run', len(data))
