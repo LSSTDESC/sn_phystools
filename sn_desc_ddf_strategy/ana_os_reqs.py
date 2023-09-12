@@ -75,6 +75,81 @@ class Anaplot_OS:
 
         return df
 
+    def plot_cadence_mean(self):
+
+        fig, ax = plt.subplots()
+        col = 'observationStartMJD'
+        colsm = ['dbName', 'season', 'note']
+        for i, row in self.config_scen.iterrows():
+            dbName = row['dbName']
+            idx = self.data['dbName'] == dbName
+            data = self.data[idx]
+
+            dfa = data.groupby(['dbName', 'season', 'note', 'night'])[
+                col].median().reset_index()
+
+            df = dfa.groupby(['dbName', 'season', 'note']).apply(
+                lambda x: self.obs_cadence(x)).reset_index()
+
+            dfb = data.groupby(['dbName', 'season', 'note']).apply(
+                lambda x: self.obs_cadence_band(x)).reset_index()
+
+            df = df.drop(columns=['level_3'])
+            dfb = dfb.drop(columns=['level_3'])
+            df = df.merge(dfb, left_on=colsm,
+                          right_on=colsm, suffixes=('', ''))
+
+        print('hello', df[['note', 'season', 'cad_mean', 'cad_rms']])
+        print('hello', df)
+
+    def obs_cadence(self, grp):
+
+        dict_out = self.cadence(grp)
+
+        """
+        # cadence per band
+        bands = grp['filter'].unique()
+        for b in bands:
+            idx = grp['filter'] == b
+            sel = grp[idx]
+            dd = self.cadence(sel, suffix='_{}'.format(b))
+            dict_out.update(dd)
+        """
+        res = pd.DataFrame.from_dict(dict_out)
+
+        return res
+
+    def obs_cadence_band(self, grp):
+
+        dict_out = {}
+
+        # cadence per band
+        bands = grp['filter'].unique()
+        for b in bands:
+            idx = grp['filter'] == b
+            sel = grp[idx]
+            dd = self.cadence(sel, suffix='_{}'.format(b))
+            dict_out.update(dd)
+
+        res = pd.DataFrame.from_dict(dict_out)
+
+        return res
+
+    def cadence(self, grp, col='observationStartMJD', suffix=''):
+
+        grp = grp.sort_values(by=[col])
+        # mean cadence (global)
+        diff = grp[col].diff()
+
+        cad_mean = diff.mean()
+        cad_rms = diff.std()
+
+        dict_out = {}
+        dict_out['cad_mean{}'.format(suffix)] = [cad_mean]
+        dict_out['cad_rms{}'.format(suffix)] = [cad_rms]
+
+        return dict_out
+
     def plot_budget(self):
         """
         Method to plot the budget vs season
