@@ -15,7 +15,9 @@ class Anaplot_OS:
     def __init__(self, dbDir, config_scen, Nvisits_LSST, budget, outDir='',
                  pz_requirement='input/DESC_cohesive_strategy/pz_requirements.csv',
                  filter_alloc_req='input/DESC_cohesive_strategy/filter_allocation.csv',
-                 Nvisits_WL=8000):
+                 Nvisits_WL=8000,
+                 fields=['DD:COSMOS', 'DD:XMM_LSS', 'DD:ELAISS1',
+                         'DD:ECDFS', 'DD:EDFS_a', 'DD:EDFS_b']):
         """
         Class to plot OS parameters+compariosn wrt reqs
 
@@ -52,6 +54,7 @@ class Anaplot_OS:
         self.pz_requirement = pz_requirement
         self.filter_alloc_req = filter_alloc_req
         self.Nvisits_WL = Nvisits_WL
+        self.fields = fields
 
         self.data = self.load_data()
 
@@ -67,24 +70,75 @@ class Anaplot_OS:
         """
 
         df = pd.DataFrame()
-        for dbName in self.config_scen['dbName']:
-            data = np.load('{}/{}.npy'.format(self.dbDir, dbName))
+
+        for i, row in self.config_scen.iterrows():
+            dbName = row['dbName']
+            data = np.load('{}/{}.npy'.format(self.dbDir,
+                           dbName), allow_pickle=True)
+            if 'season' not in data.dtype.names:
+                data = self.get_season(data)
             data = pd.DataFrame.from_records(data)
-            data['dbName'] = dbName
-            df = pd.concat((df, data))
+            idx = data['note'].isin(self.fields)
+            datac = data[idx]
+            if not row['coadded']:
+                datac = self.coadd(data[idx])
+            # datac = data[idx]
+            datac['dbName'] = dbName
+            # datac = data[idx]
+            df = pd.concat((df, datac))
+
+        return df
+
+    def get_season(self, data):
+
+        if 'season' not in data.dtype.names:
+            data_n = None
+            from sn_tools.sn_obs import season
+            for field in self.fields:
+                idx = data['note'] == field
+                data_seas = season(data[idx])
+                if data_n is None:
+                    data_n = data_seas
+                else:
+                    data_n = np.concatenate((data_n, data_seas))
+            return data_n
+        else:
+            return data
+
+    def coadd(self, data):
+
+        df = pd.DataFrame()
+        from sn_tools.sn_stacker import CoaddStacker
+        stacker = CoaddStacker()
+        for field in self.fields:
+            idx = data['note'] == field
+            obs = pd.DataFrame(stacker._run(data[idx].to_records(index=False)))
+            obs['note'] = field
+            df = pd.concat((df, obs))
 
         return df
 
     def plot_cadence_mean(self):
 
-        fig, ax = plt.subplots()
         col = 'observationStartMJD'
+        cols = ['fiveSigmaDepth', 'fiveSigmaDepth_median', 'Nvisits']
         colsm = ['dbName', 'season', 'note']
+
+        ls = dict(
+            zip(self.fields, ['solid', 'dashed', 'dotted', 'solid', 'dashed', 'dotted']))
+        marker = dict(zip(self.fields, ['.', '*', 's', '^', 'o', 'h']))
+
         for i, row in self.config_scen.iterrows():
             dbName = row['dbName']
             idx = self.data['dbName'] == dbName
             data = self.data[idx]
 
+            data['Nvisits'] = data['visitExposureTime']/30.
+            data['fiveSigmaDepth_median'] = data['fiveSigmaDepth'] - \
+                1.25*np.log10(data['Nvisits'])
+
+            dff = data.groupby(['dbName', 'season', 'note', 'night', 'filter'])[
+                cols].median().reset_index()
             dfa = data.groupby(['dbName', 'season', 'note', 'night'])[
                 col].median().reset_index()
 
@@ -99,8 +153,68 @@ class Anaplot_OS:
             df = df.merge(dfb, left_on=colsm,
                           right_on=colsm, suffixes=('', ''))
 
+            for field in df['note'].unique():
+
+                idx = df['note'] == field
+                sel = df[idx]
+                self.plot_two(sel, dbName, field)
+
+            tt = data.groupby(['dbName', 'note', 'season', 'filter'])[
+                cols].median().reset_index()
+            print(tt)
+            tt.to_csv('test_{}.csv'.format(dbName))
+            for field in dff['note'].unique():
+                idx = dff['note'] == field
+                sel = dff[idx]
+                self.plot_m5(sel, dbName, field)
+
         print('hello', df[['note', 'season', 'cad_mean', 'cad_rms']])
         print('hello', df)
+
+    def plot_m5(self, data, dbName, field):
+
+        fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(12, 8))
+        bands = 'ugrizy'
+        ppos = [(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)]
+
+        pos = dict(zip(bands, ppos))
+
+        for b in bands:
+            idx = data['filter'] == b
+            sela = data[idx]
+            seasons = sela['season'].unique()
+            for seas in seasons:
+                idxb = sela['season'] == seas
+                selb = sela[idxb]
+                ax[pos[b]].hist(selb['fiveSigmaDepth_median'], histtype='step')
+
+    def plot_two(self, sel, dbName, field):
+
+        bands = 'ugrizy'
+        marker = dict(zip(bands, ['o', '*', 's', 'h', '^', 'v']))
+        fig, ax = plt.subplots(nrows=2, figsize=(12, 8))
+        fig.subplots_adjust(hspace=0.)
+        fig.suptitle('{} - {}'.format(dbName, field))
+        ax[0].errorbar(sel['season'], sel['cad_mean'],
+                       yerr=sel['cad_rms'], color='k', marker='.')
+
+        for b in bands:
+            ax[1].errorbar(sel['season'], sel['cad_mean_{}'.format(b)],
+                           yerr=sel['cad_rms_{}'.format(b)],
+                           color=filtercolors[b], marker=marker[b],
+                           mfc='None', label=b)
+
+        ax[0].set_ylabel('cadence [night]')
+        ax[1].set_ylabel('cadence [night]')
+        ax[1].set_xlabel('season')
+        ax[0].grid()
+        ax[1].grid()
+        ax[1].legend(loc='lower center', bbox_to_anchor=(1.05, 0.5),
+                     ncol=1, fontsize=12, frameon=False)
+
+        ax[0].set_xlim([0.95, 10.05])
+        ax[1].set_xlim([0.95, 10.05])
+        ax[0].set_xticklabels([])
 
     def obs_cadence(self, grp):
 
@@ -248,7 +362,7 @@ class Anaplot_OS:
             res['name'] = dbName
             res = res.rename(columns={'filter': 'band'})
             res = res.merge(pz_req, left_on=['band'], right_on=[
-                            'band'], suffixes=('', '_ref'))
+                'band'], suffixes=('', '_ref'))
             res['diff_m5_y1'] = res['m5_y1']-res['m5_y1_ref']
             res['diff_m5_y2_y10'] = res['m5_y2_y10']-res['m5_y2_y10_ref']
             restot = pd.concat((restot, res))
@@ -426,7 +540,7 @@ class Anaplot_OS:
                 lambda x: pd.DataFrame({'Nv_WL': [x['numExposures'].sum()]})).reset_index()
             sumdf = sumdf.rename(columns={'filter': 'band'})
             sumdf = sumdf.merge(Nv_WL, left_on=['band'], right_on=[
-                                'band'], suffixes=['', '_ref'])
+                'band'], suffixes=['', '_ref'])
             sumdf['name'] = dbName
             sumdf['ratio_Nv_WL'] = sumdf['Nv_WL']/sumdf['Nv_WL_ref']
             restot = pd.concat((restot, sumdf))
