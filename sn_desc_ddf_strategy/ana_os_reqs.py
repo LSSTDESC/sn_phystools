@@ -75,21 +75,45 @@ class Anaplot_OS:
             dbName = row['dbName']
             data = np.load('{}/{}.npy'.format(self.dbDir,
                            dbName), allow_pickle=True)
+
+            # select fields
+            idx = np.in1d(data['note'], self.fields)
+
+            nvisits = len(data[~idx])
+            if nvisits > 0:
+                print('hhh', len(data[idx])/len(data[~idx]))
+                self.nvisits_LSST = len(data[~idx])
+            data = data[idx]
+
+            # get seasons
             if 'season' not in data.dtype.names:
                 data = self.get_season(data)
+
+            # coadd data
+            data = self.coadd(data)
+            # datac = data[idx]
             data = pd.DataFrame.from_records(data)
-            idx = data['note'].isin(self.fields)
-            datac = data[idx]
-            if not row['coadded']:
-                datac = self.coadd(data[idx])
+            data['dbName'] = dbName
             # datac = data[idx]
-            datac['dbName'] = dbName
-            # datac = data[idx]
-            df = pd.concat((df, datac))
+            df = pd.concat((df, data))
 
         return df
 
     def get_season(self, data):
+        """
+        Method to estimate seasons of observation
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to process.
+
+        Returns
+        -------
+        numpy array
+            Original data plus season column.
+
+        """
 
         if 'season' not in data.dtype.names:
             data_n = None
@@ -106,19 +130,41 @@ class Anaplot_OS:
             return data
 
     def coadd(self, data):
+        """
+        Method to coadd data
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to coadd.
+
+        Returns
+        -------
+        df : pandas df
+            Coadded data.
+
+        """
 
         df = pd.DataFrame()
         from sn_tools.sn_stacker import CoaddStacker
         stacker = CoaddStacker()
         for field in self.fields:
             idx = data['note'] == field
-            obs = pd.DataFrame(stacker._run(data[idx].to_records(index=False)))
+            obs = pd.DataFrame(stacker._run(data[idx]))
             obs['note'] = field
             df = pd.concat((df, obs))
 
         return df
 
     def plot_cadence_mean(self):
+        """
+        Method to plot cadences mean per field/season
+
+        Returns
+        -------
+        None.
+
+        """
 
         col = 'observationStartMJD'
         cols = ['fiveSigmaDepth', 'fiveSigmaDepth_median', 'Nvisits']
@@ -172,6 +218,23 @@ class Anaplot_OS:
         print('hello', df)
 
     def plot_m5(self, data, dbName, field):
+        """
+        Method to plot m5 values
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        dbName : str
+            DbName.
+        field : str
+            Field.
+
+        Returns
+        -------
+        None.
+
+        """
 
         fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(12, 8))
         bands = 'ugrizy'
@@ -189,6 +252,23 @@ class Anaplot_OS:
                 ax[pos[b]].hist(selb['fiveSigmaDepth_median'], histtype='step')
 
     def plot_two(self, sel, dbName, field):
+        """
+        Method to plot two plots (row wise) with the same axis
+
+        Parameters
+        ----------
+        sel : pandas df
+            Data to plot.
+        dbName : str
+            OS to process.
+        field : str
+            Field.
+
+        Returns
+        -------
+        None.
+
+        """
 
         bands = 'ugrizy'
         marker = dict(zip(bands, ['o', '*', 's', 'h', '^', 'v']))
@@ -217,23 +297,42 @@ class Anaplot_OS:
         ax[0].set_xticklabels([])
 
     def obs_cadence(self, grp):
+        """
+        Method to estimate the global cadence
+
+        Parameters
+        ----------
+        grp : pandas df
+            Data to process.
+
+        Returns
+        -------
+        res : pandas df
+            Result with cadence estimation.
+
+        """
 
         dict_out = self.cadence(grp)
 
-        """
-        # cadence per band
-        bands = grp['filter'].unique()
-        for b in bands:
-            idx = grp['filter'] == b
-            sel = grp[idx]
-            dd = self.cadence(sel, suffix='_{}'.format(b))
-            dict_out.update(dd)
-        """
         res = pd.DataFrame.from_dict(dict_out)
 
         return res
 
     def obs_cadence_band(self, grp):
+        """
+        Method to estimate the cadence per band
+
+        Parameters
+        ----------
+        grp : pandas df
+            Data to process.
+
+        Returns
+        -------
+        res : pandas df
+            Result with cadence estimation.
+
+        """
 
         dict_out = {}
 
@@ -250,6 +349,25 @@ class Anaplot_OS:
         return res
 
     def cadence(self, grp, col='observationStartMJD', suffix=''):
+        """
+        Method to estimate the cadence (general)
+
+        Parameters
+        ----------
+        grp : pandas df
+            Data to process.
+        col : str, optional
+            Column use for cadence estimation.
+            The default is 'observationStartMJD'.
+        suffix : str, optional
+            Suffic for out col names. The default is ''.
+
+        Returns
+        -------
+        dict_out : dict
+            Result.
+
+        """
 
         grp = grp.sort_values(by=[col])
         # mean cadence (global)
@@ -288,11 +406,13 @@ class Anaplot_OS:
             idx = self.data['dbName'] == dbName
             data = self.data[idx]
             # sum numexposures by night
+            # divide by 2 to get the number of visits
             dt = data.groupby(['night']).apply(
                 lambda x: coadd_night(x)).reset_index()
             print(dt['season'].unique())
             dt = dt.sort_values(by=['night'])
             dt[valb] /= norm
+            dt[valb] /= 2
             dt[valb] *= 100.
             # re-estimate seasons
             # dt = dt.drop(columns=['season'])
