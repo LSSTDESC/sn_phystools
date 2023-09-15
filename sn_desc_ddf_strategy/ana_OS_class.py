@@ -40,8 +40,21 @@ class Plot_cadence:
         dname = df_config_scen[idx][['field', 'fieldType']]
         dname = dname.rename(columns={'field': 'note'})
 
-        data = np.load('{}/{}.npy'.format(dbDir, dbName))
-        df = pd.DataFrame.from_records(data)
+        data = np.load('{}/{}.npy'.format(dbDir, dbName), allow_pickle=True)
+        # get numexposures for a single visit
+
+        visitExposureTime_single = data['visitExposureTime'].mean()
+
+        # coadd this
+        from sn_tools.sn_stacker import CoaddStacker
+        stacker = CoaddStacker()
+        data_stacked = stacker._run(data)
+
+        # estimate seasons
+        from sn_tools.sn_obs import season
+        data_season = season(data_stacked)
+
+        df = pd.DataFrame.from_records(data_season)
 
         df = df.merge(dname, left_on=['note'], right_on=['note'])
 
