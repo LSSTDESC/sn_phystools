@@ -125,7 +125,8 @@ def gime_combi(filter_alloc, nvisits_band):
 
 def coadd_night(grp, colsum=['numExposures'],
                 colmean=['season', 'observationStartMJD', 'moonPhase'],
-                combi_filt=['ugriz', 'grizy']):
+                combi_filt=['ugriz', 'grizy'],
+                visitExposureTime_single=30.):
     """
     Function to coadd obs per night
 
@@ -138,6 +139,8 @@ def coadd_night(grp, colsum=['numExposures'],
     colmean : list(str), optional
         List of cols for wwhich to estimate the mean.
         The default is ['season', 'observationStartMJD'].
+    visitExposureTime_single: float, optional.
+       visit exposure time single visit. The default is 30 s.
 
     Returns
     -------
@@ -145,6 +148,9 @@ def coadd_night(grp, colsum=['numExposures'],
         output res.
 
     """
+
+    grp['Nvisits'] = grp['visitExposureTime']/visitExposureTime_single
+    grp['Nvisits'] = grp['Nvisits'].astype(int)
 
     dictout = {}
     for vv in colsum:
@@ -164,7 +170,7 @@ def coadd_night(grp, colsum=['numExposures'],
             nf = []
             for ff in list(cc):
                 idx = grp['filter'] == ff
-                nf.append(grp[idx]['numExposures'].sum())
+                nf.append(grp[idx]['Nvisits'].sum())
 
             nf = map(str, nf)
             dictout['visits_band'] = ['/'.join(nf)]
