@@ -73,9 +73,11 @@ class Anaplot_OS:
 
         for i, row in self.config_scen.iterrows():
             dbName = row['dbName']
-            data = np.load('{}/{}.npy'.format(self.dbDir,
-                           dbName), allow_pickle=True)
+            search_path = '{}/{}.npy'.format(self.dbDir, dbName)
 
+            data = np.load(search_path, allow_pickle=True)
+
+            print('loading', search_path, np.unique(data['filter']))
             # select fields
             idx = np.in1d(data['note'], self.fields)
 
@@ -90,6 +92,7 @@ class Anaplot_OS:
                 data = self.get_season(data)
 
             # coadd data
+
             data = self.coadd(data)
             # datac = data[idx]
             data = pd.DataFrame.from_records(data)
@@ -191,6 +194,7 @@ class Anaplot_OS:
             df = dfa.groupby(['dbName', 'season', 'note']).apply(
                 lambda x: self.obs_cadence(x)).reset_index()
 
+            print('ttt', dbName, data['filter'].unique())
             dfb = data.groupby(['dbName', 'season', 'note']).apply(
                 lambda x: self.obs_cadence_band(x)).reset_index()
 
@@ -338,6 +342,7 @@ class Anaplot_OS:
 
         # cadence per band
         bands = grp['filter'].unique()
+
         for b in bands:
             idx = grp['filter'] == b
             sel = grp[idx]
