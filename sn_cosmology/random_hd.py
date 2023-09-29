@@ -41,12 +41,12 @@ class HD_random:
                             'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',
                             'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu'].
         fitconfig : dict, optional
-            configuration dict for the fit. The default is {}. 
+            configuration dict for the fit. The default is {}.
         par_protect_fit : list(str), optional
             List of fit parameters to protect. The default is ['Om0'].
         prior : pandas df, optional
-            Prior to apply to the Chisquare. 
-            The default is 
+            Prior to apply to the Chisquare.
+            The default is
             pd.DataFrame({'varname': ['Om0'],'refvalue':[0.3], 'sigma':[0.0073]}).
          test_mode: int, optional.
           To activate the program in test mode. The default is 0.
@@ -347,8 +347,19 @@ class Random_survey:
                     for i in range(len(sigmu))]
         mu = [gauss(dist_mu[i], sigma_mu[i]) for i in range(len(dist_mu))]
         data['mu_SN'] = mu
-        data['sigma_mu_SN'] = sigma_mu
+        data['sigma_mu_SN'] = sigmu
 
+        # mb fit smearing
+        mb_fit = data['mb_fit'].to_list()
+        sigmb = np.sqrt(data['Cov_mbmb']).to_list()
+        sigma_mb = [np.sqrt(sigmb[i]**2+self.sigmaInt**2)
+                    for i in range(len(sigmb))]
+        mb_smear = [gauss(mb_fit[i], sigma_mb[i])
+                    for i in range(len(mb_fit))]
+
+        Mb = -19.1
+        # data['mb_fit'] -= gauss(Mb, self.sigmaInt)
+        # data['Cov_mbmb'] = sigma_mb
         return data
 
     def plot_mu(self, data, yvar='mu', H0=70, Om0=0.3, Ode0=0.7, w0=-1., wa=0.0):
@@ -502,7 +513,7 @@ class Random_survey:
                     nsn_z_opti, zlow=self.lowz_optimize)
 
                 # select data according to the survey parameters
-                #idb = res['z'] <= zmax
+                # idb = res['z'] <= zmax
                 idb = res['season'] >= season_min
                 idb = res['season'] <= season_max
 

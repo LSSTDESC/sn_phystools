@@ -494,13 +494,22 @@ class MyFit(CosmoFit):
         ----------
         fitted parameters
         """
+
         Om, w0,  wa = 0.3, -1.0, 0.0
+        alpha, beta, Mb = 0.13, 3.1, -19.09
         z = self.z.to_list()
         mu_SN = self.mu_SN
         mu_th = self.mu_astro(z, Om, w0, wa)
         sigma_mu = self.sigma_mu
+        Ndof = len(self.fitparNames)
+
+        if 'alpha' in self.fitparNames:
+            from random import gauss
+            mu_SN = alpha*self.x1-beta*self.color+self.mb-gauss(Mb, sigmaInt)
+
         rr = np.sum((mu_SN-mu_th)**2/(self.sigma_mu**2+sigmaInt**2))
-        ndf = len(self.mu_SN)-3
+
+        ndf = len(self.mu_SN)-Ndof
         res = rr-ndf
         return res
 
