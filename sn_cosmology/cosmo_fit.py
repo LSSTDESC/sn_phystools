@@ -478,6 +478,10 @@ class MyFit(CosmoFit):
         ----------
         sigma_int parameter
          """
+
+        from random import gauss
+        Mb = -19.1
+        self.Mb_rand = gauss(Mb, 0.12)
         return optimize.newton(self.chi2ndf_sigmaInt, 0.01)
 
     def chi2ndf_sigmaInt(self, sigmaInt):
@@ -504,8 +508,8 @@ class MyFit(CosmoFit):
         Ndof = len(self.fitparNames)
 
         if 'alpha' in self.fitparNames:
-            from random import gauss
-            mu_SN = alpha*self.x1-beta*self.color+self.mb-gauss(Mb, sigmaInt)
+
+            mu_SN = alpha*self.x1-beta*self.color+self.mb-self.Mb_rand
 
         rr = np.sum((mu_SN-mu_th)**2/(self.sigma_mu**2+sigmaInt**2))
 
