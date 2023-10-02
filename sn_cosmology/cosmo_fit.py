@@ -480,8 +480,10 @@ class MyFit(CosmoFit):
          """
 
         from random import gauss
-        Mb = -19.1
+        Mb = -19.09
         self.Mb_rand = gauss(Mb, 0.12)
+        #self.mbb = self.mb-(self.Mb_rand-Mb)
+
         return optimize.newton(self.chi2ndf_sigmaInt, 0.01)
 
     def chi2ndf_sigmaInt(self, sigmaInt):
@@ -508,13 +510,17 @@ class MyFit(CosmoFit):
         Ndof = len(self.fitparNames)
 
         if 'alpha' in self.fitparNames:
-
             mu_SN = alpha*self.x1-beta*self.color+self.mb-self.Mb_rand
-
+            """
+            mu_SNa = alpha*self.x1-beta*self.color+self.mbb-Mb
+            for i, vv in enumerate(mu_SNa):
+                print('mu_SN', z[i], vv-mu_SN.to_list()[i])
+            """
         rr = np.sum((mu_SN-mu_th)**2/(self.sigma_mu**2+sigmaInt**2))
 
         ndf = len(self.mu_SN)-Ndof
         res = rr-ndf
+
         return res
 
     def mu_astro(self, z, Om, w0, wa, H0=70):
