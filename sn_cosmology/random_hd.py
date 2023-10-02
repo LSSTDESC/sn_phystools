@@ -350,16 +350,20 @@ class Random_survey:
         data['sigma_mu_SN'] = sigmu
 
         # mb fit smearing
+        """
         mb_fit = data['mb_fit'].to_list()
         sigmb = np.sqrt(data['Cov_mbmb']).to_list()
         sigma_mb = [np.sqrt(sigmb[i]**2+self.sigmaInt**2)
                     for i in range(len(sigmb))]
-        mb_smear = [gauss(mb_fit[i], sigma_mb[i])
+        Mb = [-19.08]*len(mb_fit)
+        mb_smear = [gauss(Mb[i], sigma_mb[i])
                     for i in range(len(mb_fit))]
-
-        Mb = -19.1
-        # data['mb_fit'] -= gauss(Mb, self.sigmaInt)
+        Mb = -19.08
+        Mb_rand = gauss(Mb, 0.12)
+        # Mb = -19.1
+        # data['mb_fit'] -= (Mb_rand-Mb)
         # data['Cov_mbmb'] = sigma_mb
+        """
         return data
 
     def plot_mu(self, data, yvar='mu', H0=70, Om0=0.3, Ode0=0.7, w0=-1., wa=0.0):
