@@ -16,11 +16,11 @@ class HD_random:
                  vardf=['z', 'x1_fit', 'color_fit', 'mbfit', 'Cov_x1x1',
                         'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',
                         'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',
-                        'mu_SN', 'sigma_mu_SN'],
+                        'mu_SN'],
                  dataNames=['z', 'x1', 'color', 'mb', 'Cov_x1x1',
                             'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',
                             'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',
-                            'mu_SN', 'sigma_mu_SN'],
+                            'mu_SN'],
                  fitconfig={},
                  par_protect_fit=['Om0'],
                  prior=pd.DataFrame({'varname': ['Om0'],
@@ -99,10 +99,13 @@ class HD_random:
                           fitparNames=fitparNames, prior=self.prior,
                           par_protect_fit=self.par_protect_fit)
             # get sigmaInt
+
             sigmaInt = myfit.get_sigmaInt()
 
             # set sigmaInt
             myfit.set_sigmaInt(sigmaInt)
+
+            # myfit.set_sigmaInt(0.0)
 
             dict_fit = myfit.minuit_fit(fitparams)
             fitpars = []
@@ -309,7 +312,7 @@ class Random_survey:
         return res
 
     def correct_mu(self, data, H0=70, Om0=0.3, Ode0=0.7,
-                   w0=-1., wa=0.0):
+                   w0=-1., wa=0.0, alpha=0.13, beta=3.1):
         """
         Method to re-estimate distance moduli (MB correction)
         and add sigmaInt to the distance modulus error.
@@ -328,6 +331,10 @@ class Random_survey:
             w0 parameter. The default is -1..
         wa : float, optional
             wa parameter. The default is 0.0.
+        alpha: float, optional.
+            nuisance parameter for SN. The default is 0.13
+        beta: float, optional.
+            nuisance parameter for SN. The default is 3.1
 
         Returns
         -------
@@ -341,29 +348,24 @@ class Random_survey:
         cosmo = w0waCDM(H0=H0, Om0=Om0, Ode0=Ode0, w0=w0, wa=wa)
 
         sigmu = data['sigma_mu'].to_list()
+        var_mu = data['Cov_mbmb']\
+            + (alpha**2)*data['Cov_x1x1']\
+            + (beta**2)*data['Cov_colorcolor']\
+            + 2*alpha*data['Cov_x1mb']\
+            - 2*beta*data['Cov_colormb']\
+            - 2*alpha*beta*data['Cov_x1color']
         bins = data['z'].to_list()
         dist_mu = cosmo.distmod(bins).value
+
+        sigmu = np.sqrt(var_mu).to_list()
         sigma_mu = [np.sqrt(sigmu[i]**2+self.sigmaInt**2)
                     for i in range(len(sigmu))]
+
         mu = [gauss(dist_mu[i], sigma_mu[i]) for i in range(len(dist_mu))]
         data['mu_SN'] = mu
-        data['sigma_mu_SN'] = sigmu
+        # data['sigma_mu_SN'] = sigmu
+        data['sigma_mu'] = sigmu
 
-        # mb fit smearing
-        """
-        mb_fit = data['mb_fit'].to_list()
-        sigmb = np.sqrt(data['Cov_mbmb']).to_list()
-        sigma_mb = [np.sqrt(sigmb[i]**2+self.sigmaInt**2)
-                    for i in range(len(sigmb))]
-        Mb = [-19.08]*len(mb_fit)
-        mb_smear = [gauss(Mb[i], sigma_mb[i])
-                    for i in range(len(mb_fit))]
-        Mb = -19.08
-        Mb_rand = gauss(Mb, 0.12)
-        # Mb = -19.1
-        # data['mb_fit'] -= (Mb_rand-Mb)
-        # data['Cov_mbmb'] = sigma_mb
-        """
         return data
 
     def plot_mu(self, data, yvar='mu', H0=70, Om0=0.3, Ode0=0.7, w0=-1., wa=0.0):
