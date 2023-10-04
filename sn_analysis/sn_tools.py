@@ -321,7 +321,7 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
     return res
 
 
-def complete_df(res, alpha=0.4, beta=3, Mb=-19.1):
+def complete_df(res, alpha=0.13, beta=3.1, Mb=-19.1):
     """
     Function to complete df infos
 
@@ -330,7 +330,7 @@ def complete_df(res, alpha=0.4, beta=3, Mb=-19.1):
     res : pandas df
         df to complete.
     alpha : floar, optional
-        alpha parameter for the estimation of mu,sigma_mu. The default is 0.4.
+        alpha parameter for the estimation of mu,sigma_mu. The default is 0.13
     beta : float, optional
         beta parameter for the estimation of mu,sigma_mu. The default is 3.
     Mb: float, optional
