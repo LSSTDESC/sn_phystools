@@ -15,7 +15,7 @@ class Fit_seasons:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
                  dataDir_WFD, dbName_WFD, dictsel, survey,
                  prior, host_effi, frac_WFD_low_sigmaC=0.8,
-                 max_sigmaC=0.04, test_mode=0, lowz_optimize=0.1):
+                 max_sigmaC=0.04, test_mode=0, lowz_optimize=0.1, sigmaInt=0.12):
         """
         Class to perform fits for sets of season
 
@@ -68,6 +68,7 @@ class Fit_seasons:
         self.max_sigmaC = max_sigmaC
         self.test_mode = test_mode
         self.lowz_optimize = lowz_optimize
+        self.sigmaInt = sigmaInt
 
     def __call__(self):
         """
@@ -133,7 +134,8 @@ class Fit_seasons:
             data = Random_survey(self.dataDir_DD, self.dbName_DD,
                                  self.dataDir_WFD, self.dbName_WFD,
                                  self.dictsel, seasons,
-                                 survey=self.survey, host_effi=self.host_effi,
+                                 survey=self.survey, sigmaInt=self.sigmaInt,
+                                 host_effi=self.host_effi,
                                  frac_WFD_low_sigmaC=self.frac_WFD_low_sigmaC,
                                  max_sigmaC=self.max_sigmaC,
                                  test_mode=self.test_mode,
