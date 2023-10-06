@@ -430,14 +430,16 @@ class MyFit(CosmoFit):
             sigma_mu = np.sqrt(var_mu)
 
             rind = []
-            for vv in ['w0', 'wa', 'Om0']:
+            for vv in ['w0', 'wa', 'Om0', 'alpha', 'beta', 'Mb']:
                 try:
                     ind = self.fitparNames.index(vv)
                     rind.append(ind)
                 except Exception:
                     continue
             idf = np.max(rind)+1
+            # print('there man', rind, self.fitparNames)
             fitparams = parameters[:idf]
+            # print('allo', fitparams, idf)
             mu_th = self.fit_function(*fitparams)
 
         else:
@@ -510,7 +512,7 @@ class MyFit(CosmoFit):
         Ndof = len(self.fitparNames)
 
         if 'alpha' in self.fitparNames:
-            mu_SN = alpha*self.x1-beta*self.color+self.mb-self.Mb_rand
+            mu_SN = alpha*self.x1-beta*self.color+self.mb-Mb
             """
             mu_SNa = alpha*self.x1-beta*self.color+self.mbb-Mb
             for i, vv in enumerate(mu_SNa):
