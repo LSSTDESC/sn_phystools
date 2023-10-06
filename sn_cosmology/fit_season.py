@@ -15,7 +15,8 @@ class Fit_seasons:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
                  dataDir_WFD, dbName_WFD, dictsel, survey,
                  prior, host_effi, frac_WFD_low_sigmaC=0.8,
-                 max_sigmaC=0.04, test_mode=0, lowz_optimize=0.1, sigmaInt=0.12):
+                 max_sigmaC=0.04, test_mode=0, lowz_optimize=0.1,
+                 sigmaInt=0.12, dump_data=False):
         """
         Class to perform fits for sets of season
 
@@ -69,6 +70,7 @@ class Fit_seasons:
         self.test_mode = test_mode
         self.lowz_optimize = lowz_optimize
         self.sigmaInt = sigmaInt
+        self.dump_data = dump_data
 
     def __call__(self):
         """
@@ -140,6 +142,11 @@ class Fit_seasons:
                                  max_sigmaC=self.max_sigmaC,
                                  test_mode=self.test_mode,
                                  lowz_optimize=self.lowz_optimize).data
+
+            if self.dump_data:
+                outName = 'SN_{}_{}_{}.hdf5'.format(
+                    self.dbName_DD, self.dbName_WFD, i)
+                data.to_hdf(outName, key='sn')
 
             if self.test_mode:
                 print('nsn for this run', len(data))
