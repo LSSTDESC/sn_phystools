@@ -479,6 +479,7 @@ class Random_survey:
         """
 
         df_res = pd.DataFrame()
+        df_orig = pd.DataFrame()
 
         for season in seasons:
             # grab the fields according to the survey
@@ -524,15 +525,25 @@ class Random_survey:
                 idb = res['season'] <= season_max
 
                 sela = res[idb]
+
+                if self.test_mode:
+                    df_orig = pd.concat((df_orig, sela))
+
                 # correct for zhost efficiency
                 res_host = self.effi_zhost(
                     sela, host_effi_key)
 
-                """
-                if self.test_mode:
-                    self.plot_sample_zhost(sela, res_host, field)
-                """
+                # if self.test_mode:
+                #    self.plot_sample_zhost(sela, res_host, field)
+
                 df_res = pd.concat((df_res, res_host))
+
+        if self.test_mode:
+            ll_ud = ['COSMOS', 'XMM-LSS']
+            idxa = df_orig['field'].isin(ll_ud)
+            idxb = df_res['field'].isin(ll_ud)
+            self.plot_sample_zhost(df_orig[idxa], df_res[idxb], 'UD')
+            self.plot_sample_zhost(df_orig[~idxa], df_res[~idxb], 'WFD+DD')
 
         return df_res
 
@@ -769,7 +780,7 @@ class Random_survey:
         print('before', group.size())
         print('after', group_new.size())
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(14, 8))
         fig.suptitle(field)
 
         df = bin_it(data, bins=bins)
@@ -777,6 +788,17 @@ class Random_survey:
         ax.plot(df['z'], df['NSN'], marker='o', mfc='None', color='k')
         ax.plot(dfb['z'], dfb['NSN'], marker='*', color='r')
 
+        ax.set_xlabel('z')
+        ax.set_ylabel('N$_{SN}$')
+        ax.grid()
+
+        """
+        figb, axb = plt.subplots()
+        figb.suptitle(field)
+        dfc = df.merge(dfb, left_on=['z'], right_on=['z'])
+        dfc['ratio'] = dfc['NSN_y']/dfc['NSN_x']
+        axb.plot(dfc['z'], dfc['ratio'])
+        """
         plt.show()
 
 
