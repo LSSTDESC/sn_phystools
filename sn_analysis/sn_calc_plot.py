@@ -203,6 +203,43 @@ def bin_it_mean(res, xvar='z', yvar='mu',
     return df
 
 
+def bin_it_combi(res, xvar='z', yvar='mu', errvar='sigma_mu',
+                 bins=np.arange(0.01, 1.12, 0.02)):
+    """
+
+
+    Parameters
+    ----------
+    res : pandas df
+        Data to process.
+    xvar : str, optional
+        x-axis var. The default is 'z'.
+    yvar : str, optional
+        y-axis var. The default is 'mu'.
+    errvar: str, optional
+        y-axis error. The default is 'sigma_mu'
+    bins : list(float), optional
+        binning values. The default is np.arange(0.01, 1.1, 0.02).
+
+    Returns
+    -------
+    df : pandas df
+        binned data + error.
+
+    """
+
+    res['w'] = res[errvar]**-2
+    group = res.groupby(pd.cut(res[xvar], bins))
+    bin_centers = (bins[: -1] + bins[1:])/2
+    df = pd.DataFrame(bin_centers, columns=[xvar])
+
+    df[yvar] = group[yvar].mean().to_list()
+    ra = group['w'].sum()**-0.5
+
+    df[errvar] = ra.to_list()
+    return df
+
+
 def select(res, list_sel):
     """
     Function to select a pandas df
