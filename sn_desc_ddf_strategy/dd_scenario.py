@@ -1577,7 +1577,7 @@ class DD_Scenario:
             lstyle = ls[it]
             mmark = mark[it]
 
-            label = '$(N_f^{UD},N_{season}^{UD})$'
+            label = '$(N_f^{UD},N_{s}^{UD})$'
             lab = '{} = ({},{})'.format(label, Nf_UD, Ns_UD)
             ax.plot(sel[varx], sel[vary], label=lab, marker=mmark,
                     linestyle=lstyle, mfc='None', ms=7, color='k')
@@ -1709,7 +1709,7 @@ class DD_Scenario:
                 for_res.append(('DDF_SCOC_pII', 0.5, 1, 3,
                                 int(y), int(x), self.cad_DD, self.sl_DD, 3))
 
-        ax.legend(bbox_to_anchor=(1.0, 0.55),
+        ax.legend(bbox_to_anchor=(1.3, 0.55),
                   ncol=1, frameon=False, fontsize=13)
         ax.grid()
 
