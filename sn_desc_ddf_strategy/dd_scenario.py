@@ -1475,7 +1475,7 @@ class DD_Scenario:
 
         """
 
-        zc = '$z_{complete}^{UD}$'
+        zc = '$z_{complete}^{UDF}$'
 
         zcomp_req = {}
         for z in self.zcomp:
@@ -1558,7 +1558,7 @@ class DD_Scenario:
 
         """
 
-        fig, ax = plt.subplots(figsize=(14, 8))
+        fig, ax = plt.subplots(figsize=(14, 9))
         fig.suptitle(figtitle)
         fig.subplots_adjust(right=0.8)
         # ls = dict(zip([1, 2, 3], ['solid', 'dotted', 'dashed']))
@@ -1577,7 +1577,7 @@ class DD_Scenario:
             lstyle = ls[it]
             mmark = mark[it]
 
-            label = '$(N_f^{UD},N_{s}^{UD})$'
+            label = '$(N_f^{UDF},N_{s}^{UDF})$'
             lab = '{} = ({},{})'.format(label, Nf_UD, Ns_UD)
             ax.plot(sel[varx], sel[vary], label=lab, marker=mmark,
                     linestyle=lstyle, mfc='None', ms=7, color='k')
@@ -1596,7 +1596,7 @@ class DD_Scenario:
                     (nameb, zcomp, Nf_UD, Ns_UD, int(nv_UD), int(nv_DD),
                      self.cad_UD, self.sl_UD, 0))
 
-                ax.text(nv_DD-500, nv_UD-12, nameb, color='b', fontsize=12)
+                ax.text(nv_DD-500, nv_UD-20, nameb, color='b', fontsize=12)
 
                 if pz_wl_req and Nf_UD >= 2:
                     nv_DD_n = pz_wl_req['WL_PZ_y2_y10'][1]
