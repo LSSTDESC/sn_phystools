@@ -34,12 +34,12 @@ class Calc_zlim:
 
         rateSN = SN_Rate(rate='Perrett', H0=72, Om0=0.3)
 
-        zz, rate, err_rate, nsn, err_nsn = rateSN(zmin=0.01,
-                                                  zmax=1.1,
-                                                  dz=0.001,
-                                                  duration=180.,
-                                                  survey_area=9.6,
-                                                  account_for_edges=True)
+        zz, rate, err_rate, nsn, err_nsn, age = rateSN(zmin=0.01,
+                                                       zmax=1.1,
+                                                       dz=0.001,
+                                                       duration=180.,
+                                                       survey_area=9.6,
+                                                       account_for_edges=True)
 
         effic = effic.fillna(0.)
         effic = effic.to_records(index=False)
