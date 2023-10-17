@@ -172,6 +172,7 @@ def coadd_night(grp, colsum=['numExposures'],
                 idx = grp['filter'] == ff
                 nf.append(grp[idx]['Nvisits'].sum())
 
+            dictout['Nvisits'] = [np.sum(nf)]
             nf = map(str, nf)
             dictout['visits_band'] = ['/'.join(nf)]
 
