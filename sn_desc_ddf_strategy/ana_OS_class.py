@@ -41,6 +41,7 @@ class Plot_cadence:
         dname = dname.rename(columns={'field': 'note'})
 
         data = np.load('{}/{}.npy'.format(dbDir, dbName), allow_pickle=True)
+
         # get numexposures for a single visit
 
         visitExposureTime_single = data['visitExposureTime'].mean()
@@ -62,7 +63,6 @@ class Plot_cadence:
             lambda x: coadd_night(x)).reset_index()
 
         dfb = doInt(dfb, ['season'])
-        print(dfb)
 
         dfc = dfb.groupby(['note', 'fieldType', 'season']).apply(
             lambda x: self.coadd_season(x)).reset_index()
@@ -212,13 +212,17 @@ class Plot_cadence:
         configs = df_coadd['note'].unique()
         vala = 'observationStartMJD'
         valb = 'numExposures'
+        valb = 'Nvisits'
         valc = 'MJD_season'
         fig, ax = plt.subplots(nrows=len(configs), figsize=(16, 9))
-        fig.suptitle(dbName, fontweight='bold')
+        dbNameb = '_'.join(dbName.split('_')[:-1])
+        fig.suptitle(dbNameb, fontweight='bold')
         fig.subplots_adjust(wspace=0., hspace=0.)
         configs = np.sort(configs)
+        import re
         for i, conf in enumerate(configs):
 
+            confb = re.sub('DD:', '', conf)
             idx = df_coadd['note'] == conf
             sel = df_coadd[idx]
 
@@ -227,7 +231,7 @@ class Plot_cadence:
             idxb = df_all['note'] == nn
             sel_all = df_all[idxb]
             sel_all = translate(sel_all)
-            print('hh', sel_all.columns)
+            # print('hh', sel_all.columns)
             idm = sel_all['moonPhase'] <= 20.
             ax[i].plot(sel_all[idm][valc], sel_all[idm]
                        [valb], 'ko', mfc='None', ms=4)
@@ -244,9 +248,9 @@ class Plot_cadence:
                 filter_alloc = row['filter_alloc'].split('_or_')
                 visits_band = row['visits_band'].split('_or_')
                 cadence = row['cadence']
-                print(filter_alloc)
-                print(visits_band)
-                print(cadence)
+                # print(filter_alloc)
+                # print(visits_band)
+                # print(cadence)
                 ymax = nmax(visits_band)
                 rymax.append(ymax)
                 ax[i].plot([seas_min]*2, [ymin, ymax],
@@ -258,21 +262,31 @@ class Plot_cadence:
                 seas_mean = 0.5*(seas_min+seas_max)
                 yyy = 0.5*(ymax-ymin)+ymin
                 k = 0.08
+                k = 0.06
 
                 if seas_min == 0:
                     k = 0.01
 
-                ax[i].text(k*seas_mean, 0.65,
-                           combi1, color='b',
-                           fontsize=12, transform=ax[i].transAxes)
+                    ax[i].text(k*seas_mean, 0.60,
+                               combi1+'/', color='b',
+                               fontsize=12, transform=ax[i].transAxes)
 
-                ax[i].text(k*seas_mean, 0.55,
-                           combi2, color='b',
-                           fontsize=12, transform=ax[i].transAxes)
+                    ax[i].text(k*seas_mean, 0.50,
+                               combi2, color='b',
+                               fontsize=12, transform=ax[i].transAxes)
 
-                ax[i].text(k*seas_mean, 0.45,
-                           'cadence = {}'.format(cadence), color='b',
-                           fontsize=12, transform=ax[i].transAxes)
+                    ax[i].text(k*seas_mean, 0.40,
+                               'cadence = {}'.format(cadence), color='b',
+                               fontsize=12, transform=ax[i].transAxes)
+                else:
+                    ax[i].text(k*seas_mean, 0.60,
+                               combi1+'/'+combi2, color='b',
+                               fontsize=12, transform=ax[i].transAxes)
+
+                    ax[i].text(k*seas_mean, 0.40,
+                               'cadence = {}'.format(cadence), color='b',
+                               fontsize=12, transform=ax[i].transAxes)
+
             ll = range(1, 11, 1)
             ax[i].set_xticks(list(ll))
             if i == len(configs)-1:
@@ -285,11 +299,12 @@ class Plot_cadence:
 
             ax[i].set_ylabel('N$_{visits}$')
             ax[i].set_xlim([0, 10])
-            ax[i].text(0.95, 0.8, conf, color='r',
+            ax[i].text(0.95, 0.8, confb, color='r',
                        fontsize=15, transform=ax[i].transAxes, ha='right')
             ax[i].grid()
             ax[i].tick_params(axis='x', colors='white')
 
+        fig.tight_layout()
         if self.outDir != '':
             outName = '{}/cadence_{}.png'.format(self.outDir, dbName)
             plt.savefig(outName)
