@@ -77,12 +77,12 @@ def get_data_indiv(fis, params, j, output_q):
     theDir = params['theDir']
     df_dict = {}
     for fi in fis:
-        print('processing', fi)
         ffi = fi.split('/')[-1]
-        hname = ffi.split('_')[2]
-        bb = ffi.split('_')[1]
+        hname = ffi.split('_')[4]
+        bb = ffi.split('_')[2]
         df = loadData_fakeSimu(theDir, ffi)
         key = '{}_{}'.format(bb, hname)
+        print('processing', fi, key)
         if key not in df_dict.keys():
             df_dict[key] = df
         else:
@@ -98,6 +98,7 @@ def plot_delta_zlim(df_dict, dict_sel, selvar):
 
     r = []
     for key, vals in df_dict.items():
+        print('aooo', key)
         zlim = gime_zlim(vals, dict_sel, selvar)
         tt = key.split('_')
         bb = tt[0]
@@ -109,7 +110,7 @@ def plot_delta_zlim(df_dict, dict_sel, selvar):
 
     print(df)
 
-    fig, ax = plt.subplots(figsize=(12, 7))
+    fig, ax = plt.subplots(figsize=(14, 8))
     leg = {}
     bands = 'rizy'
     for b in bands:
@@ -122,7 +123,7 @@ def plot_delta_zlim(df_dict, dict_sel, selvar):
         plot_res(df[idx], fig=fig, ax=ax, label=leg[b],
                  color=filtercolors[b], lst=lst[b], mark=marks[b])
 
-    ax.set_xlabel('Moon Phase [%]', fontweight='bold')
+    ax.set_xlabel('Moon phase [%]', fontweight='bold')
     zcomp = '$z_{complete}$'
     ax.set_ylabel('$\Delta $ {}'.format(zcomp))
 
@@ -130,7 +131,7 @@ def plot_delta_zlim(df_dict, dict_sel, selvar):
     ax.legend()
 
 
-def plot_delta_nsn(df_dict, dict_sel, selvar, zmin=0.8):
+def plot_delta_nsn(df_dict, dict_sel, selvar, zmin=0.1):
 
     r = []
 
@@ -139,14 +140,15 @@ def plot_delta_nsn(df_dict, dict_sel, selvar, zmin=0.8):
         bb = tt[0]
         hname = tt[1]
 
-        # print(hname, zlim)
+        print(key)
         # r.append((bb, int(hname), zlim))
         df['sigmaC'] = np.sqrt(df['Cov_colorcolor'])
         # plt.plot(df['z'], df['sigmaC'], 'ko')
         # check_simuparams(df)
+        # plt.show()
         seldf = select(df, dict_sel[selvar])
         idx = seldf['z'] >= zmin
-        print(key, len(seldf), len(seldf[idx]))
+        # print(key, len(seldf), len(seldf[idx]), zmin)
         nsn_tot = len(seldf)
         nsn_07 = len(seldf[idx])
         r.append((bb, int(hname), nsn_tot, nsn_07))
@@ -154,7 +156,7 @@ def plot_delta_nsn(df_dict, dict_sel, selvar, zmin=0.8):
     df = pd.DataFrame.from_records(
         r, columns=['band', 'moon_frac', 'nSN', 'nSN_0{}'.format(int(10*zmin))])
 
-    fig, ax = plt.subplots(figsize=(12, 7))
+    fig, ax = plt.subplots(figsize=(15, 8))
     leg = {}
     bands = 'rizy'
     for b in bands:
@@ -173,11 +175,16 @@ def plot_delta_nsn(df_dict, dict_sel, selvar, zmin=0.8):
         ttit = '$z\geq$'
         ttit += '{}'.format(np.round(zmin, 1))
         fig.suptitle(ttit)
-    ax.set_xlabel('Moon Phase [%]', fontweight='bold')
+    ax.set_xlabel('Moon phase [%]', fontweight='bold')
     zcomp = '$N_{SN}$'
-    ax.set_ylabel('$\Delta $ {}'.format(zcomp))
+    # ax.set_ylabel('$\Delta $ {}'.format(zcomp))
     ax.set_ylabel(
-        r'$\frac{\mathrm{N_{SN}}}{\mathrm{N_{SN}}^{\mathrm{Moon~Phase=0}}}$')
+        r'$\frac{\mathrm{N_{SN}}}{\mathrm{N_{SN}}^{\mathrm{Moon~phase=0}}}$',
+        size=30)
+
+    ax.set_ylabel(
+        r'$\frac{\mathrm{N_{SN}}}{\mathrm{N_{SN}^{Moon~phase=0}}}$',
+        size=30)
     # ax.set_ylabel('{}'.format(legb))
 
     ax.legend()
