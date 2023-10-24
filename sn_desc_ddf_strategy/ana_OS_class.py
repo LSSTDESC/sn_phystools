@@ -103,7 +103,8 @@ class Plot_cadence:
 
         """
         """
-        print('allo', np.unique(grp[['filter_alloc', 'visits_band']]), len(grp))
+        print('allo', np.unique(
+            grp[['filter_alloc', 'visits_band']]), len(grp))
         filter_alloc = grp['filter_alloc'].to_list()
         visits_band = grp['visits_band'].to_list()
         """
@@ -214,12 +215,14 @@ class Plot_cadence:
         valb = 'numExposures'
         valb = 'Nvisits'
         valc = 'MJD_season'
-        fig, ax = plt.subplots(nrows=len(configs), figsize=(16, 9))
+        fig, ax = plt.subplots(nrows=len(configs), figsize=(15, 8))
         dbNameb = '_'.join(dbName.split('_')[:-1])
         fig.suptitle(dbNameb, fontweight='bold')
-        fig.subplots_adjust(wspace=0., hspace=0.)
+        fig.subplots_adjust(wspace=0., hspace=0., bottom=0.15)
         configs = np.sort(configs)
         import re
+        fsize = 15
+        ccol = 'm'
         for i, conf in enumerate(configs):
 
             confb = re.sub('DD:', '', conf)
@@ -234,17 +237,16 @@ class Plot_cadence:
             # print('hh', sel_all.columns)
             idm = sel_all['moonPhase'] <= 20.
             ax[i].plot(sel_all[idm][valc], sel_all[idm]
-                       [valb], 'ko', mfc='None', ms=4)
+                       [valb], 'r.', mfc='None', ms=4)
             idm = sel_all['moonPhase'] > 20.
             ax[i].plot(sel_all[idm][valc], sel_all[idm]
-                       [valb], 'k*', mfc='None', ms=4)
+                       [valb], 'b+', mfc='None', ms=4)
 
             ymin, ymax = ax[i].get_ylim()
             rymax = []
             for ib, row in sel.iterrows():
                 seas_min = row['seas_min']
                 seas_max = row['seas_max']
-                cad = row['cadence']
                 filter_alloc = row['filter_alloc'].split('_or_')
                 visits_band = row['visits_band'].split('_or_')
                 cadence = row['cadence']
@@ -262,31 +264,58 @@ class Plot_cadence:
                 seas_mean = 0.5*(seas_min+seas_max)
                 yyy = 0.5*(ymax-ymin)+ymin
                 k = 0.08
-                k = 0.06
+                k = 0.055
 
+                print('alors', nn, cadence, seas_min, seas_mean)
                 if seas_min == 0:
-                    k = 0.01
+                    k = 0.005
 
-                    ax[i].text(k*seas_mean, 0.60,
-                               combi1+'/', color='b',
-                               fontsize=12, transform=ax[i].transAxes)
+                    ax[i].text(k*seas_mean, 0.8,
+                               combi1, color=ccol,
+                               fontsize=fsize, transform=ax[i].transAxes)
+
+                    ax[i].text(k*seas_mean, 0.65,
+                               combi2, color=ccol,
+                               fontsize=fsize, transform=ax[i].transAxes)
 
                     ax[i].text(k*seas_mean, 0.50,
-                               combi2, color='b',
-                               fontsize=12, transform=ax[i].transAxes)
-
-                    ax[i].text(k*seas_mean, 0.40,
-                               'cadence = {}'.format(cadence), color='b',
-                               fontsize=12, transform=ax[i].transAxes)
+                               'cad = {}'.format(cadence), color=ccol,
+                               fontsize=fsize, transform=ax[i].transAxes)
                 else:
-                    ax[i].text(k*seas_mean, 0.60,
-                               combi1+'/'+combi2, color='b',
-                               fontsize=12, transform=ax[i].transAxes)
+                    if seas_mean <= 3:
+                        ax[i].text(0.1*(seas_mean-0.5), 0.60,
+                                   combi1, color=ccol,
+                                   fontsize=fsize, transform=ax[i].transAxes)
 
-                    ax[i].text(k*seas_mean, 0.40,
-                               'cadence = {}'.format(cadence), color='b',
-                               fontsize=12, transform=ax[i].transAxes)
+                        ax[i].text(0.1*(seas_mean-0.5), 0.45,
+                                   combi2, color=ccol,
+                                   fontsize=fsize, transform=ax[i].transAxes)
 
+                        ax[i].text(0.1*(seas_mean-0.5), 0.30,
+                                   'cad = {}'.format(cadence), color=ccol,
+                                   fontsize=fsize, transform=ax[i].transAxes)
+                    else:
+                        tp = '{}/{} - cad = {}'.format(
+                            combi1, combi2, cadence)
+                        """
+                        ax[i].text(seas_mean/10., 0.60,
+                                   combi1+'/'+combi2, color='b',
+                                   fontsize=12, transform=ax[i].transAxes)
+
+                        ax[i].text(seas_mean/10., 0.40,
+                                   'cadence = {}'.format(cadence), color='b',
+                                   fontsize=12, transform=ax[i].transAxes)
+                        """
+                        yyy = 0.40
+                        if dbNameb == 'DDF_SCOC_pII' and nn == 'DD:COSMOS':
+                            yyy = 0.60
+                        if dbNameb == 'DDF_DESC_0.75_co':
+                            yyy = 0.60
+                        if dbNameb == 'DDF_DESC_0.70_co':
+                            yyy = 0.60
+                        ax[i].text(0.8*seas_mean/10., yyy,
+                                   tp, color=ccol,
+                                   fontsize=fsize, transform=ax[i].transAxes)
             ll = range(1, 11, 1)
             ax[i].set_xticks(list(ll))
             if i == len(configs)-1:
@@ -299,12 +328,12 @@ class Plot_cadence:
 
             ax[i].set_ylabel('N$_{visits}$')
             ax[i].set_xlim([0, 10])
-            ax[i].text(0.95, 0.8, confb, color='r',
+            ax[i].text(0.97, 0.85, confb, color='dimgrey',
                        fontsize=15, transform=ax[i].transAxes, ha='right')
             ax[i].grid()
             ax[i].tick_params(axis='x', colors='white')
 
-        fig.tight_layout()
+        # fig.tight_layout(pad=0)
         if self.outDir != '':
             outName = '{}/cadence_{}.png'.format(self.outDir, dbName)
             plt.savefig(outName)
