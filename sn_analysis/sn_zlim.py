@@ -42,7 +42,8 @@ def plot_2D(res, varx='z', legx='$', vary='sigmaC',
     # plt.show()
 
 
-def plot_res(df, fig=None, ax=None, label='', color='b', lst='solid', mark='None', mfc='None'):
+def plot_res(df, fig=None, ax=None, label='', color='b',
+             lst='solid', mark='None', mfc='None'):
 
     if fig is None:
         fig, ax = plt.subplots(figsize=(11, 6))
@@ -58,7 +59,8 @@ def plot_res(df, fig=None, ax=None, label='', color='b', lst='solid', mark='None
     sel = df[idx]
     sel = sel.sort_values(by=['moon_frac'])
     ax.plot(sel['moon_frac'], sel['delta_zlim'],
-            label=label, color=color, linestyle=lst, marker=mark, mfc=mfc)
+            label=label, color=color, linestyle=lst,
+            marker=mark, mfc=mfc, lw=3)
     # ax.grid()
 
 
@@ -212,7 +214,7 @@ def plot_resb(df, fig=None, ax=None, var='nSN', label='', color='b',
     sel = df[idx]
     sel = sel.sort_values(by=['moon_frac'])
     ax.plot(sel['moon_frac'], sel['delta_nSN'], label=label,
-            color=color, linestyle=lst, marker=mark, mfc=mfc)
+            color=color, linestyle=lst, marker=mark, mfc=mfc, lw=3)
     # ax.errorbar(sel['moon_frac'], sel['delta_nSN'], yerr=sel['err_nSN'],
     #            label=label, color=color, linestyle=lst, marker=mark, mfc=mfc)
     # ax.grid()
