@@ -58,6 +58,8 @@ class FiveSigmaDepth_Nvisits:
 
         self.m5_req = self.load_req(requirements)
 
+        print('requirements', self.m5_req)
+
         # m5 single
         m5_b = {}
         for key, vals in m5_single.items():
@@ -167,6 +169,13 @@ class FiveSigmaDepth_Nvisits:
             msingle_all['Nvisits_WL_PZ_{}'.format(tt)] = np.max(
                 msingle_all[['Nvisits_{}'.format(tt),
                              'Nvisits_WL_{}'.format(tt)]], axis=1)
+
+        """
+        vva = ['Nvisits_WL_y1', 'Nvisits_WL_y2_y10',
+               'Nvisits_y1', 'Nvisits_y2_y10',
+               'Nvisits_WL_PZ_y1', 'Nvisits_WL_PZ_y2_y10']
+        print('merged', msingle_all[vva])
+        """
 
         varb = ['band', 'Nvisits_y1',
                 'Nvisits_y2_y10', 'Nvisits_y2_y10_p', 'Nvisits_y2_y10_m',
