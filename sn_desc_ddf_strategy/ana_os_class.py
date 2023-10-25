@@ -9,7 +9,7 @@ Created on Fri Jul  7 14:58:22 2023
 import numpy as np
 import pandas as pd
 from . import plt
-from .ana_OS_tools import doInt, coadd_night, translate, nmax, gime_combi
+from .ana_os_tools import doInt, coadd_night, translate, nmax, gime_combi
 
 
 class Plot_cadence:
