@@ -8,7 +8,7 @@ Created on Fri Jul  7 15:10:41 2023
 import numpy as np
 import pandas as pd
 from . import plt, filtercolors
-from .ana_OS_tools import translate, coadd_night, m5_coadd_grp
+from .ana_os_tools import translate, coadd_night, m5_coadd_grp
 
 
 class Anaplot_OS:
@@ -399,6 +399,7 @@ class Anaplot_OS:
 
         vala = 'observationStartMJD'
         valb = 'numExposures'
+        valb = 'Nvisits'
         valc = 'MJD_season'
         norm = self.Nvisits_LSST
 
@@ -414,10 +415,10 @@ class Anaplot_OS:
             # divide by 2 to get the number of visits
             dt = data.groupby(['night']).apply(
                 lambda x: coadd_night(x)).reset_index()
-            print(dt['season'].unique())
+            print(dt['season'].unique(), dt.columns)
             dt = dt.sort_values(by=['night'])
             dt[valb] /= norm
-            dt[valb] /= 2
+            # dt[valb] /= 2
             dt[valb] *= 100.
             # re-estimate seasons
             # dt = dt.drop(columns=['season'])
@@ -428,7 +429,8 @@ class Anaplot_OS:
             selt = selt.sort_values(by=[valc])
             tp = np.cumsum(selt[valb])
             ax.plot(selt[valc], tp, label=dbName,
-                    color=row['color'], linestyle=row['ls'])
+                    color=row['color'], linestyle=row['ls'],
+                    marker=row['marker'], mfc='None', ms=10, markevery=50)
 
             bud_max = np.max([bud_max, np.max(tp)])
 
