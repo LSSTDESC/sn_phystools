@@ -7,7 +7,7 @@ Created on Fri Jul  7 15:10:41 2023
 """
 import numpy as np
 import pandas as pd
-from . import plt, filtercolors
+from . import plt, filtercolors, filtermarkers
 from .ana_os_tools import translate, coadd_night, m5_coadd_grp
 
 
@@ -275,7 +275,6 @@ class Anaplot_OS:
         """
 
         bands = 'ugrizy'
-        marker = dict(zip(bands, ['o', '*', 's', 'h', '^', 'v']))
         fig, ax = plt.subplots(nrows=2, figsize=(12, 8))
         fig.subplots_adjust(hspace=0.)
         fig.suptitle('{} - {}'.format(dbName, field))
@@ -285,7 +284,7 @@ class Anaplot_OS:
         for b in bands:
             ax[1].errorbar(sel['season'], sel['cad_mean_{}'.format(b)],
                            yerr=sel['cad_rms_{}'.format(b)],
-                           color=filtercolors[b], marker=marker[b],
+                           color=filtercolors[b], marker=filtermarkers[b],
                            mfc='None', label=b)
 
         ax[0].set_ylabel('cadence [night]')
@@ -411,6 +410,7 @@ class Anaplot_OS:
             dbName = row['dbName']
             idx = self.data['dbName'] == dbName
             data = self.data[idx]
+            dbNameb = '_'.join(dbName.split('_')[:-1])
             # sum numexposures by night
             # divide by 2 to get the number of visits
             dt = data.groupby(['night']).apply(
@@ -428,7 +428,7 @@ class Anaplot_OS:
             selt = translate(selt)
             selt = selt.sort_values(by=[valc])
             tp = np.cumsum(selt[valb])
-            ax.plot(selt[valc], tp, label=dbName,
+            ax.plot(selt[valc], tp, label=dbNameb,
                     color=row['color'], linestyle=row['ls'],
                     marker=row['marker'], mfc='None', ms=10, markevery=50)
 
@@ -452,8 +452,8 @@ class Anaplot_OS:
         ax.plot([0, 10], [100.*self.budget]*2,
                 linestyle='dashed', color='k', lw=2)
         ax.legend(loc='upper center',
-                  bbox_to_anchor=(1.15, 0.7),
-                  ncol=1, fontsize=12, frameon=False)
+                  bbox_to_anchor=(1.20, 0.7),
+                  ncol=1, fontsize=15, frameon=False)
 
         ax.set_ylabel('DDF Budget [%]')
         plt.xticks(color='w')
@@ -498,10 +498,12 @@ class Anaplot_OS:
               'diff_m5_y1', 'diff_m5_y2_y10']
         print(restot[vv])
 
-        self.plot_diff_m5_indiv(restot)
+        self.plot_diff_m5_indiv_one_page(restot)
+        """
         self.plot_diff_m5_indiv(restot, vary='diff_m5_y1',
                                 ylabel='$\Delta m_5=m_5^{DD}-m_5^{PZ}$',
                                 title='y1')
+        """
 
     def plot_diff_m5(self, data, varx='name', vary='diff_m5_y2_y10'):
         """
@@ -557,6 +559,99 @@ class Anaplot_OS:
             if j == 1:
                 ax[i, j].set_yticks([])
 
+    def plot_diff_m5_indiv_one_page(self, data, varx='name', vary='diff_m5_y2_y10',
+                                    ylabel='$\Delta m_5=m_5^{OS}-m_5^{PZ~req}$',
+                                    title='y2 to y10', ybar=0.):
+        """
+        Method to plot dif_m5 = m5_data-m5_req(PZ)
+
+        Parameters
+        ----------
+        data : TYPE
+            DESCRIPTION.
+        varx : TYPE, optional
+            DESCRIPTION. The default is 'name'.
+        vary : TYPE, optional
+            DESCRIPTION. The default is 'diff_m5_y2_y10'.
+        ylabel : TYPE, optional
+            DESCRIPTION. The default is '$\Delta m_5=m_5^{OS}-m_5^{PZ~req}$'.
+        title : TYPE, optional
+            DESCRIPTION. The default is 'y2 to y10'.
+        ybar : TYPE, optional
+            DESCRIPTION. The default is 0..
+
+        Returns
+        -------
+        None.
+
+        """
+
+        fields = data['note'].unique()
+
+        data['name'] = data['name'].map(lambda x: '_'.join(x.split('_')[:-1]))
+
+        fig, ax = plt.subplots(nrows=int(len(fields)/2),
+                               ncols=2, figsize=(14, 10))
+
+        fig.subplots_adjust(bottom=0.15, wspace=0, hspace=0, top=0.99)
+
+        ffields = ['DD:COSMOS', 'DD:XMM_LSS', 'DD:ECDFS',
+                   'DD:ELAISS1', 'DD:EDFS_a', 'DD:EDFS_b']
+
+        ppos = [(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)]
+
+        ijpos = dict(zip(ffields, ppos))
+
+        for field in ffields:
+            idx = data['note'] == field
+            sela = data[idx]
+            bands = sela['band'].unique()
+
+            pos = ijpos[field]
+            for b in bands:
+                idxa = sela['band'] == b
+                selb = sela[idxa]
+                color = filtercolors[b]
+                ax[pos].plot(selb[varx], selb[vary], marker=filtermarkers[b],
+                             color=color, mfc='None', markeredgewidth=2, ms=12)
+
+            xmin, xmax = ax[pos].get_xlim()
+            ax[pos].plot([xmin, xmax], [ybar]*2,
+                         linestyle='dashed', lw=3, color='k')
+            ax[pos].grid()
+            if pos == (1, 0):
+                ax[pos].set_ylabel(ylabel)
+                xdep = 0.92
+                ydep = 0.6
+                shift = 0.05
+                for ik, b in enumerate('ugrizy'):
+                    ax[pos].plot([xdep, xdep+0.04], [ydep-ik*shift]*2,
+                                 linestyle='solid',
+                                 color=filtercolors[b],
+                                 marker=filtermarkers[b],
+                                 transform=fig.transFigure,
+                                 clip_on=False, mfc='None', markeredgewidth=2,
+                                 ms=12, markevery=1)
+
+                    ax[pos].text(xdep+0.060, ydep-ik*shift, b,
+                                 horizontalalignment='center',
+                                 verticalalignment='center', transform=fig.transFigure)
+            plt.setp(ax[pos].get_xticklabels(), rotation=45,
+                     ha="right", va="top", fontsize=12)
+            if pos[1] == 1:
+                ax[pos].set_yticklabels([])
+            if pos[0] == 0 or pos[0] == 1:
+                ax[pos].set_xticklabels([])
+
+            ax[pos].text(0.01, 0.05, field,
+                         transform=ax[pos].transAxes, color='dimgrey')
+
+        if self.outDir != '':
+            outName = '{}/{}.png'.format(self.outDir, vary)
+
+            plt.savefig(outName)
+            plt.close(fig)
+
     def plot_diff_m5_indiv(self, data, varx='name', vary='diff_m5_y2_y10',
                            ylabel='$\Delta m_5=m_5^{DD}-m_5^{PZ}$',
                            title='y2 to y10', ybar=0.):
@@ -586,6 +681,8 @@ class Anaplot_OS:
 
         fields = data['note'].unique()
 
+        data['name'] = data['name'].map(lambda x: '_'.join(x.split('_')[:-1]))
+
         for field in fields:
 
             fig, ax = plt.subplots(figsize=(12, 8))
@@ -601,7 +698,7 @@ class Anaplot_OS:
                 idxa = sela['band'] == b
                 selb = sela[idxa]
                 color = filtercolors[b]
-                ax.plot(selb[varx], selb[vary], marker='o',
+                ax.plot(selb[varx], selb[vary], marker=filtermarkers[b],
                         color=color, mfc='None', markeredgewidth=2, ms=12)
 
             # ax.tick_params(axis='x', labelrotation=20.,
@@ -622,10 +719,18 @@ class Anaplot_OS:
             ydep = 0.6
             shift = 0.05
             for ik, b in enumerate('ugrizy'):
-                ax.plot([xdep, xdep+0.02], [ydep-ik*shift]*2, linestyle='solid',
-                        color=filtercolors[b], transform=fig.transFigure, clip_on=False)
-                ax.text(xdep+0.030, ydep-ik*shift, b, horizontalalignment='center',
+                ax.plot([xdep, xdep+0.04], [ydep-ik*shift]*2,
+                        linestyle='solid',
+                        color=filtercolors[b],
+                        marker=filtermarkers[b],
+                        transform=fig.transFigure,
+                        clip_on=False, mfc='None', markeredgewidth=2,
+                        ms=12, markevery=1)
+
+                ax.text(xdep+0.060, ydep-ik*shift, b,
+                        horizontalalignment='center',
                         verticalalignment='center', transform=fig.transFigure)
+
             ax.set_xlim([xmin, xmax])
             if self.outDir != '':
                 outName = '{}/{}_{}.png'.format(self.outDir,
@@ -672,7 +777,7 @@ class Anaplot_OS:
             sumdf['ratio_Nv_WL'] = sumdf['Nv_WL']/sumdf['Nv_WL_ref']
             restot = pd.concat((restot, sumdf))
 
-        self.plot_diff_m5_indiv(restot, varx='name', vary='ratio_Nv_WL',
-                                # ylabel='$\frac{N_visits}{N_{visits}^{WL}$',
-                                ylabel=r'$\frac{N_{visits}^{DD}}{N_{visits}^{WL}}$',
-                                title='WL reqs', ybar=1)
+        self.plot_diff_m5_indiv_one_page(restot, varx='name', vary='ratio_Nv_WL',
+                                         # ylabel='$\frac{N_visits}{N_{visits}^{WL}$',
+                                         ylabel=r'$\frac{N_{visits}^{DD}}{N_{visits}^{WL}}$',
+                                         title='WL reqs', ybar=1)
