@@ -720,20 +720,20 @@ class Anaplot_OS:
                                  verticalalignment='center', transform=fig.transFigure)
             plt.setp(ax[pos].get_xticklabels(), rotation=45,
                      ha="right", va="top", fontsize=12)
+
+            if log:
+                ax[pos].set_yscale("log")
             if pos[1] == 1:
                 ax[pos].set_yticklabels([])
             if pos[0] == 0 or pos[0] == 1:
                 ax[pos].set_xticklabels([])
 
             xt, yt = 0.01, 0.05
-            if vary == 'ratio_Nv_WL':
+            if vary == 'ratio_Nv_WL' and log == False:
                 xt, yt = 0.01, 0.9
 
             ax[pos].text(xt, yt, self.corresp_dd_names[field],
                          transform=ax[pos].transAxes, color='dimgrey')
-
-            if log:
-                ax[pos].set_yscale("log")
 
         if self.outDir != '':
             outName = '{}/{}.png'.format(self.outDir, vary)
