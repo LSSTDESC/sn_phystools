@@ -646,7 +646,7 @@ class Anaplot_OS:
 
     def plot_diff_m5_indiv_one_page(self, data, varx='name', vary='diff_m5_y2_y10',
                                     ylabel='$\Delta m_5=m_5^{OS}-m_5^{PZ~req}$',
-                                    title='y2 to y10', ybar=0.):
+                                    title='y2 to y10', ybar=0., log=False):
         """
         Method to plot dif_m5 = m5_data-m5_req(PZ)
 
@@ -731,6 +731,9 @@ class Anaplot_OS:
 
             ax[pos].text(xt, yt, self.corresp_dd_names[field],
                          transform=ax[pos].transAxes, color='dimgrey')
+
+            if log:
+                ax[pos].set_yscale("log")
 
         if self.outDir != '':
             outName = '{}/{}.png'.format(self.outDir, vary)
@@ -881,7 +884,7 @@ class Anaplot_OS:
         self.plot_diff_m5_indiv_one_page(sel, varx='name', vary='ratio_Nv_WL',
                                          # ylabel='$\frac{N_visits}{N_{visits}^{WL}$',
                                          ylabel=r'$\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$',
-                                         title='WL reqs', ybar=1)
+                                         title='WL reqs', ybar=1, log=True)
 
         bb = '$\\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$'
         bbb = '$\\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}~\ge~1$'
