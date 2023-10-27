@@ -17,7 +17,8 @@ class Anaplot_OS:
                  filter_alloc_req='input/DESC_cohesive_strategy/filter_allocation.csv',
                  Nvisits_WL=8000,
                  fields=['DD:COSMOS', 'DD:XMM_LSS', 'DD:ELAISS1',
-                         'DD:ECDFS', 'DD:EDFS_a', 'DD:EDFS_b']):
+                         'DD:ECDFS', 'DD:EDFS_a', 'DD:EDFS_b'],
+                 corresp_dd_names={}):
         """
         Class to plot OS parameters+compariosn wrt reqs
 
@@ -58,6 +59,10 @@ class Anaplot_OS:
 
         self.data = self.load_data()
 
+        self.corresp_dd_names = corresp_dd_names
+        self.ffields = ['DD:COSMOS', 'DD:XMM_LSS', 'DD:ECDFS',
+                        'DD:ELAISS1', 'DD:EDFS_a', 'DD:EDFS_b']
+
     def load_data(self):
         """
         Method to load the data
@@ -83,7 +88,7 @@ class Anaplot_OS:
 
             nvisits = len(data[~idx])
             if nvisits > 0:
-                print('hhh', len(data[idx])/len(data[~idx]))
+                print('frac DDF', len(data[idx])/len(data[~idx]))
                 self.nvisits_LSST = len(data[~idx])
             data = data[idx]
 
@@ -98,6 +103,8 @@ class Anaplot_OS:
             data = pd.DataFrame.from_records(data)
             data['dbName'] = dbName
             # datac = data[idx]
+
+            # print('hhh', data['note'].unique())
             df = pd.concat((df, data))
 
         return df
@@ -494,16 +501,94 @@ class Anaplot_OS:
             res['diff_m5_y2_y10'] = res['m5_y2_y10']-res['m5_y2_y10_ref']
             restot = pd.concat((restot, res))
 
+        # restot['note'] = restot['note'].map(lambda x: self.corresp_dd_names[x])
         vv = ['note', 'm5_y1', 'm5_y2_y10', 'm5_y1_ref', 'm5_y2_y10_ref',
               'diff_m5_y1', 'diff_m5_y2_y10']
         print(restot[vv])
 
         self.plot_diff_m5_indiv_one_page(restot)
+
         """
         self.plot_diff_m5_indiv(restot, vary='diff_m5_y1',
                                 ylabel='$\Delta m_5=m_5^{DD}-m_5^{PZ}$',
                                 title='y1')
         """
+        self.print_latex(restot)
+
+    def print_latex(self, restot, vary='diff_m5_y1',
+                    latex_name='$\Delta m_5~=~m_5^{OS}-m_5^{PZ~req}$',
+                    latex_cond='$\Delta m_5~\geq~0$',
+                    latex_req='PZ',
+                    label='tab:pzreq'):
+        """
+        Method to print results as a latex table
+
+        Parameters
+        ----------
+        restot : pandas df
+            Data to process.
+        vary : str, optional
+            Var to estimate. The default is 'diff_m5_y1'.
+        latex_name : str, optional
+            Used for the caption name. The default is '$\Delta m_5~=~m_5^{OS}-m_5^{PZ~req}$'.
+        latex_cond : str, optional
+            Used for the caption name. The default is '$\Delta m_5~\geq~0$'.
+        latex_req : str, optional
+            Used for the caption name. The default is 'PZ'.
+        label : str, optional
+            Latex table label. The default is 'tab:pzreq'.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        r = []
+
+        caption = '{} for year 1. {} requirements are fulfilled if {}'.format(
+            latex_name, latex_req, latex_cond)
+        r.append('\\begin{table}[!htbp]')
+        r.append('\\begin{center}')
+        r.append('\caption{}\\label{}.'.format('{'+caption+'}', '{'+label+'}'))
+        r.append('\\begin{tabular}{c|c|c}')
+        r.append('\hline')
+        r.append('\hline')
+        r.append('season & band & {} \\\\'.format(latex_name))
+        r.append('\hline')
+
+        bands = 'ugrizy'
+        for field in self.ffields:
+            idx = restot['note'] == field
+            sel = restot[idx]
+            if len(sel) == 0:
+                continue
+            for io, b in enumerate(bands):
+                idxb = sel['band'] == b
+                selb = sel[idxb]
+                vval = np.round(selb[vary].values[0], 2)
+                vval = str(vval)
+                bb = vval.split('.')[1]
+                if len(bb) < 2:
+                    vval += '0'
+                tp = ' & '+b + '& ' + vval + ' \\\\'
+                if io == 2:
+                    tp = '{} {}'.format(self.corresp_dd_names[field], tp)
+                r.append(tp)
+            r.append('\hline')
+        r.append('\\hline')
+        r.append('\\end{tabular}')
+        r.append('\\end{center}')
+        r.append('\\end{table}')
+
+        print(r)
+
+        fia = open('{}.tex'.format(vary), 'w')
+
+        for vv in r:
+            fia.write('{} \n'.format(vv))
+
+        fia.close()
 
     def plot_diff_m5(self, data, varx='name', vary='diff_m5_y2_y10'):
         """
@@ -595,14 +680,11 @@ class Anaplot_OS:
 
         fig.subplots_adjust(bottom=0.15, wspace=0, hspace=0, top=0.99)
 
-        ffields = ['DD:COSMOS', 'DD:XMM_LSS', 'DD:ECDFS',
-                   'DD:ELAISS1', 'DD:EDFS_a', 'DD:EDFS_b']
-
         ppos = [(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)]
 
-        ijpos = dict(zip(ffields, ppos))
+        ijpos = dict(zip(self.ffields, ppos))
 
-        for field in ffields:
+        for field in self.ffields:
             idx = data['note'] == field
             sela = data[idx]
             bands = sela['band'].unique()
@@ -643,7 +725,11 @@ class Anaplot_OS:
             if pos[0] == 0 or pos[0] == 1:
                 ax[pos].set_xticklabels([])
 
-            ax[pos].text(0.01, 0.05, field,
+            xt, yt = 0.01, 0.05
+            if vary == 'ratio_Nv_WL':
+                xt, yt = 0.01, 0.9
+
+            ax[pos].text(xt, yt, self.corresp_dd_names[field],
                          transform=ax[pos].transAxes, color='dimgrey')
 
         if self.outDir != '':
@@ -753,6 +839,7 @@ class Anaplot_OS:
 
         Nv_WL['Nv_WL'] = Nv_WL['frac_band']*self.Nvisits_WL
         Nv_WL['Nv_WL'] = Nv_WL['Nv_WL'].astype(int)
+        Nv_WL['Nv_WL'] /= 10
         print('reference', Nv_WL)
         # get the corresponding number of visits
 
@@ -766,10 +853,14 @@ class Anaplot_OS:
             data = self.data[idx]
 
             # get the total number of visits per band and per field
-            df = data[['note', 'filter', 'numExposures']]
+            df = data[['note', 'filter', 'numExposures',
+                       'visitExposureTime', 'season']]
             print(df)
-            sumdf = df.groupby(['note', 'filter']).apply(
-                lambda x: pd.DataFrame({'Nv_WL': [x['numExposures'].sum()]})).reset_index()
+            print(data.columns)
+            sumdf = data.groupby(['note', 'filter', 'season']).apply(
+                lambda x: pd.DataFrame({'Nv_WL': [x['visitExposureTime'].sum()]})).reset_index()
+            sumdf['Nv_WL'] /= 30.
+            print(sumdf)
             sumdf = sumdf.rename(columns={'filter': 'band'})
             sumdf = sumdf.merge(Nv_WL, left_on=['band'], right_on=[
                 'band'], suffixes=['', '_ref'])
@@ -777,7 +868,28 @@ class Anaplot_OS:
             sumdf['ratio_Nv_WL'] = sumdf['Nv_WL']/sumdf['Nv_WL_ref']
             restot = pd.concat((restot, sumdf))
 
-        self.plot_diff_m5_indiv_one_page(restot, varx='name', vary='ratio_Nv_WL',
+        idx = restot['season'] > 1
+        sel = restot[idx]
+        vv = 'Nv_WL'
+        print(sel.columns)
+        sel = sel.groupby(['note', 'band', 'name'])[vv].sum().reset_index()
+        sel = sel.merge(Nv_WL, left_on=['band'], right_on=[
+            'band'], suffixes=['', '_ref'])
+        sel['ratio_Nv_WL'] = sel['Nv_WL']/(9.*sel['Nv_WL_ref'])
+
+        print(sel.columns)
+        self.plot_diff_m5_indiv_one_page(sel, varx='name', vary='ratio_Nv_WL',
                                          # ylabel='$\frac{N_visits}{N_{visits}^{WL}$',
-                                         ylabel=r'$\frac{N_{visits}^{DD}}{N_{visits}^{WL}}$',
+                                         ylabel=r'$\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$',
                                          title='WL reqs', ybar=1)
+
+        bb = '$\\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$'
+        bbb = '$\\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}~\ge~1$'
+        idx = restot['season'] == 1
+        idx &= restot['note'].isin(['DD:COSMOS', 'DD:EDFS_a'])
+
+        self.print_latex(restot[idx], vary='ratio_Nv_WL',
+                         latex_name=bb,
+                         latex_cond=bbb,
+                         latex_req='WL',
+                         label='tab:wlreq')
