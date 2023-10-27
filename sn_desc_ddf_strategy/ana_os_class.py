@@ -13,7 +13,7 @@ from .ana_os_tools import doInt, coadd_night, translate, nmax, gime_combi
 
 
 class Plot_cadence:
-    def __init__(self, dbDir, dbName, df_config_scen, outDir):
+    def __init__(self, dbDir, dbName, df_config_scen, outDir, corresp_dd_names):
         """
         Class to make cadence plots
 
@@ -27,6 +27,8 @@ class Plot_cadence:
             survey config.
         outDir : str
             output dir for plots.
+        corresp_dd_names: dict
+            to have chosen field names for the display.
 
         Returns
         -------
@@ -34,6 +36,7 @@ class Plot_cadence:
 
         """
         self.outDir = outDir
+        self.corresp_dd_names = corresp_dd_names
 
         idx = df_config_scen['scen'] == dbName
 
@@ -226,6 +229,8 @@ class Plot_cadence:
         for i, conf in enumerate(configs):
 
             confb = re.sub('DD:', '', conf)
+            confb = ','.join([self.corresp_dd_names[vv]
+                             for vv in conf.split(',')])
             idx = df_coadd['note'] == conf
             sel = df_coadd[idx]
 
@@ -266,7 +271,7 @@ class Plot_cadence:
                 k = 0.08
                 k = 0.055
 
-                print('alors', nn, cadence, seas_min, seas_mean)
+                # print('alors', nn, cadence, seas_min, seas_mean)
                 if seas_min == 0:
                     k = 0.005
 
