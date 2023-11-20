@@ -883,7 +883,7 @@ class Anaplot_OS:
         print(sel.columns)
         self.plot_diff_m5_indiv_one_page(sel, varx='name', vary='ratio_Nv_WL',
                                          # ylabel='$\frac{N_visits}{N_{visits}^{WL}$',
-                                         ylabel=r'$\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$',
+                                         ylabel=r'$r^{WL}=\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$',
                                          title='WL reqs', ybar=1, log=True)
 
         bb = '$\\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$'
