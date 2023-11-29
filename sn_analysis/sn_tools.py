@@ -315,8 +315,10 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
                       seasons=seasons, nproc=nproc)
         ll['field'] = field
         res = pd.concat((res, ll))
-    print('loaded', len(res), len(res['healpixID'].unique()))
-    res = complete_df(res, alpha, beta)
+
+    if not res.empty:
+        print('loaded', len(res), len(res['healpixID'].unique()))
+        res = complete_df(res, alpha, beta)
 
     return res
 
