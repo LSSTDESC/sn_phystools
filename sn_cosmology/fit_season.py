@@ -16,7 +16,7 @@ class Fit_seasons:
                  dataDir_WFD, dbName_WFD, dictsel, survey,
                  prior, host_effi, frac_WFD_low_sigmaC=0.8,
                  max_sigmaC=0.04, test_mode=0, lowz_optimize=0.1,
-                 sigmaInt=0.12, dump_data=False):
+                 sigmaInt=0.12, dump_data=False, timescale='year'):
         """
         Class to perform fits for sets of season
 
@@ -49,6 +49,12 @@ class Fit_seasons:
           to run the program in test mode. The default is 0.
         lowz_optimize: float, opt.
            z-value where the number of SN should be maximized.
+        sigmaInt : float, optional
+           SNe Ia intrinsic dispersion. The default is 0.12.
+        dump_data : bool, optional
+           To dump the cosmology realizations. The default is False.
+        timescale : str, optional
+           Time scale to estimate the cosmology. The default is 'year'.
 
         Returns
         -------
@@ -71,6 +77,7 @@ class Fit_seasons:
         self.lowz_optimize = lowz_optimize
         self.sigmaInt = sigmaInt
         self.dump_data = dump_data
+        self.timescale = timescale
 
     def __call__(self):
         """
@@ -94,7 +101,7 @@ class Fit_seasons:
             seasons = range(1, seas_max)
 
             params = {}
-            params['seasons'] = seasons
+            params[self.timescale] = seasons
             nrandom = range(n_random)
             # res = self.fit_seasons(seasons, params, self.fit_seasons, nproc=8)
             res = multiproc(nrandom, params, self.fit_seasons, nproc=8)
@@ -123,7 +130,7 @@ class Fit_seasons:
             Fit parameter results.
 
         """
-        seasons = params['seasons']
+        seasons = params[self.timescale]
         hd_fit = HD_random(fitconfig=self.fitconfig,
                            prior=self.prior, test_mode=self.test_mode)
 
@@ -141,7 +148,8 @@ class Fit_seasons:
                                  frac_WFD_low_sigmaC=self.frac_WFD_low_sigmaC,
                                  max_sigmaC=self.max_sigmaC,
                                  test_mode=self.test_mode,
-                                 lowz_optimize=self.lowz_optimize).data
+                                 lowz_optimize=self.lowz_optimize,
+                                 timescale=self.timescale).data
 
             if self.dump_data:
                 outName = 'SN_{}_{}_{}.hdf5'.format(

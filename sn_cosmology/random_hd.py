@@ -139,7 +139,7 @@ class Random_survey:
                                               'season_min', 'season_max']),
                  sigmaInt=0.12, host_effi={},
                  frac_WFD_low_sigmaC=0.8, max_sigmaC=0.04,
-                 test_mode=0, lowz_optimize=0.1):
+                 test_mode=0, lowz_optimize=0.1, timescale='year'):
         """
         Class to build a complete (WFD+DDF) random survey
 
@@ -175,6 +175,8 @@ class Random_survey:
             to run the program in test mode. The default is 0.
         lowz_optimize: float, opt.
            z-value where the number of SN should be maximized.
+        timescale : str, optional
+          Time scale to estimate the cosmology. The default is 'year'.
 
         Returns
         -------
@@ -195,6 +197,7 @@ class Random_survey:
         self.max_sigmaC = max_sigmaC
         self.test_mode = test_mode
         self.lowz_optimize = lowz_optimize
+        self.timescale = timescale
 
         # load data per season
         self.data = self.build_random_sample()
@@ -273,8 +276,8 @@ class Random_survey:
         files = []
         df = pd.DataFrame()
         for seas in seasons:
-            search_path = '{}/SN_{}_{}_{}.hdf5'.format(
-                search_dir, fieldType, dbName, seas)
+            search_path = '{}/SN_{}_{}_{}_{}.hdf5'.format(
+                search_dir, fieldType, dbName, self.timescale, seas)
             files += glob.glob(search_path)
 
             for fi in files:
@@ -305,7 +308,7 @@ class Random_survey:
 
         theDir = '{}/{}/{}'.format(dataDir, dbName, runType)
 
-        theName = '{}/nsn_{}.hdf5'.format(theDir, dbName)
+        theName = '{}/nsn_{}_{}.hdf5'.format(theDir, dbName, self.timescale)
 
         res = pd.read_hdf(theName)
 
@@ -495,7 +498,7 @@ class Random_survey:
 
                 # grab the number of sn
                 ida = nsn_field_season['field'] == field
-                ida &= nsn_field_season['season'] == season
+                ida &= nsn_field_season[self.timescale] == season
                 nsn_exp = int(nsn_field_season[ida]['nsn'].mean())
                 nsn = np.min([nsn_exp, nsn_max_season])
 
@@ -521,8 +524,8 @@ class Random_survey:
 
                 # select data according to the survey parameters
                 # idb = res['z'] <= zmax
-                idb = res['season'] >= season_min
-                idb = res['season'] <= season_max
+                idb = res[self.timescale] >= season_min
+                idb = res[self.timescale] <= season_max
 
                 sela = res[idb]
 
