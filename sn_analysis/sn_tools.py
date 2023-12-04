@@ -266,16 +266,21 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8):
         return pd.DataFrame()
 
     #restot = pd.DataFrame()
-    params = dict(zip(['objtype'], ['astropyTable']))
-    restot = multiproc(files, params, loopStack_params, nproc)
-    restot.convert_bytestring_to_unicode()
+    #params = dict(zip(['objtype'], ['astropyTable']))
+    params = dict(zip(['objtype'], ['pandasDataFrame']))
+    params['correct_cols'] = dict(zip(['Cov_x1x0', 'Cov_colorx0'], [
+                                  'Cov_x0x1', 'Cov_x0color']))
 
+    restot = multiproc(files, params, loopStack_params, nproc)
+    # restot.convert_bytestring_to_unicode()
+
+    #resfi = restot.to_pandas()
     """
     for fi in files:
         res = loopStack([fi], objtype='astropyTable').to_pandas()
         restot = pd.concat((restot, res))
         """
-    return restot.to_pandas()
+    return restot
 
 
 def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
