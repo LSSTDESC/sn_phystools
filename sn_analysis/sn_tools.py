@@ -268,8 +268,6 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8):
     #restot = pd.DataFrame()
     #params = dict(zip(['objtype'], ['astropyTable']))
     params = dict(zip(['objtype'], ['pandasDataFrame']))
-    params['correct_cols'] = dict(zip(['Cov_x1x0', 'Cov_colorx0'], [
-                                  'Cov_x0x1', 'Cov_x0color']))
 
     restot = multiproc(files, params, loopStack_params, nproc)
     # restot.convert_bytestring_to_unicode()
