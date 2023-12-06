@@ -99,7 +99,7 @@ class Fit_seasons:
 
         for seas_max in range(2, n_season_max):
             seasons = range(1, seas_max)
-
+            print('processing 1-{}'.format(seas_max))
             params = {}
             params[self.timescale] = seasons
             nrandom = range(n_random)
