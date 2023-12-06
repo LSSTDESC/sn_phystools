@@ -139,7 +139,7 @@ class Random_survey:
                                               'season_min', 'season_max']),
                  sigmaInt=0.12, host_effi={},
                  frac_WFD_low_sigmaC=0.8, max_sigmaC=0.04,
-                 test_mode=0, lowz_optimize=0.1, timescale='year'):
+                 test_mode=0, lowz_optimize=0.1, timescale='year', nrandom=50):
         """
         Class to build a complete (WFD+DDF) random survey
 
@@ -198,9 +198,65 @@ class Random_survey:
         self.test_mode = test_mode
         self.lowz_optimize = lowz_optimize
         self.timescale = timescale
+        self.nrandom = nrandom
 
         # load data per season
-        self.data = self.build_random_sample()
+        self.data = self.build_random_samples()
+
+    def build_random_samples(self):
+        """
+        Method to build a random sample SN of DDF+WFD
+
+        Returns
+        -------
+        sn_sample : pandas df
+            The sn random sample.
+
+        """
+
+        nsn = pd.DataFrame()
+        sn_sample = pd.DataFrame()
+        for seas in self.seasons:
+            print('Building samples', self.timescale, seas)
+            ddf = self.load_data(self.dataDir_DD, self.dbName_DD,
+                                 'DDF_spectroz', 'DDF', [seas])
+            nsn_ddf = self.load_nsn_summary(
+                self.dataDir_DD, self.dbName_DD, 'DDF_spectroz')
+            wfd = self.load_data(self.dataDir_WFD, self.dbName_WFD,
+                                 'WFD_spectroz', 'WFD', [seas])
+
+            nsn_wfd = self.load_nsn_summary(
+                self.dataDir_WFD, self.dbName_WFD, 'WFD_spectroz')
+
+            nsn = pd.concat((nsn_ddf, nsn_wfd))
+            nsn = nsn.fillna(0)
+
+            nsn['nsn'] = nsn['nsn'].astype(int)
+            nsn['nsn_z_0.1'] = nsn['nsn_z_0.1'].astype(int)
+            nsn['nsn_z_0.2'] = nsn['nsn_z_0.2'].astype(int)
+
+            sn_data = pd.concat((ddf, wfd))
+
+            for i in range(self.nrandom):
+                sn_samp = self.random_sample(nsn, sn_data, self.survey, [seas])
+
+                sn_samp = self.correct_mu(sn_samp)
+
+                """
+                cols = ['Cov_t0t0', 'Cov_t0x0', 'Cov_t0x1', 'Cov_t0color', 'Cov_x0x0',
+                        'Cov_x0x1', 'Cov_x0color', 'Cov_x1x1', 'Cov_x1color', 'Cov_colorcolor']
+                print(sn_samp[cols])
+                """
+                sn_samp[self.timescale] = seas
+                sn_samp['survey_real'] = i+1
+
+            # self.plot_mu(sn_samp, 'mu_SN')
+
+                sn_sample = pd.concat((sn_sample, sn_samp))
+
+        # self.plot_nsn_z(sn_sample)
+
+        return sn_sample
 
     def build_random_sample(self):
         """

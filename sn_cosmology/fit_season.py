@@ -90,30 +90,139 @@ class Fit_seasons:
 
         """
         # dict_fi = {}
-        resfi = pd.DataFrame()
-        n_season_max = 12
-        n_random = 50
-        if self.test_mode:
-            n_season_max = 3
-            n_random = 1
 
-        for seas_max in range(2, n_season_max):
-            seasons = range(1, seas_max)
-            print('processing 1-{}'.format(seas_max))
-            params = {}
-            params[self.timescale] = seasons
-            nrandom = range(n_random)
-            # res = self.fit_seasons(seasons, params, self.fit_seasons, nproc=8)
-            res = multiproc(nrandom, params, self.fit_seasons, nproc=8)
-            resfi = pd.concat((resfi, res))
-            """
-            keys = dict_res.keys()
-            for key in keys:
-                if key not in dict_fi.keys():
-                    dict_fi[key] = pd.DataFrame()
-                dict_fi[key] = pd.concat((dict_fi[key], dict_res[key]))
-            """
-        return resfi
+        # grab random data
+
+        import time
+        time_ref = time.time()
+        seasons = range(1, 11)
+        nproc = 8
+        nrandom = 50
+        if self.test_mode:
+            nproc = 1
+            nrandom = 1
+            seasons = [1, 2]
+
+        params = dict(zip(['nrandom'], [nrandom]))
+        data = multiproc(seasons, params, self.get_random_sample, nproc=nproc)
+
+        print('elapse time', time.time()-time_ref)
+        configs = []
+        for seas in seasons:
+            configs.append([1, seas])
+        params = {}
+        params['data'] = data
+        res = multiproc(configs, params, self.fit_seasons_new, nproc=nproc)
+
+        return res
+
+    def get_random_sample(self, seasons, params, j=0, output_q=None):
+
+        nrandom = params['nrandom']
+
+        df = pd.DataFrame()
+        for seas in seasons:
+
+            data = Random_survey(self.dataDir_DD, self.dbName_DD,
+                                 self.dataDir_WFD, self.dbName_WFD,
+                                 self.dictsel, [seas],
+                                 survey=self.survey, sigmaInt=self.sigmaInt,
+                                 host_effi=self.host_effi,
+                                 frac_WFD_low_sigmaC=self.frac_WFD_low_sigmaC,
+                                 max_sigmaC=self.max_sigmaC,
+                                 test_mode=self.test_mode,
+                                 lowz_optimize=self.lowz_optimize,
+                                 timescale=self.timescale, nrandom=nrandom).data
+            df = pd.concat((df, data))
+
+        if output_q is not None:
+            output_q.put({j: df})
+        else:
+            return df
+
+    def fit_seasons_new(self, configs, params, j=0, output_q=None):
+        """
+        Method to make fits on random samples of data
+
+        Parameters
+        ----------
+        seasons : list(int)
+            List of seasons to process.
+
+        Returns
+        -------
+        dict_res : pandas df
+            Fit parameter results.
+
+        """
+
+        data = params['data']
+        hd_fit = HD_random(fitconfig=self.fitconfig,
+                           prior=self.prior, test_mode=self.test_mode)
+
+        dict_res = {}
+
+        for config in configs:
+            year_min = config[0]
+            year_max = config[1]
+
+            # select the data corresponding to these years
+            idx = data['year'] >= year_min
+            idx &= data['year'] <= year_max
+
+            sel_data = data[idx]
+
+            # loop on the realizations
+            nsurvey = sel_data['survey_real'].unique()
+
+            for nn in nsurvey:
+                idc = sel_data['survey_real'] == nn
+                sel_data_fit = sel_data[idc]
+
+                if self.dump_data:
+                    outName = 'SN_{}_{}_{}_{}_{}.hdf5'.format(
+                        self.dbName_DD, self.dbName_WFD, year_min, year_max, nn)
+                    sel_data_fit.to_hdf(outName, key='sn')
+
+                if self.test_mode:
+                    print('nsn for this run', len(sel_data_fit))
+
+                # analyze the data
+                dict_ana = analyze_data(sel_data_fit)
+                # get Nsn with sigmaC <= 0.04
+                idx = sel_data_fit['sigmaC'] <= self.max_sigmaC
+                dict_ana_b = analyze_data(sel_data_fit[idx], add_str='_sigmaC')
+                if self.test_mode:
+                    print(dict_ana)
+                    print(dict_ana_b)
+                dict_ana.update(dict_ana_b)
+                # print(dict_ana)
+                dict_ana[self.timescale] = year_max+1
+                # print(dict_ana)
+
+                # fit the data
+                res = hd_fit(sel_data_fit)
+
+                # fitted values in a df
+                for key, vals in res.items():
+                    vals.update(dict_ana)
+                    res = pd.DataFrame.from_dict(transform(vals))
+                    if key not in dict_res.keys():
+                        dict_res[key] = pd.DataFrame()
+                    dict_res[key] = pd.concat((res, dict_res[key]))
+
+                # print('sequence', time.time()-time_ref)
+
+                resdf = pd.DataFrame()
+                for key, vals in dict_res.items():
+                    resdf = pd.concat((resdf, vals))
+
+        resdf = resdf.fillna(-999.)
+
+        if output_q is not None:
+            output_q.put({j: resdf})
+        else:
+            return resdf
 
     def fit_seasons(self, nrandom, params, j=0, output_q=None):
         """
