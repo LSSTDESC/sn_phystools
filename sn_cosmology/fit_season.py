@@ -220,6 +220,7 @@ class Fit_seasons:
                 idc = sel_data['survey_real'] == nn
                 sel_data_fit = sel_data[idc]
 
+                print('fitting', year_min, year_max, nn, len(sel_data_fit))
                 if self.dump_data:
                     outName = 'SN_{}_{}_{}_{}_{}.hdf5'.format(
                         self.dbName_DD, self.dbName_WFD,
