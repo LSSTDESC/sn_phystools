@@ -16,7 +16,8 @@ class Fit_seasons:
                  dataDir_WFD, dbName_WFD, dictsel, survey,
                  prior, host_effi, frac_WFD_low_sigmaC=0.8,
                  max_sigmaC=0.04, test_mode=0, lowz_optimize=0.1,
-                 sigmaInt=0.12, dump_data=False, timescale='year'):
+                 sigmaInt=0.12, dump_data=False,
+                 timescale='year', outName=''):
         """
         Class to perform fits for sets of season
 
@@ -55,6 +56,8 @@ class Fit_seasons:
            To dump the cosmology realizations. The default is False.
         timescale : str, optional
            Time scale to estimate the cosmology. The default is 'year'.
+        outName: str, optional
+           output file name. The default is ''.
 
         Returns
         -------
@@ -78,6 +81,12 @@ class Fit_seasons:
         self.sigmaInt = sigmaInt
         self.dump_data = dump_data
         self.timescale = timescale
+        self.outName = outName
+
+        if outName != '':
+            import os
+            if os.path.isfile(outName):
+                os.remove(outName)
 
     def __call__(self):
         """
@@ -96,11 +105,11 @@ class Fit_seasons:
         import time
         time_ref = time.time()
         seasons = range(1, 11)
-        nproc = 8
+        nproc = 5
         nrandom = 50
         if self.test_mode:
             nproc = 1
-            nrandom = 1
+            nrandom = 5
             seasons = [1, 2]
 
         params = dict(zip(['nrandom'], [nrandom]))
@@ -112,11 +121,35 @@ class Fit_seasons:
             configs.append([1, seas])
         params = {}
         params['data'] = data
-        res = multiproc(configs, params, self.fit_seasons_new, nproc=nproc)
 
-        return res
+        for key, vals in self.prior.items():
+            params['prior'] = key
+            params['prior_params'] = vals
+            res = multiproc(configs, params, self.fit_time, nproc=nproc)
+
+        return 0
 
     def get_random_sample(self, seasons, params, j=0, output_q=None):
+        """
+        Method to get random realizations of surveys
+
+        Parameters
+        ----------
+        seasons : list(int)
+            List of seasons (years) to process..
+        params : dict
+            parameters.
+        j : int, optional
+            Internal tag for multiprocessing. The default is 0.
+        output_q : multiprocessing queue, optional
+            Queue for multiprocessing. The default is None.
+
+        Returns
+        -------
+        df : pandas df
+            The random samples.
+
+        """
 
         nrandom = params['nrandom']
 
@@ -140,27 +173,33 @@ class Fit_seasons:
         else:
             return df
 
-    def fit_seasons_new(self, configs, params, j=0, output_q=None):
+    def fit_time(self, configs, params, j=0, output_q=None):
         """
-        Method to make fits on random samples of data
+        Method to perform cosmological fits on a set of configurations
 
         Parameters
         ----------
-        seasons : list(int)
-            List of seasons to process.
+        configs : list(list(int))
+            List of years (seasons) to process.
+        params : dict
+            parameters to use.
+        j : int, optional
+            Tag for multiprocessing. The default is 0.
+        output_q : multiprocessing queue, optional
+            Queue for multiprocessing. The default is None.
 
         Returns
         -------
-        dict_res : pandas df
-            Fit parameter results.
+        resdf : pandas df
+            fitted cosmological parameters.
 
         """
 
         data = params['data']
+        prior = params['prior']
+        prior_params = params['prior_params']
         hd_fit = HD_random(fitconfig=self.fitconfig,
-                           prior=self.prior, test_mode=self.test_mode)
-
-        dict_res = {}
+                           prior=prior_params, test_mode=self.test_mode)
 
         for config in configs:
             year_min = config[0]
@@ -172,7 +211,9 @@ class Fit_seasons:
 
             sel_data = data[idx]
 
+            resdf = pd.DataFrame()
             # loop on the realizations
+
             nsurvey = sel_data['survey_real'].unique()
 
             for nn in nsurvey:
@@ -181,7 +222,8 @@ class Fit_seasons:
 
                 if self.dump_data:
                     outName = 'SN_{}_{}_{}_{}_{}.hdf5'.format(
-                        self.dbName_DD, self.dbName_WFD, year_min, year_max, nn)
+                        self.dbName_DD, self.dbName_WFD,
+                        year_min, year_max, nn)
                     sel_data_fit.to_hdf(outName, key='sn')
 
                 if self.test_mode:
@@ -202,7 +244,7 @@ class Fit_seasons:
 
                 # fit the data
                 res = hd_fit(sel_data_fit)
-
+                dict_res = {}
                 # fitted values in a df
                 for key, vals in res.items():
                     vals.update(dict_ana)
@@ -212,19 +254,33 @@ class Fit_seasons:
                     dict_res[key] = pd.concat((res, dict_res[key]))
 
                 # print('sequence', time.time()-time_ref)
-
-                resdf = pd.DataFrame()
+                resdfb = pd.DataFrame()
                 for key, vals in dict_res.items():
-                    resdf = pd.concat((resdf, vals))
+                    resdfb = pd.concat((resdfb, vals))
 
-        resdf = resdf.fillna(-999.)
+                resdfb['dbName_DD'] = self.dbName_DD
+                resdfb['dbName_WFD'] = self.dbName_WFD
+                resdfb['real_survey'] = nn
+                resdfb['prior'] = prior
+                resdfb = resdfb.fillna(-999.)
+
+                resdf = pd.concat((resdf, resdfb))
+
+            if self.test_mode:
+                print('final result', resdf)
+                cols = ['w0_fit', 'Om0_fit', 'MoM',
+                        'prior', 'dbName_DD', 'dbName_WFD']
+                print(resdf[cols])
+
+            if self.outName != '':
+                resdf.to_hdf(self.outName, key='cosmofit', append=True)
 
         if output_q is not None:
-            output_q.put({j: resdf})
+            output_q.put({j: 1})
         else:
             return resdf
 
-    def fit_seasons(self, nrandom, params, j=0, output_q=None):
+    def fit_seasons_deprecated(self, nrandom, params, j=0, output_q=None):
         """
         Method to make fits on random samples of data
 

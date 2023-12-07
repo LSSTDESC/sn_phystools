@@ -210,7 +210,7 @@ class Random_survey:
         Returns
         -------
         sn_sample : pandas df
-            The sn random sample.
+            The sn random samples (nrandom realization of the survey).
 
         """
 
@@ -601,8 +601,8 @@ class Random_survey:
             ll_ud = ['COSMOS', 'XMM-LSS']
             idxa = df_orig['field'].isin(ll_ud)
             idxb = df_res['field'].isin(ll_ud)
-            self.plot_sample_zhost(df_orig[idxa], df_res[idxb], 'UD')
-            self.plot_sample_zhost(df_orig[~idxa], df_res[~idxb], 'WFD+DD')
+            # self.plot_sample_zhost(df_orig[idxa], df_res[idxb], 'UD')
+            # self.plot_sample_zhost(df_orig[~idxa], df_res[~idxb], 'WFD+DD')
 
         return df_res
 
