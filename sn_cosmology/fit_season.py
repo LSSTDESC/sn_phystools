@@ -122,10 +122,15 @@ class Fit_seasons:
         params = {}
         params['data'] = data
 
+        restot = pd.DataFrame()
         for key, vals in self.prior.items():
             params['prior'] = key
             params['prior_params'] = vals
             res = multiproc(configs, params, self.fit_time, nproc=nproc)
+            restot = pd.concat((restot, res))
+
+        if self.outName != '':
+            restot.to_hdf(self.outName, key='cosmofit')
 
         return 0
 
@@ -201,6 +206,7 @@ class Fit_seasons:
         hd_fit = HD_random(fitconfig=self.fitconfig,
                            prior=prior_params, test_mode=self.test_mode)
 
+        resfi = pd.DataFrame()
         for config in configs:
             year_min = config[0]
             year_max = config[1]
@@ -267,17 +273,18 @@ class Fit_seasons:
 
                 resdf = pd.concat((resdf, resdfb))
 
+            resfi = pd.concat((resfi, resdf))
             if self.test_mode:
                 print('final result', resdf)
                 cols = ['w0_fit', 'Om0_fit', 'MoM',
                         'prior', 'dbName_DD', 'dbName_WFD']
                 print(resdf[cols])
 
-            if self.outName != '':
-                resdf.to_hdf(self.outName, key='cosmofit', append=True)
+            # if self.outName != '':
+            #    resdf.to_hdf(self.outName, key='cosmofit', append=True)
 
         if output_q is not None:
-            output_q.put({j: 1})
+            output_q.put({j: resfi})
         else:
             return resdf
 
