@@ -105,7 +105,7 @@ class Fit_seasons:
         import time
         time_ref = time.time()
         seasons = range(1, 11)
-        nproc = 5
+        nproc = 8
         nrandom = 50
         if self.test_mode:
             nproc = 1
