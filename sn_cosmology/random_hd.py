@@ -47,7 +47,8 @@ class HD_random:
         prior : pandas df, optional
             Prior to apply to the Chisquare.
             The default is
-            pd.DataFrame({'varname': ['Om0'],'refvalue':[0.3], 'sigma':[0.0073]}).
+            pd.DataFrame({'varname': ['Om0'],'refvalue':[0.3], 
+                          'sigma':[0.0073]}).
          test_mode: int, optional.
           To activate the program in test mode. The default is 0.
 
@@ -243,8 +244,10 @@ class Random_survey:
                 sn_samp = self.correct_mu(sn_samp)
 
                 """
-                cols = ['Cov_t0t0', 'Cov_t0x0', 'Cov_t0x1', 'Cov_t0color', 'Cov_x0x0',
-                        'Cov_x0x1', 'Cov_x0color', 'Cov_x1x1', 'Cov_x1color', 'Cov_colorcolor']
+                cols = ['Cov_t0t0', 'Cov_t0x0', 'Cov_t0x1', 
+                        'Cov_t0color', 'Cov_x0x0',
+                        'Cov_x0x1', 'Cov_x0color', 'Cov_x1x1', 
+                        'Cov_x1color', 'Cov_colorcolor']
                 print(sn_samp[cols])
                 """
                 sn_samp[self.timescale] = seas
@@ -589,6 +592,7 @@ class Random_survey:
                     df_orig = pd.concat((df_orig, sela))
 
                 # correct for zhost efficiency
+
                 res_host = self.effi_zhost(
                     sela, host_effi_key)
 
@@ -601,8 +605,15 @@ class Random_survey:
             ll_ud = ['COSMOS', 'XMM-LSS']
             idxa = df_orig['field'].isin(ll_ud)
             idxb = df_res['field'].isin(ll_ud)
-            # self.plot_sample_zhost(df_orig[idxa], df_res[idxb], 'UD')
-            # self.plot_sample_zhost(df_orig[~idxa], df_res[~idxb], 'WFD+DD')
+            idxba = df_orig['field'].isin(['WFD'])
+            idxbb = df_res['field'].isin(['WFD'])
+            idxca = df_orig['field'].isin(['WFD']+ll_ud)
+            idxcb = df_res['field'].isin(['WFD']+ll_ud)
+
+            self.plot_sample_zhost(df_orig[idxa], df_res[idxb], 'UD')
+            self.plot_sample_zhost(df_orig[~idxa], df_res[~idxb], 'WFD+DD')
+            self.plot_sample_zhost(df_orig[idxba], df_res[idxbb], 'WFD')
+            self.plot_sample_zhost(df_orig[~idxca], df_res[~idxcb], 'DD')
 
         return df_res
 
@@ -794,7 +805,15 @@ class Random_survey:
         df['nsn_effi'] = (df['nsn']*df['effi']).apply(np.ceil).astype(int)
         df['zmin'] = bins_center-bin_width/2.
         df['zmax'] = bins_center+bin_width/2.
+        df['z'] = bins_center
 
+        """
+        if self.test_mode:
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots()
+            ax.plot(df['z'], df['effi'])
+            plt.show()
+        """
         data_new = pd.DataFrame()
         for io, row in df.iterrows():
             zmin = row['zmin']
