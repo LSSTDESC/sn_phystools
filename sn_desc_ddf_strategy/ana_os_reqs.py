@@ -634,6 +634,7 @@ class Anaplot_OS:
                 idxa = sela['band'] == b
                 selb = sela[idxa]
                 color = filtercolors[b]
+                selb = selb.sort(by=[varx])
                 ax[i, j].plot(selb[varx], selb[vary],
                               '{}o'.format(color), mfc='None')
 
@@ -694,6 +695,7 @@ class Anaplot_OS:
                 idxa = sela['band'] == b
                 selb = sela[idxa]
                 color = filtercolors[b]
+                selb = selb.sort_values(by=[varx])
                 ax[pos].plot(selb[varx], selb[vary], marker=filtermarkers[b],
                              color=color, mfc='None', markeredgewidth=2, ms=12)
 
