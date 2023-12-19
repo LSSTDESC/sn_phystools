@@ -217,6 +217,15 @@ class Random_survey:
 
         nsn = pd.DataFrame()
         sn_sample = pd.DataFrame()
+
+        zlim = np.arange(0.0, 1.1, 0.1)
+        rname = []
+        for i in range(len(zlim)-1):
+            zmin = zlim[i]
+            zmax = zlim[i+1]
+            nname = 'nsn_z_{}_{}'.format(np.round(zmin, 1), np.round(zmax, 1))
+            rname.append(nname)
+
         for seas in self.seasons:
             print('Building samples', self.timescale, seas)
             ddf = self.load_data(self.dataDir_DD, self.dbName_DD,
@@ -233,8 +242,7 @@ class Random_survey:
             nsn = nsn.fillna(0)
 
             nsn['nsn'] = nsn['nsn'].astype(int)
-            nsn['nsn_z_0.1'] = nsn['nsn_z_0.1'].astype(int)
-            nsn['nsn_z_0.2'] = nsn['nsn_z_0.2'].astype(int)
+            nsn[rname] = nsn[rname].astype(int)
 
             sn_data = pd.concat((ddf, wfd))
 
@@ -561,11 +569,12 @@ class Random_survey:
                 nsn_exp = int(nsn_field_season[ida]['nsn'].mean())
                 nsn = np.min([nsn_exp, nsn_max_season])
 
+                """
                 nsn_z_opti = 0
                 if self.lowz_optimize > 0:
                     vv = 'nsn_z_{}'.format(np.round(self.lowz_optimize, 1))
                     nsn_z_opti = int(nsn_field_season[ida][vv].mean())
-
+                """
                 # get survey info
                 host_effi_key, season_min,\
                     season_max = self.get_info(survey, field)
@@ -576,7 +585,7 @@ class Random_survey:
                 sel_sn = sn_data[idb]
 
                 # grab sn sample
-
+                nsn_z_opti = nsn_field_season[ida]
                 res = self.sn_sample(
                     sel_sn, nsn_exp, nsn, field,
                     nsn_z_opti, zlow=self.lowz_optimize)
@@ -669,9 +678,9 @@ class Random_survey:
 
                 idx = data['sigmaC'] <= self.max_sigmaC
                 resa = self.sample_max_lowz(
-                    data[idx], nsn_frac, nsn_lowz, zlow)
+                    data[idx], nsn_frac, nsn_lowz, self.frac_WFD_low_sigmaC)
                 resb = self.sample_max_lowz(
-                    data[~idx], nsn-nsn_frac, nsn_lowz=0, zlow=zlow)
+                    data[~idx], nsn-nsn_frac, nsn_lowz, 1.-self.frac_WFD_low_sigmaC)
                 res = pd.concat((resa, resb))
 
         if self.test_mode:
@@ -707,7 +716,66 @@ class Random_survey:
 
         return np.round(frac, 3)
 
-    def sample_max_lowz(self, data, nsn, nsn_lowz, zlow):
+    def sample_max_lowz(self, data, nsn, nsn_lowz, frac_WFD_low_sigmaC):
+        """
+        Method to choose a sample maximizing lowz sn
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        nsn : int
+            total number of SNe Ia.
+        nsn_lowz : int
+            Number of low-z SNe Ia.
+        frac_WFD_low_sigma: float
+          fraction of SNe Ia with sigmaC < 0.4
+
+        Returns
+        -------
+        res : pandas df
+            Result.
+
+        """
+
+        zlim = np.arange(0.0, 1.1, 0.1)
+        r = []
+        nsn_tot = 0
+        restot = pd.DataFrame()
+        for i in range(len(zlim)-1):
+            zmin = zlim[i]
+            zmax = zlim[i+1]
+            nname = 'nsn_z_{}_{}'.format(np.round(zmin, 1), np.round(zmax, 1))
+            idx = data['z'] >= zmin
+            idx &= data['z'] < zmax
+
+            nsn_exp = (nsn_lowz[nname].values[0])*frac_WFD_low_sigmaC
+            nsn_exp = int(nsn_exp)
+            nsn_diff = nsn-nsn_tot
+            if nsn_diff >= 0:
+                sel_data = data[idx]
+                nsn_rand = np.min([nsn_exp, nsn_diff])
+                ndata = len(sel_data)
+                nsn_rand = np.min([nsn_rand, ndata])
+                res = sel_data.sample(nsn_rand)
+                restot = pd.concat((restot, res))
+                nsn_tot += nsn_rand
+
+        """
+        idx = data['z'] <= zlow
+        if nsn_lowz > 0:
+            res = data[idx].sample(nsn_lowz)
+        else:
+            res = pd.DataFrame()
+
+        nsn_rem = nsn-nsn_lowz
+        resb = data[~idx].sample(nsn_rem)
+        res = pd.concat((res, resb))
+        """
+
+        return restot
+
+    def sample_max_lowz_deprecated(self, data, nsn, nsn_lowz, zlow):
         """
         Method to choose a sample maximizing lowz sn
 
