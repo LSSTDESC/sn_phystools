@@ -101,7 +101,7 @@ class Fit_seasons:
         time_ref = time.time()
         seasons = range(1, 11)
         nproc = 8
-        nrandom = 50
+        nrandom = 2
         if self.test_mode:
             nproc = 1
             nrandom = 5
@@ -207,8 +207,8 @@ class Fit_seasons:
             year_max = config[1]
 
             # select the data corresponding to these years
-            idx = data['year'] >= year_min
-            idx &= data['year'] <= year_max
+            idx = data[self.timescale] >= year_min
+            idx &= data[self.timescale] <= year_max
 
             sel_data = data[idx]
 
