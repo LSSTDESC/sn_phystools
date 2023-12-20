@@ -229,7 +229,8 @@ class CosmoDist:
         return mbfit+alpha*x1-beta*color-self.mu(z, Om, w0, wa)-Mb
 
 
-def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8):
+def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8,
+             dataType='pandasDataFrame'):
     """
     Funtion to load data
 
@@ -245,10 +246,12 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8):
         list of seasons to process. The default is * (all seasons). 
     nproc: int, optional.
      number of procs for multiprocessing. The default is 8.
+    dataType: str, opt.
+      data type to process. The default is 'pandasDataFrame'
 
     Returns
     -------
-    res : astropytable
+    res : dataType
         loaded data.
 
     """
@@ -270,8 +273,8 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8):
         return pd.DataFrame()
 
     #restot = pd.DataFrame()
-    #params = dict(zip(['objtype'], ['astropyTable']))
-    params = dict(zip(['objtype'], ['pandasDataFrame']))
+    params = dict(zip(['objtype'], [dataType]))
+    #params = dict(zip(['objtype'], ['pandasDataFrame']))
 
     restot = multiproc(files, params, loopStack_params, nproc)
     # restot.convert_bytestring_to_unicode()
@@ -287,7 +290,7 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8):
 
 def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
                          listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
-                         seasons='*', nproc=8):
+                         seasons='*', nproc=8, dataType='pandasDataFrame'):
     """
 
 
@@ -307,20 +310,26 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
         list of seasons to process. The default is * (all seasons).
     nproc: int, optional.
         number of procs for multiprocessing. The default is 8.
-
+    dataType: str, opt.
+      data type to process. The default is 'pandasDataFrame'
     Returns
     -------
     res : TYPE
         DESCRIPTION.
 
     """
-
+    from astropy.table import Table
     res = pd.DataFrame()
     fields = listDDF.split(',')
     for field in fields:
         ll = loadData(dbDir, dbName, inDir, field,
-                      seasons=seasons, nproc=nproc)
+                      seasons=seasons, nproc=nproc,
+                      dataType=dataType)
         ll['field'] = field
+        if isinstance(ll, Table):
+            ll.convert_bytestring_to_unicode()
+            ll = ll.to_pandas()
+
         res = pd.concat((res, ll))
 
     if not res.empty:
