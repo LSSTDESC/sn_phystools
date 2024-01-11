@@ -230,7 +230,7 @@ class CosmoDist:
 
 
 def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8,
-             dataType='pandasDataFrame'):
+             dataType='pandasDataFrame', suffix=''):
     """
     Funtion to load data
 
@@ -248,6 +248,8 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8,
      number of procs for multiprocessing. The default is 8.
     dataType: str, opt.
       data type to process. The default is 'pandasDataFrame'
+    suffix: str, opt
+      suffix for file name. The default is ''
 
     Returns
     -------
@@ -260,12 +262,17 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8,
 
     files = []
     for sea in seas:
+        """
         if field == 'WFD':
             searchname = '{}/{}/{}/SN*{}*_{}_0.01_0.7.hdf5'.format(
                 theDir, dbName, inDir, field, sea)
         else:
             searchname = '{}/{}/{}/SN*{}*_{}.hdf5'.format(
                 theDir, dbName, inDir, field, sea)
+        """
+        searchname = '{}/{}/{}/SN*{}*_{}{}.hdf5'.format(
+            theDir, dbName, inDir, field, sea, suffix)
+
         print('searching for', searchname)
         files += glob.glob(searchname)
 
@@ -290,7 +297,8 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8,
 
 def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
                          listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
-                         seasons='*', nproc=8, dataType='pandasDataFrame'):
+                         seasons='*', nproc=8,
+                         dataType='pandasDataFrame', suffix=''):
     """
 
 
@@ -312,6 +320,9 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
         number of procs for multiprocessing. The default is 8.
     dataType: str, opt.
       data type to process. The default is 'pandasDataFrame'
+    suffix: str, opt.
+     suffix for file name to process. The default is ''
+
     Returns
     -------
     res : TYPE
@@ -324,7 +335,7 @@ def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
     for field in fields:
         ll = loadData(dbDir, dbName, inDir, field,
                       seasons=seasons, nproc=nproc,
-                      dataType=dataType)
+                      dataType=dataType, suffix=suffix)
         ll['field'] = field
         if isinstance(ll, Table):
             ll.convert_bytestring_to_unicode()
