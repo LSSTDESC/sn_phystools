@@ -203,6 +203,52 @@ def bin_it_mean(res, xvar='z', yvar='mu',
     return df
 
 
+def bin_it_effi(data, xvar='z', yvar='sigma_mu', yvar_cut=0.12,
+                bins=np.arange(0.01, 1.1, 0.02)):
+    """
+    Function to estimate binnned efficiency
+
+    Parameters
+    ----------
+    data : pandas df
+        Data to process.
+    xvar : str, optional
+        x-axis variable. The default is 'z'.
+    yvar : str, optional
+        y-axis variable used for the selection. The default is 'sigma_mu'.
+    yvar_cut : float, optional
+        y-axis selection variable cut. The default is 0.12.
+    bins : list(float), optional
+        x-axis bins. The default is np.arange(0.01, 1.1, 0.02).
+
+    Returns
+    -------
+    df : pandas df
+        efficiencies.
+
+    """
+
+    bin_centers = (bins[: -1] + bins[1:])/2
+    group = data.groupby(pd.cut(data[xvar], bins))
+
+    idx = data[yvar] <= yvar_cut
+    sel_data = data[idx]
+    group_sel = sel_data.groupby(pd.cut(sel_data[xvar], bins))
+
+    # estimate efficiency here
+    effi = group_sel.size()/group.size()
+    var = effi*(1.-effi)*group.size()
+    effi_err = np.sqrt(var)
+
+    df = pd.DataFrame(bin_centers, columns=['z'])
+    df['effi'] = effi.array
+    df['effi_err'] = effi_err.array
+
+    df = df.fillna(0.)
+
+    return df
+
+
 def bin_it_combi(res, xvar='z', yvar='mu', errvar='sigma_mu',
                  bins=np.arange(0.01, 1.12, 0.02)):
     """
