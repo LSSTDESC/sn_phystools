@@ -373,15 +373,13 @@ def complete_df(res, alpha=0.13, beta=3.1, Mb=-19.1):
     """
 
     # get dmu_over_dz vs z
-    """
-    dmu_dz = dmu_over_dz(plot=True)
-    # make 1d interpolator out of it
-    interp_dmudz = interp1d(dmu_dz['z'], dmu_dz['dmu_over_dz'],
-                            bounds_error=False, fill_value=0.)
-    res['deriv_mu_z'] = interp_dmudz(res['z'])
-    
-    print(res.columns)
-    """
+    if 'Cov_zz' in res.columns:
+        dmu_dz = dmu_over_dz(plot=False)
+        # make 1d interpolator out of it
+        interp_dmudz = interp1d(dmu_dz['z'], dmu_dz['dmu_over_dz'],
+                                bounds_error=False, fill_value=0.)
+        res['deriv_mu_z'] = interp_dmudz(res['z'])
+
     res['sigmaC'] = np.sqrt(res['Cov_colorcolor'])
     res['sigmat0'] = np.sqrt(res['Cov_t0t0'])
     res['sigmax1'] = np.sqrt(res['Cov_x1x1'])
@@ -391,8 +389,8 @@ def complete_df(res, alpha=0.13, beta=3.1, Mb=-19.1):
         (res['x0_fit']*np.log(10))
     res['Cov_colormb'] = -2.5*res['Cov_x0color'] / \
         (res['x0_fit']*np.log(10))
-    if 'Cov_x0z' in res.columns:
-        res['Cov_mbz'] = -2.5*res['Cov_x0z'] / \
+    if 'Cov_zx0' in res.columns:
+        res['Cov_zmb'] = -2.5*res['Cov_zx0'] / \
             (res['x0_fit']*np.log(10))
 
     res['sigma_mu'] = res.Cov_mbmb\
@@ -400,11 +398,12 @@ def complete_df(res, alpha=0.13, beta=3.1, Mb=-19.1):
         + (beta**2)*res.Cov_colorcolor\
         + 2*alpha*res.Cov_x1mb-2*beta*res.Cov_colormb\
         - 2*alpha*beta*res.Cov_x1color
-    if 'Cov_x0z' in res.columns:
+
+    if 'Cov_zz' in res.columns:
         res['sigma_mu'] += res.deriv_mu_z**2*res.Cov_zz\
-            + 2.*res.deriv_mu_z*res.Cov_mbz\
-            + 2.*alpha*res.deriv_mu_z*res.Cov_x1z\
-            - 2.*beta*res.deriv_mu_z*res.Cov_colorz
+            + 2.*res.deriv_mu_z*res.Cov_zmb\
+            + 2.*alpha*res.deriv_mu_z*res.Cov_zx1\
+            - 2.*beta*res.deriv_mu_z*res.Cov_zcolor
 
     res['sigma_mu'] = np.sqrt(res['sigma_mu'])
     res['mb_fit'] = -2.5*np.log10(res['x0_fit']) + 10.635
