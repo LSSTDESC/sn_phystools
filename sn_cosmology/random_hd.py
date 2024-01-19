@@ -232,19 +232,33 @@ class Random_survey:
                                  'DDF_spectroz', 'DDF', [seas])
             nsn_ddf = self.load_nsn_summary(
                 self.dataDir_DD, self.dbName_DD, 'DDF_spectroz')
-            wfd = self.load_data(self.dataDir_WFD, self.dbName_WFD,
-                                 'WFD_spectroz', 'WFD', [seas])
+            wfd_spectroz = self.load_data(self.dataDir_WFD, self.dbName_WFD,
+                                          'WFD_spectroz', 'WFD', [seas])
 
-            nsn_wfd = self.load_nsn_summary(
+            nsn_wfd_spectroz = self.load_nsn_summary(
                 self.dataDir_WFD, self.dbName_WFD, 'WFD_spectroz')
 
-            nsn = pd.concat((nsn_ddf, nsn_wfd))
+            wfd_photz = self.load_data(self.dataDir_WFD, self.dbName_WFD,
+                                       'WFD_photz', 'WFD', [seas])
+
+            nsn_wfd_photz = self.load_nsn_summary(
+                self.dataDir_WFD, self.dbName_WFD, 'WFD_photz')
+
+            wfd_spectroz['field'] = 'WFD_spectroz'
+            nsn_wfd_spectroz['field'] = 'WFD_spectroz'
+            wfd_photz['field'] = 'WFD_photz'
+            nsn_wfd_photz['field'] = 'WFD_photz'
+
+            print('hello', nsn_wfd_photz)
+            print('hello', nsn_wfd_spectroz)
+
+            nsn = pd.concat((nsn_ddf, nsn_wfd_spectroz))
             nsn = nsn.fillna(0)
 
             nsn['nsn'] = nsn['nsn'].astype(int)
             nsn[rname] = nsn[rname].astype(int)
 
-            sn_data = pd.concat((ddf, wfd))
+            sn_data = pd.concat((ddf, wfd_spectroz))
 
             for i in range(self.nrandom):
                 sn_samp = self.random_sample(nsn, sn_data, self.survey, [seas])
@@ -268,6 +282,21 @@ class Random_survey:
         # self.plot_nsn_z(sn_sample)
 
         return sn_sample
+
+    def get_nsn_from_survey(self, nsn, survey) -> pd.DataFrame:
+
+        fields = nsn['field'].unique()
+
+        for field in fields:
+            idx = survey['field'] == field
+            sel_survey = survey[idx]
+            seas_min = sel_survey['season_min']
+            seas_max = sel_survey['season_max']
+
+            idxb = nsn['field'] == field
+            idxb &= nsn[self.timescale] >= seas_min
+            idxb &= nsn[self.timescale] <= seas_max
+            sel_nsn = nsn[idxb]
 
     def build_random_sample(self):
         """
@@ -551,6 +580,9 @@ class Random_survey:
         df_res = pd.DataFrame()
         df_orig = pd.DataFrame()
 
+        print('survey', survey)
+        print('nsn_field_season', nsn_field_season)
+
         for season in seasons:
             # grab the fields according to the survey
             idx = survey['season_min'] <= season
@@ -565,6 +597,7 @@ class Random_survey:
 
                 # grab the number of sn
                 ida = nsn_field_season['field'] == field
+                print('io', field, nsn_field_season[ida])
                 ida &= nsn_field_season[self.timescale] == season
                 nsn_exp = int(nsn_field_season[ida]['nsn'].mean())
                 nsn = np.min([nsn_exp, nsn_max_season])
