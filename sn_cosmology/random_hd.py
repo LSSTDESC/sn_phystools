@@ -249,6 +249,16 @@ class Random_survey:
             wfd_photz['field'] = 'WFD_photz'
             nsn_wfd_photz['field'] = 'WFD_photz'
 
+            nsn_wfd_spectroz = self.get_nsn_from_survey(
+                nsn_wfd_spectroz, self.survey)
+            print(nsn_wfd_spectroz)
+            # correct nsn_wfd_photz accounting for sn_wfd_spectroz
+
+            nsn_wfd_photz = self.get_nsn_wfd_corr(
+                nsn_wfd_photz, nsn_wfd_spectroz)
+            print(nsn_wfd_photz)
+            print(test)
+
             print('hello', nsn_wfd_photz)
             print('hello', nsn_wfd_spectroz)
 
@@ -283,20 +293,56 @@ class Random_survey:
 
         return sn_sample
 
+    def get_nsn_wfd_corr(self, nsn_wfd_photz, nsn_wfd_spectroz):
+
+        tt = nsn_wfd_photz.merge(nsn_wfd_spectroz[['season', 'nsn_survey']],
+                                 left_on=['season'], right_on=['season'],
+                                 suffixes=('', '_spectroz'))
+
+        print(tt)
+
     def get_nsn_from_survey(self, nsn, survey) -> pd.DataFrame:
+        """
+        Method to grab NSN from the survey
+
+        Parameters
+        ----------
+        nsn : pandas df
+            Initial values.
+        survey : pandas df
+            survey to consider.
+
+        Returns
+        -------
+        nsn_new : pandas df
+            new nsn values according to the survey.
+
+        """
 
         fields = nsn['field'].unique()
 
+        nsn_new = pd.DataFrame()
         for field in fields:
             idx = survey['field'] == field
             sel_survey = survey[idx]
             seas_min = sel_survey['season_min']
             seas_max = sel_survey['season_max']
-
+            nsn_survey = sel_survey['nsn_max_season'].values[0]
             idxb = nsn['field'] == field
-            idxb &= nsn[self.timescale] >= seas_min
-            idxb &= nsn[self.timescale] <= seas_max
-            sel_nsn = nsn[idxb]
+            print('hello', seas_min.values)
+            idxb &= nsn[self.timescale] >= seas_min.values[0]
+            idxb &= nsn[self.timescale] <= seas_max.values[0]
+            nsn_sel = nsn[idxb]
+
+            nsn_sel['nsn_survey'] = nsn_survey
+            nsn_sel['nsn_survey'] = nsn_sel[['nsn', 'nsn_survey']].min(axis=1)
+
+            nsn_nosel = nsn[~idxb]
+            nsn_nosel['nsn_survey'] = 0
+            nsn_sel = pd.concat((nsn_sel, nsn_nosel))
+            nsn_new = pd.concat((nsn_new, nsn_sel))
+
+        return nsn_new
 
     def build_random_sample(self):
         """
