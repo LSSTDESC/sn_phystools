@@ -14,8 +14,8 @@ from sn_tools.sn_utils import multiproc
 class Fit_seasons:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
                  dataDir_WFD, dbName_WFD, dictsel, survey,
-                 prior, host_effi, frac_WFD_low_sigmaC=0.8,
-                 max_sigmaC=0.04, test_mode=0, lowz_optimize=0.1,
+                 prior, host_effi, frac_WFD_low_sigma_mu=0.8,
+                 max_sigma_mu=0.12, test_mode=0, lowz_optimize=0.1,
                  sigmaInt=0.12, dump_data=False,
                  timescale='year', outName=''):
         """
@@ -41,11 +41,11 @@ class Fit_seasons:
             prior for the fit.
         host_effi: dict
             dict of 1D interpolators for host effi vs z.
-        frac_WFD_low_sigmaC : float, optional
-             fraction of WFD SNe Ia with low sigmaC. The default is 0.8.
-         max_sigmaC : float, optional
+        frac_WFD_low_sigma_mu : float, optional
+             fraction of WFD SNe Ia with low sigma_mu. The default is 0.8.
+         max_sigmamu : float, optional
              Max sigmaC value defining the low sigmaC sample.
-             The default is 0.04.
+             The default is 0.12.
         test_mode: int, optional
           to run the program in test mode. The default is 0.
         lowz_optimize: float, opt.
@@ -74,8 +74,8 @@ class Fit_seasons:
         self.survey = survey
         self.prior = prior
         self.host_effi = host_effi
-        self.frac_WFD_low_sigmaC = frac_WFD_low_sigmaC
-        self.max_sigmaC = max_sigmaC
+        self.frac_WFD_low_sigma_mu = frac_WFD_low_sigma_mu
+        self.max_sigma_mu = max_sigma_mu
         self.test_mode = test_mode
         self.lowz_optimize = lowz_optimize
         self.sigmaInt = sigmaInt
@@ -161,8 +161,8 @@ class Fit_seasons:
                                  self.dictsel, [seas],
                                  survey=self.survey, sigmaInt=self.sigmaInt,
                                  host_effi=self.host_effi,
-                                 frac_WFD_low_sigmaC=self.frac_WFD_low_sigmaC,
-                                 max_sigmaC=self.max_sigmaC,
+                                 frac_WFD_low_sigma_mu=self.frac_WFD_low_sigma_mu,
+                                 max_sigma_mu=self.max_sigma_mu,
                                  test_mode=self.test_mode,
                                  lowz_optimize=self.lowz_optimize,
                                  timescale=self.timescale, nrandom=nrandom).data
