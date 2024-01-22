@@ -764,17 +764,17 @@ class Random_survey:
         # check whether:
         # this survey has already SNs
         nsn_z_already = pd.DataFrame()
+        nameb = ''
         if name in sn_survey.keys():
-            print('survey already started')
-            sn_previous = sn_survey[name]
-            nsn_z_already = self.estimate_nsn_z(sn_previous)
-
-        # or if a corresponding spectro survey already exist
-        nameb = name.replace('photz', 'spectroz')
-        if nameb in sn_survey.keys():
+            nameb = name
+        namebb = name.replace('photz', 'spectroz')
+        if namebb in sn_survey.keys():
+            nameb = namebb
+        if nameb != '':
             print('survey already started')
             sn_previous = sn_survey[nameb]
-            nsn_z_already = self.estimate_nsn_z(sn_previous)
+            nsn_z_already = sn_previous.groupby(['field']).apply(
+                lambda x: self.estimate_nsn_z(x)).reset_index()
 
         print('previously', nsn_z_already)
 
@@ -842,7 +842,8 @@ class Random_survey:
 
         dfa = dfa.merge(dfb, left_on=['field'], right_on=[
                         'field'], suffixes=['', '_y'])
-        print(dfa)
+        print('ppp', dfa.columns)
+        print(test)
 
         return dfa
 
@@ -1071,7 +1072,7 @@ class Random_survey:
 
         return np.round(frac, 3)
 
-    def estimate_nsn_z(self, data, varx='z', field='WFD'):
+    def estimate_nsn_z(self, data, varx='z'):
         """
         Method to estimate nsn per z bin
 
@@ -1098,11 +1099,11 @@ class Random_survey:
         for group_name, df_group in group:
             zmin = group_name.left
             zmax = group_name.right
-            dd['z_{}_{}'.format(zmin, zmax)] = [len(df_group)]
+            dd['nsn_z_{}_{}'.format(zmin, zmax)] = [len(df_group)]
 
         df = pd.DataFrame.from_dict(dd)
         df['nsn_survey'] = len(data)
-        df['field'] = field
+
         return df
 
     def sample_max_lowz(self, data, nsn, nsn_lowz, frac_WFD_low_sigmaC):
