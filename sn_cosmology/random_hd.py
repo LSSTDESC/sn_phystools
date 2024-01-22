@@ -47,7 +47,7 @@ class HD_random:
         prior : pandas df, optional
             Prior to apply to the Chisquare.
             The default is
-            pd.DataFrame({'varname': ['Om0'],'refvalue':[0.3], 
+            pd.DataFrame({'varname': ['Om0'],'refvalue':[0.3],
                           'sigma':[0.0073]}).
          test_mode: int, optional.
           To activate the program in test mode. The default is 0.
@@ -139,7 +139,7 @@ class Random_survey:
                                      columns=['field', 'zmax', 'sigmaC',
                                               'season_min', 'season_max']),
                  sigmaInt=0.12, host_effi={},
-                 frac_WFD_low_sigmaC=0.8, max_sigmaC=0.04,
+                 frac_WFD_low_sigma_mu=0.8, max_sigma_mu=0.12,
                  test_mode=0, lowz_optimize=0.1, timescale='year', nrandom=50):
         """
         Class to build a complete (WFD+DDF) random survey
@@ -169,9 +169,9 @@ class Random_survey:
           1D interpolators of host_effi vs z. The default is {}.
         frac_WFD_low_sigmaC : float, optional
              fraction of WFD SNe Ia with low sigmaC. The default is 0.8.
-        max_sigmaC : float, optional
-             Max sigmaC value defining the low sigmaC sample.
-             The default is 0.04.
+        max_sigma_mu : float, optional
+             Max sigmaC value defining the low sigma_mu sample.
+             The default is 0.12.
         test_mode: int, optional
             to run the program in test mode. The default is 0.
         lowz_optimize: float, opt.
@@ -194,8 +194,8 @@ class Random_survey:
         self.survey = survey
         self.sigmaInt = sigmaInt
         self.host_effi = host_effi
-        self.frac_WFD_low_sigmaC = frac_WFD_low_sigmaC
-        self.max_sigmaC = max_sigmaC
+        self.frac_WFD_low_sigma_mu = frac_WFD_low_sigma_mu
+        self.max_sigma_mu = max_sigma_mu
         self.test_mode = test_mode
         self.lowz_optimize = lowz_optimize
         self.timescale = timescale
@@ -226,7 +226,31 @@ class Random_survey:
             nname = 'nsn_z_{}_{}'.format(np.round(zmin, 1), np.round(zmax, 1))
             rname.append(nname)
 
+        rname.append('nsn')
+        rname.append('nsn_survey')
+        dataDir = {}
+        dbName = {}
+        dataDir['DDF'] = self.dataDir_DD
+        dataDir['WFD'] = self.dataDir_WFD
+        dbName['DDF'] = self.dbName_DD
+        dbName['WFD'] = self.dbName_WFD
+
+        fieldTypes = np.unique(
+            self.survey[['zType', 'fieldType']].to_records(index=False))
+
+        # sort to have spectroz fist
+        fieldTypes = sorted(fieldTypes.tolist())[::-1]
+        print('fieldTypes', fieldTypes)
+
         for seas in self.seasons:
+
+            sn_season, nsn_season = self.load_data_season(
+                fieldTypes, dataDir, dbName, seas)
+
+            """
+            print(nsn_season)
+            print(test)
+
             print('Building samples', self.timescale, seas)
             ddf = self.load_data(self.dataDir_DD, self.dbName_DD,
                                  'DDF_spectroz', 'DDF', [seas])
@@ -249,59 +273,143 @@ class Random_survey:
             wfd_photz['field'] = 'WFD_photz'
             nsn_wfd_photz['field'] = 'WFD_photz'
 
+            nsn_ddf = self.get_nsn_from_survey(
+                nsn_ddf, self.survey)
             nsn_wfd_spectroz = self.get_nsn_from_survey(
                 nsn_wfd_spectroz, self.survey)
-            print(nsn_wfd_spectroz)
-            # correct nsn_wfd_photz accounting for sn_wfd_spectroz
+            nsn_wfd_photz = self.get_nsn_from_survey(
+                nsn_wfd_photz, self.survey)
 
+            # correct nsn_wfd_photz accounting for sn_wfd_spectroz
             nsn_wfd_photz = self.get_nsn_wfd_corr(
                 nsn_wfd_photz, nsn_wfd_spectroz)
-            print(nsn_wfd_photz)
-            print(test)
 
             print('hello', nsn_wfd_photz)
             print('hello', nsn_wfd_spectroz)
 
-            nsn = pd.concat((nsn_ddf, nsn_wfd_spectroz))
-            nsn = nsn.fillna(0)
+            # nsn = pd.concat((nsn_ddf, nsn_wfd_spectroz))
 
-            nsn['nsn'] = nsn['nsn'].astype(int)
-            nsn[rname] = nsn[rname].astype(int)
+            for vv in ['ddf', 'wfd_spectroz', 'wfd_photz']:
+                exec('nsn_{} = nsn_{}.fillna(0)'.format(vv, vv))
+                # exec(
+                #    'nsn_{}[\'nsn\'] = nsn_{}[\'nsn\'].astype(int)'.format(vv, vv))
+                exec('nsn_{}[rname] = nsn_{}[rname].astype(int)'.format(vv, vv))
+                print(eval('nsn_{}'.format(vv)))
+            """
+            # for i in range(self.nrandom):
+            for i in [1]:
+                sn_samp = pd.DataFrame()
 
-            sn_data = pd.concat((ddf, wfd_spectroz))
+                # build the samples - should start with spectorz samples!
+                sn_survey = {}
+                for vv in fieldTypes:
+                    name = '{}_{}'.format(vv[0], vv[1])
+                    sn_survey[name] = self.random_sample(
+                        nsn_season[name], sn_season[name],
+                        self.survey, [seas], sn_survey, name)
+                    sn_samp = pd.concat((sn_samp, sn_survey[name]))
 
-            for i in range(self.nrandom):
-                sn_samp = self.random_sample(nsn, sn_data, self.survey, [seas])
-
-                sn_samp = self.correct_mu(sn_samp)
-
-                """
-                cols = ['Cov_t0t0', 'Cov_t0x0', 'Cov_t0x1', 
-                        'Cov_t0color', 'Cov_x0x0',
-                        'Cov_x0x1', 'Cov_x0color', 'Cov_x1x1', 
-                        'Cov_x1color', 'Cov_colorcolor']
-                print(sn_samp[cols])
-                """
                 sn_samp[self.timescale] = seas
                 sn_samp['survey_real'] = i+1
-
-            # self.plot_mu(sn_samp, 'mu_SN')
 
                 sn_sample = pd.concat((sn_sample, sn_samp))
 
         # self.plot_nsn_z(sn_sample)
+        sn_sample = self.correct_mu(sn_sample)
 
         return sn_sample
 
+    def load_data_season(self, fieldTypes, dataDir, dbName, seas):
+        """
+        Method to load data per season
+
+        Parameters
+        ----------
+        fieldTypes : list(str,str)
+            list of (fieldType, zType)
+        dataDir : dict
+            Data dirs
+        dbName : dict
+            Dbnames.
+        seas : list(int)
+            seasons.
+
+        Returns
+        -------
+        data_survey : dict
+            Data.
+        nsn_survey : dict
+            nsn.
+
+        """
+
+        zlim = np.arange(0.0, 1.1, 0.1)
+        rname = []
+        for i in range(len(zlim)-1):
+            zmin = zlim[i]
+            zmax = zlim[i+1]
+            nname = 'nsn_z_{}_{}'.format(np.round(zmin, 1), np.round(zmax, 1))
+            rname.append(nname)
+
+        rname.append('nsn')
+        rname.append('nsn_survey')
+
+        data_survey = {}
+        nsn_survey = {}
+
+        for field in fieldTypes:
+            ztype = field[0]
+            ftype = field[1]
+            name = '{}_{}'.format(ztype, ftype)
+
+            if name not in data_survey.keys():
+                data_survey[name] = {}
+                nsn_survey[name] = {}
+
+            data_ = self.load_data(dataDir[ftype], dbName[ftype],
+                                   '{}_{}'.format(ftype, ztype), ftype, [seas])
+
+            nsn_ = self.load_nsn_summary(dataDir[ftype], dbName[ftype],
+                                         '{}_{}'.format(ftype, ztype), [seas])
+
+            nsn_ = self.get_nsn_from_survey(nsn_, self.survey, ftype, ztype)
+
+            nsn_ = nsn_.fillna(0.)
+            nsn_[rname] = nsn_[rname].astype(int)
+            data_survey[name] = data_
+            nsn_survey[name] = nsn_
+
+        return data_survey, nsn_survey
+
     def get_nsn_wfd_corr(self, nsn_wfd_photz, nsn_wfd_spectroz):
+        """
+        Method to estimate nsn from WFD (photz) from WFD spectroz measurements
+
+        Parameters
+        ----------
+        nsn_wfd_photz : pandas df
+            array with the number of photz WFD SNe Ia.
+        nsn_wfd_spectroz :  pandas df
+            array with the number of spectro WFD SNe Ia..
+
+        Returns
+        -------
+        tt : pandas df
+            array with the corrected number of photz WFD SNe Ia.
+
+        """
 
         tt = nsn_wfd_photz.merge(nsn_wfd_spectroz[['season', 'nsn_survey']],
                                  left_on=['season'], right_on=['season'],
                                  suffixes=('', '_spectroz'))
 
-        print(tt)
+        tt['nsn_survey'] -= tt['nsn_survey_spectroz']
+        tt = tt.drop(columns=['nsn_survey_spectroz'])
+        tt['nsn_survey'] = tt['nsn_survey'].clip(lower=0)
 
-    def get_nsn_from_survey(self, nsn, survey) -> pd.DataFrame:
+        return tt
+
+    def get_nsn_from_survey(self, nsn, survey, fieldType, zType) -> pd.DataFrame:
         """
         Method to grab NSN from the survey
 
@@ -311,6 +419,10 @@ class Random_survey:
             Initial values.
         survey : pandas df
             survey to consider.
+        fieldType: str
+          Type of field (DDF/WFD)
+        zType: str
+          z type (spectroz/photz)
 
         Returns
         -------
@@ -323,23 +435,33 @@ class Random_survey:
 
         nsn_new = pd.DataFrame()
         for field in fields:
+            # get survey
             idx = survey['field'] == field
+            idx &= survey['fieldType'] == fieldType
+            idx &= survey['zType'] == zType
             sel_survey = survey[idx]
             seas_min = sel_survey['season_min']
             seas_max = sel_survey['season_max']
             nsn_survey = sel_survey['nsn_max_season'].values[0]
+
+            # get nsn
             idxb = nsn['field'] == field
-            print('hello', seas_min.values)
+            print('hello', seas_min.values, field)
             idxb &= nsn[self.timescale] >= seas_min.values[0]
             idxb &= nsn[self.timescale] <= seas_max.values[0]
-            nsn_sel = nsn[idxb]
+            nsn_sel = pd.DataFrame(nsn[idxb])
 
-            nsn_sel['nsn_survey'] = nsn_survey
-            nsn_sel['nsn_survey'] = nsn_sel[['nsn', 'nsn_survey']].min(axis=1)
+            if len(nsn_sel) == 0:
+                nsn_sel = nsn
+                nsn_sel['nsn_survey'] = 0
+            else:
+                nsn_sel['nsn_survey'] = nsn_survey
+                nsn_sel['nsn_survey'] = nsn_sel[[
+                    'nsn', 'nsn_survey']].min(axis=1)
 
-            nsn_nosel = nsn[~idxb]
-            nsn_nosel['nsn_survey'] = 0
-            nsn_sel = pd.concat((nsn_sel, nsn_nosel))
+            # nsn_nosel = nsn[~idxb]
+            # nsn_nosel['nsn_survey'] = 0
+            # nsn_sel = pd.concat((nsn_sel, nsn_nosel))
             nsn_new = pd.concat((nsn_new, nsn_sel))
 
         return nsn_new
@@ -428,7 +550,7 @@ class Random_survey:
 
         return df
 
-    def load_nsn_summary(self, dataDir, dbName, runType):
+    def load_nsn_summary(self, dataDir, dbName, runType, seas):
         """
         Method to load nsn stat.
 
@@ -454,7 +576,9 @@ class Random_survey:
 
         res = pd.read_hdf(theName)
 
-        return res
+        idx = res[self.timescale].isin(seas)
+
+        return res[idx]
 
     def correct_mu(self, data, H0=70, Om0=0.3, Ode0=0.7,
                    w0=-1., wa=0.0, alpha=0.13, beta=3.1):
@@ -493,16 +617,18 @@ class Random_survey:
         cosmo = w0waCDM(H0=H0, Om0=Om0, Ode0=Ode0, w0=w0, wa=wa)
 
         sigmu = data['sigma_mu'].to_list()
+        """
         var_mu = data['Cov_mbmb']\
             + (alpha**2)*data['Cov_x1x1']\
             + (beta**2)*data['Cov_colorcolor']\
             + 2*alpha*data['Cov_x1mb']\
             - 2*beta*data['Cov_colormb']\
             - 2*alpha*beta*data['Cov_x1color']
+        """
         bins = data['z'].to_list()
         dist_mu = cosmo.distmod(bins).value
 
-        sigmu = np.sqrt(var_mu).to_list()
+        # sigmu = np.sqrt(var_mu).to_list()
         sigma_mu = [np.sqrt(sigmu[i]**2+self.sigmaInt**2)
                     for i in range(len(sigmu))]
 
@@ -603,7 +729,124 @@ class Random_survey:
 
         plt.show()
 
-    def random_sample(self, nsn_field_season, sn_data, survey, seasons):
+    def random_sample(self, nsn_season, sn_season, survey, seasons, sn_survey, name):
+        """
+        Function to extract a random sample of SN
+
+        Parameters
+        ----------
+        nsn_field_season : pandas df
+            reference data with eg NSN.
+        sn_data : pandas df
+            original df where data are extracted from.
+        survey : pandas df
+            list of field+zmac+sigmaC+season_min+season_max.
+        sn_survey: pandas df
+          random sample built prior to this call.
+        name: str
+          name of the survey to build
+
+        Returns
+        -------
+        df_res : pandas df
+            Resulting random sample.
+
+        """
+
+        df_res = pd.DataFrame()
+        df_orig = pd.DataFrame()
+
+        print('survey', survey)
+        print('nsn_field_season', nsn_season)
+
+        fields = sn_season['field'].unique()
+
+        # check whether:
+        # this survey has already SNs
+        nsn_z_already = pd.DataFrame()
+        if name in sn_survey.keys():
+            print('survey already started')
+            sn_previous = sn_survey[name]
+            nsn_z_already = self.estimate_nsn_z(sn_previous)
+
+        # or if a corresponding spectro survey already exist
+        nameb = name.replace('photz', 'spectroz')
+        if nameb in sn_survey.keys():
+            print('survey already started')
+            sn_previous = sn_survey[nameb]
+            nsn_z_already = self.estimate_nsn_z(sn_previous)
+
+        print('previously', nsn_z_already)
+
+        for field in fields:
+            # grab the number of SN per season
+            idf = survey['field'] == field
+            ida = nsn_season['field'] == field
+            nsn_exp = int(nsn_season[ida]['nsn'].mean())
+            nsn_survey = int(nsn_season[ida]['nsn_survey'].mean())
+            print('field,nsn', field, nsn_exp, nsn_survey)
+            if nsn_survey <= 0:
+                continue
+
+             # get survey info
+            host_effi_key, season_min,\
+                season_max = self.get_info(survey, field)
+
+            # get data
+            idb = sn_season['field'] == field
+            sel_sn = sn_season[idb]
+
+            # grab sn sample
+            nsn_z_opti = nsn_season[ida]
+            if len(nsn_z_already) > 0:
+                nsn_z_opti = self.correct_nsn_survey(nsn_z_opti, nsn_z_already)
+
+            res = self.sn_sample(
+                sel_sn, nsn_exp, nsn_survey, field,
+                nsn_z_opti, zlow=self.lowz_optimize)
+            print('sample', field, len(res))
+
+            if self.test_mode:
+                df_orig = pd.concat((df_orig, res))
+                nsn_zvals = self.estimate_nsn_z(res)
+                print(nsn_zvals)
+
+            # correct for zhost efficiency
+
+            res_host = self.effi_zhost(res, host_effi_key)
+            df_res = pd.concat((df_res, res_host))
+
+        if self.test_mode:
+            ll_ud = ['COSMOS', 'XMM-LSS']
+            ll_dd = ['XMM-LSS', 'CDFS', 'ELAISS1', 'EDFSa', 'EDFSb']
+            ll_wfd = ['WFD']
+            ll_all = [ll_ud, ll_dd, ll_wfd]
+            names = dict(zip(['UD', 'DD', 'WFD'], ll_all))
+
+            for key, vals in names.items():
+                idxa = df_orig['field'].isin(vals)
+                idxb = df_res['field'].isin(vals)
+                if len(df_orig[idxa]) > 0:
+                    self.plot_sample_zhost(
+                        df_orig[idxa], df_res[idxb], key)
+        return df_res
+
+    def correct_nsn_survey(self, dfa, dfb):
+
+        zlim = np.arange(0.0, 1.1, 0.1)
+        bbin = []
+        for i in range(len(zlim)-1):
+            zmin = zlim[i]
+            zmax = zlim[i+1]
+            bbin.append('z_{}_{}'.format(zmin, zmax))
+
+        dfa = dfa.merge(dfb, left_on=['field'], right_on=[
+                        'field'], suffixes=['', '_y'])
+        print(dfa)
+
+        return dfa
+
+    def random_sample_deprecated(self, nsn_field_season, sn_data, survey, seasons):
         """
         Function to extract a random sample of SN
 
@@ -631,14 +874,20 @@ class Random_survey:
 
         for season in seasons:
             # grab the fields according to the survey
-            idx = survey['season_min'] <= season
-            idx &= season <= survey['season_max']
-            fields = survey[idx]['field'].unique()
+            # idx = survey['season_min'] <= season
+            # idx &= season <= survey['season_max']
+            idx = sn_data['season'] == season
+            fields = sn_data[idx]['field'].unique()
 
             # loop on fields
             for field in fields:
-                # grab the max allowed number of SN per season
+                # grab the number of SN per season
                 idf = survey['field'] == field
+                ida = nsn_field_season['field'] == field
+                nsn_exp = int(nsn_field_season[ida]['nsn'].mean())
+                nsn = int(nsn_field_season[ida]['nsn_survey'].mean())
+                print('field,nsn', field, nsn)
+                """
                 nsn_max_season = int(survey[idf]['nsn_max_season'].mean())
 
                 # grab the number of sn
@@ -647,7 +896,7 @@ class Random_survey:
                 ida &= nsn_field_season[self.timescale] == season
                 nsn_exp = int(nsn_field_season[ida]['nsn'].mean())
                 nsn = np.min([nsn_exp, nsn_max_season])
-
+                """
                 """
                 nsn_z_opti = 0
                 if self.lowz_optimize > 0:
@@ -693,15 +942,16 @@ class Random_survey:
             ll_ud = ['COSMOS', 'XMM-LSS']
             idxa = df_orig['field'].isin(ll_ud)
             idxb = df_res['field'].isin(ll_ud)
-            idxba = df_orig['field'].isin(['WFD'])
-            idxbb = df_res['field'].isin(['WFD'])
-            idxca = df_orig['field'].isin(['WFD']+ll_ud)
-            idxcb = df_res['field'].isin(['WFD']+ll_ud)
+            idxba = df_orig['field'].isin(['WFD_spectroz'])
+            idxbb = df_res['field'].isin(['WFD_spectroz'])
+            idxca = df_orig['field'].isin(['WFD_photz'])
+            idxcb = df_res['field'].isin(['WFD_photz'])
 
             self.plot_sample_zhost(df_orig[idxa], df_res[idxb], 'UD')
-            self.plot_sample_zhost(df_orig[~idxa], df_res[~idxb], 'WFD+DD')
-            self.plot_sample_zhost(df_orig[idxba], df_res[idxbb], 'WFD')
-            self.plot_sample_zhost(df_orig[~idxca], df_res[~idxcb], 'DD')
+            self.plot_sample_zhost(df_orig[~idxa], df_res[~idxb], 'DD')
+            self.plot_sample_zhost(
+                df_orig[idxba], df_res[idxbb], 'WFD_spectroz')
+            self.plot_sample_zhost(df_orig[idxca], df_res[idxcb], 'WFD_photz')
 
         return df_res
 
@@ -741,25 +991,29 @@ class Random_survey:
             if field != 'WFD':
                 res = data.sample(n=nsn)
             else:
-                # sample build out of two: sigma_C<=0.04 and sigma_C>=0.04
+                # sample build out of two: sigma_mu<=0.12 and sigma_mu>=0.12
                 if nsn > nsn_exp:
                     nsn = nsn_exp
 
-                frac = self.get_sigmaC_fraction_in_data(data)
-                nsn_exp_low_sigmaC = int(nsn_exp*frac)
+                # frac = self.get_sigmaC_fraction_in_data(data)
+                # nsn_exp_low_sigmaC = int(nsn_exp*frac)
+                frac = self.get_sigma_mu_fraction_in_data(data)
+                nsn_exp_low_sigma_mu = int(nsn_exp*frac)
                 # nsn_exp_high_sigmaC = int(nsn_exp*(1-frac))
-                nsn_wanted_low_sigmaC = nsn*self.frac_WFD_low_sigmaC
+                # nsn_wanted_low_sigmaC = nsn*self.frac_WFD_low_sigmaC
+                nsn_wanted_low_sigma_mu = nsn*self.frac_WFD_low_sigma_mu
                 # nsn_wanted_high_sigmaC = nsn-nsn_wanted_low_sigmaC
 
-                nsn_frac = np.min([nsn_exp_low_sigmaC, nsn_wanted_low_sigmaC])
+                nsn_frac = np.min(
+                    [nsn_exp_low_sigma_mu, nsn_wanted_low_sigma_mu])
                 nsn = int(nsn)
                 nsn_frac = int(nsn_frac)
 
-                idx = data['sigmaC'] <= self.max_sigmaC
+                idx = data['sigma_mu'] <= self.max_sigma_mu
                 resa = self.sample_max_lowz(
-                    data[idx], nsn_frac, nsn_lowz, self.frac_WFD_low_sigmaC)
+                    data[idx], nsn_frac, nsn_lowz, self.frac_WFD_low_sigma_mu)
                 resb = self.sample_max_lowz(
-                    data[~idx], nsn-nsn_frac, nsn_lowz, 1.-self.frac_WFD_low_sigmaC)
+                    data[~idx], nsn-nsn_frac, nsn_lowz, 1.-self.frac_WFD_low_sigma_mu)
                 res = pd.concat((resa, resb))
 
         if self.test_mode:
@@ -767,13 +1021,13 @@ class Random_survey:
             if field == 'WFD':
                 idx = res['z'] <= 0.1
                 idb = data['z'] <= 0.1
-                idc = res['sigmaC'] <= self.max_sigmaC
+                idc = res['sigmaC'] <= self.max_sigma_mu
                 print('hello', len(data), len(data[idb]), len(
                     res[idx]), len(res[idc]))
 
         return res
 
-    def get_sigmaC_fraction_in_data(self, data):
+    def get_sigmaC_fraction_in_data_deprecated(self, data):
         """
         Method to estimate the fraction of SNe Ia with sigmaC < max_sigmaC
 
@@ -794,6 +1048,62 @@ class Random_survey:
         frac = len(data[idx])/len(data)
 
         return np.round(frac, 3)
+
+    def get_sigma_mu_fraction_in_data(self, data):
+        """
+        Method to estimate the fraction of SNe Ia with sigmaC < max_sigmaC
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+
+        Returns
+        -------
+        float
+            SNe fraction with sigma_mu<=0.12 in data.
+
+        """
+
+        idx = data['sigma_mu'] <= self.max_sigma_mu
+
+        frac = len(data[idx])/len(data)
+
+        return np.round(frac, 3)
+
+    def estimate_nsn_z(self, data, varx='z', field='WFD'):
+        """
+        Method to estimate nsn per z bin
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        varx : str, optional
+            variable of interest. The default is 'z'.
+
+        Returns
+        -------
+        pandas df
+            nsn per z bins.
+
+        """
+
+        zlim = np.arange(0.0, 1.2, 0.1)
+        group = data.groupby(pd.cut(data[varx], zlim))
+
+        nsn = group.size()
+
+        dd = {}
+        for group_name, df_group in group:
+            zmin = group_name.left
+            zmax = group_name.right
+            dd['z_{}_{}'.format(zmin, zmax)] = [len(df_group)]
+
+        df = pd.DataFrame.from_dict(dd)
+        df['nsn_survey'] = len(data)
+        df['field'] = field
+        return df
 
     def sample_max_lowz(self, data, nsn, nsn_lowz, frac_WFD_low_sigmaC):
         """
