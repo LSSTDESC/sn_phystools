@@ -43,8 +43,8 @@ class Fit_seasons:
             dict of 1D interpolators for host effi vs z.
         frac_WFD_low_sigma_mu : float, optional
              fraction of WFD SNe Ia with low sigma_mu. The default is 0.8.
-         max_sigmamu : float, optional
-             Max sigmaC value defining the low sigmaC sample.
+         max_sigma_mu : float, optional
+             Max sigma_mu value defining the low sigma_mu sample.
              The default is 0.12.
         test_mode: int, optional
           to run the program in test mode. The default is 0.
@@ -233,8 +233,9 @@ class Fit_seasons:
                 # analyze the data
                 dict_ana = analyze_data(sel_data_fit)
                 # get Nsn with sigmaC <= 0.04
-                idx = sel_data_fit['sigmaC'] <= self.max_sigmaC
-                dict_ana_b = analyze_data(sel_data_fit[idx], add_str='_sigmaC')
+                idx = sel_data_fit['sigma_mu'] <= self.max_sigma_mu
+                dict_ana_b = analyze_data(
+                    sel_data_fit[idx], add_str='_sigma_mu')
                 if self.test_mode:
                     print(dict_ana)
                     print(dict_ana_b)

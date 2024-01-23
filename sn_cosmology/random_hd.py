@@ -439,6 +439,8 @@ class Random_survey:
             idx = survey['field'] == field
             idx &= survey['fieldType'] == fieldType
             idx &= survey['zType'] == zType
+            if len(survey[idx]) == 0:
+                continue
             sel_survey = survey[idx]
             seas_min = sel_survey['season_min']
             seas_max = sel_survey['season_max']
@@ -629,13 +631,23 @@ class Random_survey:
         dist_mu = cosmo.distmod(bins).value
 
         # sigmu = np.sqrt(var_mu).to_list()
-        sigma_mu = [np.sqrt(sigmu[i]**2+self.sigmaInt**2)
-                    for i in range(len(sigmu))]
+        # sigma_mu = [np.sqrt(sigmu[i]**2+self.sigmaInt**2)
+        #            for i in range(len(sigmu))]
 
-        mu = [gauss(dist_mu[i], sigma_mu[i]) for i in range(len(dist_mu))]
-        data['mu_SN'] = mu
+        sigmaInt = [self.sigmaInt]*len(sigmu)
+        sigma_mu = np.array(sigmu)**2+np.array(sigmaInt)**2
+        sigma_mu = np.sqrt(sigma_mu)
+
+        # mu = [gauss(dist_mu[i], sigma_mu[i]) for i in range(len(dist_mu))]
+        mu_shift = np.random.normal(0., sigma_mu)
+
+        data['mu_SN'] = dist_mu+mu_shift
         # data['sigma_mu_SN'] = sigmu
         data['sigma_mu'] = sigmu
+
+        idx = data['zType'] == 'photz'
+        z_shift = shift = np.random.normal(0., 0.02*(1.+data[idx]['z']))
+        data.loc[idx, 'z'] += z_shift
 
         return data
 
@@ -776,21 +788,30 @@ class Random_survey:
             nsn_z_already = sn_previous.groupby(['field']).apply(
                 lambda x: self.estimate_nsn_z(x)).reset_index()
 
-        print('previously', nsn_z_already)
-
+        print('previously', nsn_z_already, name)
+        zType = name.split('_')[0]
         for field in fields:
             # grab the number of SN per season
             idf = survey['field'] == field
+            idf &= survey['zType'] == zType
             ida = nsn_season['field'] == field
+            if len(survey[idf]) == 0:
+                continue
             nsn_exp = int(nsn_season[ida]['nsn'].mean())
             nsn_survey = int(nsn_season[ida]['nsn_survey'].mean())
             print('field,nsn', field, nsn_exp, nsn_survey)
             if nsn_survey <= 0:
                 continue
 
-             # get survey info
+            # get survey info
+            """
             host_effi_key, season_min,\
-                season_max = self.get_info(survey, field)
+               season_max = self.get_info(survey[idf], field)
+            """
+            host_effi_key = survey[idf]['host_effi'].values[0]
+            fieldType = survey[idf]['fieldType'].values[0]
+            zType = survey[idf]['zType'].values[0]
+            zSource = survey[idf]['zSource'].values[0]
 
             # get data
             idb = sn_season['field'] == field
@@ -814,6 +835,9 @@ class Random_survey:
             # correct for zhost efficiency
 
             res_host = self.effi_zhost(res, host_effi_key)
+            res_host['fieldType'] = fieldType
+            res_host['zType'] = zType
+            res_host['zSource'] = zSource
             df_res = pd.concat((df_res, res_host))
 
         if self.test_mode:
@@ -826,26 +850,63 @@ class Random_survey:
             for key, vals in names.items():
                 idxa = df_orig['field'].isin(vals)
                 idxb = df_res['field'].isin(vals)
+
                 if len(df_orig[idxa]) > 0:
+                    fieldType = df_res[idxb]['fieldType'].unique()[0]
+                    zType = df_res[idxb]['zType'].unique()[0]
+                    zSource = df_res[idxb]['zSource'].unique()[0]
+                    print('hohoho', fieldType, zType, zSource)
+                    keyb = '{} - {} {} {}'.format(key,
+                                                  fieldType, zType, zSource)
                     self.plot_sample_zhost(
-                        df_orig[idxa], df_res[idxb], key)
+                        df_orig[idxa], df_res[idxb], keyb)
         return df_res
 
     def correct_nsn_survey(self, dfa, dfb):
+        """
+        Method to correct for nsn_zmin_zmax
+
+        Parameters
+        ----------
+        dfa : pandas df
+            Data to correct.
+        dfb : pandas df
+            Data for correction.
+
+        Returns
+        -------
+        dfc : pandas df
+            Resulting data.
+
+        """
 
         zlim = np.arange(0.0, 1.1, 0.1)
         bbin = []
+        dfb['nsn_z_0.0_0.1'] = 500
         for i in range(len(zlim)-1):
             zmin = zlim[i]
             zmax = zlim[i+1]
             bbin.append('z_{}_{}'.format(zmin, zmax))
 
-        dfa = dfa.merge(dfb, left_on=['field'], right_on=[
+        dfc = dfa.merge(dfb, left_on=['field'], right_on=[
                         'field'], suffixes=['', '_y'])
-        print('ppp', dfa.columns)
-        print(test)
 
-        return dfa
+        ccolsy = list(dfc.filter(like='_y').columns)
+        ccols = list(map(lambda x: x.replace('_y', ''), ccolsy))
+
+        dfc[ccols] -= dfc[ccolsy].values
+
+        dfc = dfc.drop(columns=ccolsy)
+
+        dfc[ccols] = dfc[ccols].clip(0)
+
+        """
+        print('before', dfa)
+        print('to substract', dfb)
+        print('finally', dfc)
+        """
+
+        return dfc
 
     def random_sample_deprecated(self, nsn_field_season, sn_data, survey, seasons):
         """
