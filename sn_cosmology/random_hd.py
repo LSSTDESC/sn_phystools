@@ -249,8 +249,8 @@ class Random_survey:
             sn_season, nsn_season = self.load_data_season(
                 fieldTypes, dataDir, dbName, seas)
 
-            # for i in range(self.nrandom):
-            for i in [1]:
+            for i in range(self.nrandom):
+
                 sn_samp = pd.DataFrame()
 
                 # build the samples - should start with spectorz samples!
