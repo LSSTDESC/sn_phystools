@@ -13,7 +13,7 @@ from sn_analysis.sn_calc_plot import bin_it_mean
 
 class HD_random:
     def __init__(self,
-                 vardf=['z', 'x1_fit', 'color_fit', 'mbfit', 'Cov_x1x1',
+                 vardf=['z_fit', 'x1_fit', 'color_fit', 'mbfit', 'Cov_x1x1',
                         'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',
                         'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',
                         'mu_SN'],
@@ -140,7 +140,8 @@ class Random_survey:
                                               'season_min', 'season_max']),
                  sigmaInt=0.12, host_effi={},
                  frac_WFD_low_sigma_mu=0.8, max_sigma_mu=0.12,
-                 test_mode=0, lowz_optimize=0.1, timescale='year', nrandom=50):
+                 test_mode=0, plot_test=0, lowz_optimize=0.1,
+                 timescale='year', nrandom=50):
         """
         Class to build a complete (WFD+DDF) random survey
 
@@ -197,6 +198,7 @@ class Random_survey:
         self.frac_WFD_low_sigma_mu = frac_WFD_low_sigma_mu
         self.max_sigma_mu = max_sigma_mu
         self.test_mode = test_mode
+        self.plot_test = plot_test
         self.lowz_optimize = lowz_optimize
         self.timescale = timescale
         self.nrandom = nrandom
@@ -247,55 +249,6 @@ class Random_survey:
             sn_season, nsn_season = self.load_data_season(
                 fieldTypes, dataDir, dbName, seas)
 
-            """
-            print(nsn_season)
-            print(test)
-
-            print('Building samples', self.timescale, seas)
-            ddf = self.load_data(self.dataDir_DD, self.dbName_DD,
-                                 'DDF_spectroz', 'DDF', [seas])
-            nsn_ddf = self.load_nsn_summary(
-                self.dataDir_DD, self.dbName_DD, 'DDF_spectroz')
-            wfd_spectroz = self.load_data(self.dataDir_WFD, self.dbName_WFD,
-                                          'WFD_spectroz', 'WFD', [seas])
-
-            nsn_wfd_spectroz = self.load_nsn_summary(
-                self.dataDir_WFD, self.dbName_WFD, 'WFD_spectroz')
-
-            wfd_photz = self.load_data(self.dataDir_WFD, self.dbName_WFD,
-                                       'WFD_photz', 'WFD', [seas])
-
-            nsn_wfd_photz = self.load_nsn_summary(
-                self.dataDir_WFD, self.dbName_WFD, 'WFD_photz')
-
-            wfd_spectroz['field'] = 'WFD_spectroz'
-            nsn_wfd_spectroz['field'] = 'WFD_spectroz'
-            wfd_photz['field'] = 'WFD_photz'
-            nsn_wfd_photz['field'] = 'WFD_photz'
-
-            nsn_ddf = self.get_nsn_from_survey(
-                nsn_ddf, self.survey)
-            nsn_wfd_spectroz = self.get_nsn_from_survey(
-                nsn_wfd_spectroz, self.survey)
-            nsn_wfd_photz = self.get_nsn_from_survey(
-                nsn_wfd_photz, self.survey)
-
-            # correct nsn_wfd_photz accounting for sn_wfd_spectroz
-            nsn_wfd_photz = self.get_nsn_wfd_corr(
-                nsn_wfd_photz, nsn_wfd_spectroz)
-
-            print('hello', nsn_wfd_photz)
-            print('hello', nsn_wfd_spectroz)
-
-            # nsn = pd.concat((nsn_ddf, nsn_wfd_spectroz))
-
-            for vv in ['ddf', 'wfd_spectroz', 'wfd_photz']:
-                exec('nsn_{} = nsn_{}.fillna(0)'.format(vv, vv))
-                # exec(
-                #    'nsn_{}[\'nsn\'] = nsn_{}[\'nsn\'].astype(int)'.format(vv, vv))
-                exec('nsn_{}[rname] = nsn_{}[rname].astype(int)'.format(vv, vv))
-                print(eval('nsn_{}'.format(vv)))
-            """
             # for i in range(self.nrandom):
             for i in [1]:
                 sn_samp = pd.DataFrame()
@@ -317,7 +270,21 @@ class Random_survey:
         # self.plot_nsn_z(sn_sample)
         sn_sample = self.correct_mu(sn_sample)
 
+        self.analyze_random_sample(sn_sample, nsn_season)
+        print(test)
         return sn_sample
+
+    def analyze_random_sample(self, data, nsn_season=None):
+
+        surveys = np.unique(
+            data[['zType', 'fieldType']].to_records(index=False))
+
+        dd = data.groupby(['zType', 'fieldType']).apply(
+            lambda x: self.estimate_nsn_z_allfields_sigma_mu(x)).reset_index()
+
+        print(dd)
+        if nsn_season is not None:
+            print(nsn_season)
 
     def load_data_season(self, fieldTypes, dataDir, dbName, seas):
         """
@@ -343,17 +310,6 @@ class Random_survey:
 
         """
 
-        zlim = np.arange(0.0, 1.1, 0.1)
-        rname = []
-        for i in range(len(zlim)-1):
-            zmin = zlim[i]
-            zmax = zlim[i+1]
-            nname = 'nsn_z_{}_{}'.format(np.round(zmin, 1), np.round(zmax, 1))
-            rname.append(nname)
-
-        rname.append('nsn')
-        rname.append('nsn_survey')
-
         data_survey = {}
         nsn_survey = {}
 
@@ -369,13 +325,13 @@ class Random_survey:
             data_ = self.load_data(dataDir[ftype], dbName[ftype],
                                    '{}_{}'.format(ftype, ztype), ftype, [seas])
 
-            nsn_ = self.load_nsn_summary(dataDir[ftype], dbName[ftype],
-                                         '{}_{}'.format(ftype, ztype), [seas])
+            # nsn_ = self.load_nsn_summary(dataDir[ftype], dbName[ftype],
+            #                             '{}_{}'.format(ftype, ztype), [seas])
+
+            nsn_ = self.estimate_nsn_z_allfields_sigma_mu(data_)
 
             nsn_ = self.get_nsn_from_survey(nsn_, self.survey, ftype, ztype)
 
-            nsn_ = nsn_.fillna(0.)
-            nsn_[rname] = nsn_[rname].astype(int)
             data_survey[name] = data_
             nsn_survey[name] = nsn_
 
@@ -442,6 +398,7 @@ class Random_survey:
             if len(survey[idx]) == 0:
                 continue
             sel_survey = survey[idx]
+            simu_factor = sel_survey['simuFactor'].values[0]
             seas_min = sel_survey['season_min']
             seas_max = sel_survey['season_max']
             nsn_survey = sel_survey['nsn_max_season'].values[0]
@@ -457,10 +414,14 @@ class Random_survey:
                 nsn_sel = nsn
                 nsn_sel['nsn_survey'] = 0
             else:
+                ccols = list(nsn_sel.filter(like='nsn').columns)
+                nsn_sel[ccols] = np.rint(nsn_sel[ccols]/simu_factor)
                 nsn_sel['nsn_survey'] = nsn_survey
                 nsn_sel['nsn_survey'] = nsn_sel[[
                     'nsn', 'nsn_survey']].min(axis=1)
-
+                ccolsb = list(nsn_sel.filter(like='nsn').columns)
+                nsn_sel = nsn_sel.fillna(0.)
+                nsn_sel[ccolsb] = nsn_sel[ccolsb].astype(int)
             # nsn_nosel = nsn[~idxb]
             # nsn_nosel['nsn_survey'] = 0
             # nsn_sel = pd.concat((nsn_sel, nsn_nosel))
@@ -645,9 +606,9 @@ class Random_survey:
         # data['sigma_mu_SN'] = sigmu
         data['sigma_mu'] = sigmu
 
-        idx = data['zType'] == 'photz'
-        z_shift = shift = np.random.normal(0., 0.02*(1.+data[idx]['z']))
-        data.loc[idx, 'z'] += z_shift
+        # idx = data['zType'] == 'photz'
+        # z_shift = shift = np.random.normal(0., 0.02*(1.+data[idx]['z']))
+        # data.loc[idx, 'z'] += z_shift
 
         return data
 
@@ -794,38 +755,53 @@ class Random_survey:
             # grab the number of SN per season
             idf = survey['field'] == field
             idf &= survey['zType'] == zType
-            ida = nsn_season['field'] == field
+
             if len(survey[idf]) == 0:
                 continue
-            nsn_exp = int(nsn_season[ida]['nsn'].mean())
-            nsn_survey = int(nsn_season[ida]['nsn_survey'].mean())
-            print('field,nsn', field, nsn_exp, nsn_survey)
-            if nsn_survey <= 0:
-                continue
-
-            # get survey info
-            """
-            host_effi_key, season_min,\
-               season_max = self.get_info(survey[idf], field)
-            """
             host_effi_key = survey[idf]['host_effi'].values[0]
             fieldType = survey[idf]['fieldType'].values[0]
             zType = survey[idf]['zType'].values[0]
             zSource = survey[idf]['zSource'].values[0]
 
+            """
+            ida = nsn_season['field'] == field
+            nsn_exp = int(nsn_season[ida]['nsn'].mean())
+            nsn_survey = int(nsn_season[ida]['nsn_survey'].mean())
+            print('field,nsn', field, nsn_exp, nsn_survey)
+            if nsn_survey <= 0:
+                continue
+            """
+            # get survey info
+            """
+            host_effi_key, season_min,\
+               season_max = self.get_info(survey[idf], field)
+            """
+
             # get data
             idb = sn_season['field'] == field
             sel_sn = sn_season[idb]
 
-            # grab sn sample
+            # correct nsn if necessary
+            ida = nsn_season['field'] == field
             nsn_z_opti = nsn_season[ida]
             if len(nsn_z_already) > 0:
+                print('correcting nsn', fieldType, zType)
+                print('before')
+                print(nsn_z_opti)
+                print(nsn_z_already)
                 nsn_z_opti = self.correct_nsn_survey(nsn_z_opti, nsn_z_already)
+                print('after')
+                print(nsn_z_opti)
 
+            nsn_exp = int(nsn_z_opti['nsn'].mean())
+            nsn_survey = int(nsn_z_opti['nsn_survey'].mean())
             res = self.sn_sample(
                 sel_sn, nsn_exp, nsn_survey, field,
                 nsn_z_opti, zlow=self.lowz_optimize)
-            print('sample', field, len(res))
+            print('sample', field, zType, len(res))
+
+            # if field == 'WFD' and zType == 'photz':
+            #    print(testa)
 
             if self.test_mode:
                 df_orig = pd.concat((df_orig, res))
@@ -840,7 +816,7 @@ class Random_survey:
             res_host['zSource'] = zSource
             df_res = pd.concat((df_res, res_host))
 
-        if self.test_mode:
+        if self.test_mode and self.plot_test:
             ll_ud = ['COSMOS', 'XMM-LSS']
             ll_dd = ['XMM-LSS', 'CDFS', 'ELAISS1', 'EDFSa', 'EDFSb']
             ll_wfd = ['WFD']
@@ -880,16 +856,18 @@ class Random_survey:
 
         """
 
+        """
         zlim = np.arange(0.0, 1.1, 0.1)
         bbin = []
-        dfb['nsn_z_0.0_0.1'] = 500
+
+
         for i in range(len(zlim)-1):
             zmin = zlim[i]
             zmax = zlim[i+1]
             bbin.append('z_{}_{}'.format(zmin, zmax))
-
+         """
         dfc = dfa.merge(dfb, left_on=['field'], right_on=[
-                        'field'], suffixes=['', '_y'])
+            'field'], suffixes=['', '_y'])
 
         ccolsy = list(dfc.filter(like='_y').columns)
         ccols = list(map(lambda x: x.replace('_y', ''), ccolsy))
@@ -1017,7 +995,7 @@ class Random_survey:
 
         return df_res
 
-    def sn_sample(self, data, nsn_exp, nsn, field, nsn_lowz=0, zlow=0.1):
+    def sn_sample(self, data, nsn_exp, nsn, field, nsn_z=0, zlow=0.1):
         """
         Method to grab the sn sample
 
@@ -1053,23 +1031,46 @@ class Random_survey:
             if field != 'WFD':
                 res = data.sample(n=nsn)
             else:
+                # first: sample_lowsigma_mu
+                idx = data['sigma_mu'] <= self.sigmaInt
+                sel_data = data[idx]
+                sample_lowsigma = self.sample_max_lowz_new(
+                    sel_data, nsn_z, suffix='_low_sigma', suffix_search=True)
+
+                nsn_z_low = self.estimate_nsn_z_allfields_sigma_mu(
+                    sample_lowsigma)
+
+                # print(nsn_z_low)
+                # correct nsn_z to grab high sigma_mu sample
+
+                nsn_corr = self.correct_nsn_survey(nsn_z, nsn_z_low)
+
+                # print(nsn_corr)
+
+                sample_highsigma = self.sample_max_lowz_new(
+                    data[~idx], nsn_corr, suffix='_low_sigma', suffix_search=False)
+
+                res = pd.concat((sample_lowsigma, sample_highsigma))
+        return res
+
+        """
+                print(test)
+
                 # sample build out of two: sigma_mu<=0.12 and sigma_mu>=0.12
                 if nsn > nsn_exp:
                     nsn = nsn_exp
 
-                # frac = self.get_sigmaC_fraction_in_data(data)
-                # nsn_exp_low_sigmaC = int(nsn_exp*frac)
+                # first: sample_lowsigma_mu
+
                 frac = self.get_sigma_mu_fraction_in_data(data)
                 nsn_exp_low_sigma_mu = int(nsn_exp*frac)
-                # nsn_exp_high_sigmaC = int(nsn_exp*(1-frac))
-                # nsn_wanted_low_sigmaC = nsn*self.frac_WFD_low_sigmaC
                 nsn_wanted_low_sigma_mu = nsn*self.frac_WFD_low_sigma_mu
-                # nsn_wanted_high_sigmaC = nsn-nsn_wanted_low_sigmaC
 
                 nsn_frac = np.min(
                     [nsn_exp_low_sigma_mu, nsn_wanted_low_sigma_mu])
                 nsn = int(nsn)
                 nsn_frac = int(nsn_frac)
+                print('thereeeeeeeeeeeee', nsn, nsn_exp, nsn_frac)
 
                 idx = data['sigma_mu'] <= self.max_sigma_mu
                 resa = self.sample_max_lowz(
@@ -1077,13 +1078,13 @@ class Random_survey:
                 resb = self.sample_max_lowz(
                     data[~idx], nsn-nsn_frac, nsn_lowz, 1.-self.frac_WFD_low_sigma_mu)
                 res = pd.concat((resa, resb))
-
+        """
         if self.test_mode:
-            print(field, len(res))
             if field == 'WFD':
+                print(field, len(res), nsn, nsn_exp)
                 idx = res['z'] <= 0.1
                 idb = data['z'] <= 0.1
-                idc = res['sigmaC'] <= self.max_sigma_mu
+                idc = res['sigma_mu'] <= self.max_sigma_mu
                 print('hello', len(data), len(data[idb]), len(
                     res[idx]), len(res[idc]))
 
@@ -1133,7 +1134,7 @@ class Random_survey:
 
         return np.round(frac, 3)
 
-    def estimate_nsn_z(self, data, varx='z'):
+    def estimate_nsn_z_deprecated(self, data, varx='z'):
         """
         Method to estimate nsn per z bin
 
@@ -1166,6 +1167,106 @@ class Random_survey:
         df['nsn_survey'] = len(data)
 
         return df
+
+    def estimate_nsn_z_allfields_sigma_mu(self, data_all, varx='z'):
+        """
+        Method to estimate nsn per z bin
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        varx : str, optional
+            variable of interest. The default is 'z'.
+
+        Returns
+        -------
+        pandas df
+            nsn per z bins.
+
+        """
+
+        dfa = self.estimate_nsn_z_allfields(data_all)
+
+        dfb = self.estimate_nsn_z_allfields(data_all, sigma_mu=self.sigmaInt)
+
+        df = dfa.merge(dfb, left_on=['field', 'season', 'nsn', 'nsn_survey'],
+                       right_on=['field', 'season', 'nsn', 'nsn_survey'],
+                       suffixes=['', '_low_sigma'])
+
+        return df
+
+    def estimate_nsn_z_allfields(self, data_all, varx='z', sigma_mu=1.e6):
+        """
+        Method to estimate nsn per z bin
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        varx : str, optional
+            variable of interest. The default is 'z'.
+
+        Returns
+        -------
+        pandas df
+            nsn per z bins.
+
+        """
+
+        idx = data_all['sigma_mu'] <= sigma_mu
+        data = data_all[idx]
+
+        df = data.groupby(['field']).apply(
+            lambda x: self.estimate_nsn_z(x)).reset_index()
+        df[self.timescale] = int(data[self.timescale].median())
+        df['nsn'] = len(data_all)
+        df['nsn_survey'] = len(data_all)
+
+        return df
+
+    def estimate_nsn_z(self, data, varx='z'):
+        """
+        Method to estimate nsn per z bin
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        varx : str, optional
+            variable of interest. The default is 'z'.
+
+        Returns
+        -------
+        pandas df
+            nsn per z bins.
+
+        """
+
+        zlim = np.arange(0.0, 1.2, 0.1)
+        group = data.groupby(pd.cut(data[varx], zlim))
+
+        nsn = group.size().to_list()
+
+        bin_center = (zlim[:-1] + zlim[1:])/2
+        delta_bin = np.mean(np.diff(bin_center))/2
+
+        zmax = np.round(bin_center+delta_bin, 1)
+        zmin = np.round(bin_center-delta_bin, 1)
+        zmin = list(map(str, zmin))
+        zmax = list(map(str, zmax))
+        nsnstr = ['nsn_z']*len(zmin)
+        r = [nsnstr, zmin, zmax]
+
+        cols = list(map("_".join, zip(*r)))
+        nsnb = np.array(nsn)
+        nsnb = nsnb.reshape((1, len(nsn))).tolist()
+        dfb = pd.DataFrame(nsnb, columns=cols)
+        nsn_tot = np.sum(nsn)
+        dfb['nsn'] = nsn_tot
+        dfb['nsn_survey'] = nsn_tot
+
+        return dfb
 
     def sample_max_lowz(self, data, nsn, nsn_lowz, frac_WFD_low_sigmaC):
         """
@@ -1225,6 +1326,48 @@ class Random_survey:
         """
 
         return restot
+
+    def sample_max_lowz_new(self, data, nsn_z, suffix='_low_sigma',
+                            suffix_search=False):
+
+        idxa = nsn_z.columns.str.contains('nsn')
+        idxb = nsn_z.columns.str.contains(suffix)
+
+        idx = idxa & idxb
+        if suffix_search == False:
+            idx = idxa & ~idxb
+
+        ccols = nsn_z.columns[idx].to_list()
+
+        nsn_survey = nsn_z['nsn_survey'].mean()
+        nsn_ = nsn_survey
+
+        sn = pd.DataFrame()
+        ia, ib = -2, -1
+        if suffix_search:
+            ia -= 2
+            ib -= 2
+
+        for col in ccols:
+            spl = col.split('_')
+            zmin = float(spl[ia])
+            zmax = float(spl[ib])
+
+            nsn_exp = nsn_z[col].mean()
+            nsn_sample = int(np.min([nsn_exp, nsn_]))
+
+            idxd = data['z_fit'] >= zmin
+            idxd &= data['z_fit'] < zmax
+            sel_data = data[idxd]
+            sn_ = sel_data.sample(nsn_sample)
+            sn = pd.concat((sn, sn_))
+
+            nsn_ -= nsn_sample
+
+            if nsn_ == 0:
+                break
+
+        return sn
 
     def sample_max_lowz_deprecated(self, data, nsn, nsn_lowz, zlow):
         """

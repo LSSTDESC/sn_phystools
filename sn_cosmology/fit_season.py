@@ -15,7 +15,8 @@ class Fit_seasons:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
                  dataDir_WFD, dbName_WFD, dictsel, survey,
                  prior, host_effi, frac_WFD_low_sigma_mu=0.8,
-                 max_sigma_mu=0.12, test_mode=0, lowz_optimize=0.1,
+                 max_sigma_mu=0.12, test_mode=0, plot_test=0,
+                 lowz_optimize=0.1,
                  sigmaInt=0.12, dump_data=False,
                  timescale='year', outName=''):
         """
@@ -77,6 +78,7 @@ class Fit_seasons:
         self.frac_WFD_low_sigma_mu = frac_WFD_low_sigma_mu
         self.max_sigma_mu = max_sigma_mu
         self.test_mode = test_mode
+        self.plot_test = plot_test
         self.lowz_optimize = lowz_optimize
         self.sigmaInt = sigmaInt
         self.dump_data = dump_data
@@ -164,6 +166,7 @@ class Fit_seasons:
                                  frac_WFD_low_sigma_mu=self.frac_WFD_low_sigma_mu,
                                  max_sigma_mu=self.max_sigma_mu,
                                  test_mode=self.test_mode,
+                                 plot_test=self.plot_test,
                                  lowz_optimize=self.lowz_optimize,
                                  timescale=self.timescale, nrandom=nrandom).data
             df = pd.concat((df, data))
