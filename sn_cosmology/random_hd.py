@@ -270,8 +270,8 @@ class Random_survey:
         # self.plot_nsn_z(sn_sample)
         sn_sample = self.correct_mu(sn_sample)
 
-        self.analyze_random_sample(sn_sample, nsn_season)
-        print(test)
+        # self.analyze_random_sample(sn_sample, nsn_season)
+
         return sn_sample
 
     def analyze_random_sample(self, data, nsn_season=None):
@@ -784,7 +784,12 @@ class Random_survey:
             # correct nsn if necessary
             ida = nsn_season['field'] == field
             nsn_z_opti = nsn_season[ida]
+
             if len(nsn_z_already) > 0:
+                idb = nsn_z_already['field'] == field
+                nsn_z_already = nsn_z_already[idb]
+                if len(nsn_z_already) == 0:
+                    break
                 print('correcting nsn', fieldType, zType)
                 print('before')
                 print(nsn_z_opti)
