@@ -790,20 +790,13 @@ class Random_survey:
                 nsn_z_already = nsn_z_already[idb]
                 if len(nsn_z_already) == 0:
                     break
-                print('correcting nsn', fieldType, zType)
-                print('before')
-                print(nsn_z_opti)
-                print(nsn_z_already)
                 nsn_z_opti = self.correct_nsn_survey(nsn_z_opti, nsn_z_already)
-                print('after')
-                print(nsn_z_opti)
 
             nsn_exp = int(nsn_z_opti['nsn'].mean())
             nsn_survey = int(nsn_z_opti['nsn_survey'].mean())
             res = self.sn_sample(
                 sel_sn, nsn_exp, nsn_survey, field,
                 nsn_z_opti, zlow=self.lowz_optimize)
-            print('sample', field, zType, len(res))
 
             # if field == 'WFD' and zType == 'photz':
             #    print(testa)
