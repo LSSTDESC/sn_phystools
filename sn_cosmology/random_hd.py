@@ -92,17 +92,22 @@ class HD_random:
         # prior = pd.DataFrame()
 
         dict_fits = {}
+        idx = data['zType'] == 'spectroz'
+        data_sigmaInt = data[idx]
+        dataValues_sigmaInt = [data_sigmaInt[key] for key in self.vardf]
+
         for key, vals in self.fitconfig.items():
 
             fitparNames = list(vals.keys())
             fitparams = list(vals.values())
-            myfit = MyFit(dataValues, self.dataNames,
+            myfit = MyFit(dataValues, dataValues_sigmaInt, self.dataNames,
                           fitparNames=fitparNames, prior=self.prior,
                           par_protect_fit=self.par_protect_fit)
             # get sigmaInt
 
             sigmaInt = myfit.get_sigmaInt()
 
+            #sigmaInt = 0.12
             # set sigmaInt
             myfit.set_sigmaInt(sigmaInt)
 
@@ -242,10 +247,8 @@ class Random_survey:
 
         # sort to have spectroz fist
         fieldTypes = sorted(fieldTypes.tolist())[::-1]
-        print('fieldTypes', fieldTypes)
 
         for seas in self.seasons:
-
             sn_season, nsn_season = self.load_data_season(
                 fieldTypes, dataDir, dbName, seas)
 
@@ -257,6 +260,9 @@ class Random_survey:
                 sn_survey = {}
                 for vv in fieldTypes:
                     name = '{}_{}'.format(vv[0], vv[1])
+                    nsn_survey = nsn_season[name]['nsn_survey'].mean()
+                    if nsn_survey == 0:
+                        continue
                     sn_survey[name] = self.random_sample(
                         nsn_season[name], sn_season[name],
                         self.survey, [seas], sn_survey, name)
@@ -275,6 +281,21 @@ class Random_survey:
         return sn_sample
 
     def analyze_random_sample(self, data, nsn_season=None):
+        """
+        Method to analyze the random sample
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to analyze.
+        nsn_season : pandas df, optional
+            Reference values. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
 
         surveys = np.unique(
             data[['zType', 'fieldType']].to_records(index=False))
@@ -405,13 +426,12 @@ class Random_survey:
 
             # get nsn
             idxb = nsn['field'] == field
-            print('hello', seas_min.values, field)
-            idxb &= nsn[self.timescale] >= seas_min.values[0]
-            idxb &= nsn[self.timescale] <= seas_max.values[0]
-            nsn_sel = pd.DataFrame(nsn[idxb])
+            idxc = nsn[self.timescale] >= seas_min.values[0]
+            idxc = nsn[self.timescale] <= seas_max.values[0]
+            nsn_sel = pd.DataFrame(nsn[idxb & idxc])
 
             if len(nsn_sel) == 0:
-                nsn_sel = nsn
+                nsn_sel = pd.DataFrame(nsn[idxb])
                 nsn_sel['nsn_survey'] = 0
             else:
                 ccols = list(nsn_sel.filter(like='nsn').columns)
@@ -729,9 +749,6 @@ class Random_survey:
         df_res = pd.DataFrame()
         df_orig = pd.DataFrame()
 
-        print('survey', survey)
-        print('nsn_field_season', nsn_season)
-
         fields = sn_season['field'].unique()
 
         # check whether:
@@ -744,12 +761,11 @@ class Random_survey:
         if namebb in sn_survey.keys():
             nameb = namebb
         if nameb != '':
-            print('survey already started')
+            #print('survey already started')
             sn_previous = sn_survey[nameb]
             nsn_z_already = sn_previous.groupby(['field']).apply(
                 lambda x: self.estimate_nsn_z(x)).reset_index()
 
-        print('previously', nsn_z_already, name)
         zType = name.split('_')[0]
         for field in fields:
             # grab the number of SN per season
@@ -762,20 +778,6 @@ class Random_survey:
             fieldType = survey[idf]['fieldType'].values[0]
             zType = survey[idf]['zType'].values[0]
             zSource = survey[idf]['zSource'].values[0]
-
-            """
-            ida = nsn_season['field'] == field
-            nsn_exp = int(nsn_season[ida]['nsn'].mean())
-            nsn_survey = int(nsn_season[ida]['nsn_survey'].mean())
-            print('field,nsn', field, nsn_exp, nsn_survey)
-            if nsn_survey <= 0:
-                continue
-            """
-            # get survey info
-            """
-            host_effi_key, season_min,\
-               season_max = self.get_info(survey[idf], field)
-            """
 
             # get data
             idb = sn_season['field'] == field
@@ -1076,7 +1078,7 @@ class Random_survey:
                 resb = self.sample_max_lowz(
                     data[~idx], nsn-nsn_frac, nsn_lowz, 1.-self.frac_WFD_low_sigma_mu)
                 res = pd.concat((resa, resb))
-        """
+        
         if self.test_mode:
             if field == 'WFD':
                 print(field, len(res), nsn, nsn_exp)
@@ -1087,6 +1089,7 @@ class Random_survey:
                     res[idx]), len(res[idc]))
 
         return res
+        """
 
     def get_sigmaC_fraction_in_data_deprecated(self, data):
         """
@@ -1574,3 +1577,78 @@ def analyze_data(data, add_str=''):
 
     outdict['all_Fields{}'.format(add_str)] = nsn_tot
     return outdict
+
+
+def analyze_data_new(data, add_str='',
+                     fields=['COSMOS', 'XMM-LSS', 'ELAISS1',
+                             'CDFS', 'EDFSa', 'EDFSb']):
+    """
+    Function to analyze data
+
+    Parameters
+    ----------
+    data : pandas df
+        data to process.
+    add_str: str, opt
+        to add a str to the columns. The default is ''
+
+    Returns
+    -------
+    outdict : dict
+        output dict.
+
+    """
+
+    ztypes = ['photz', 'spectroz']
+
+    dd = {}
+    for field in fields:
+        idx = data['field'] == field
+        sel_data = data[idx]
+        dd['{}{}'.format(field, add_str)] = len(sel_data)
+        if len(sel_data) > 0:
+            for zt in ztypes:
+                idxb = sel_data['zType'] == zt
+                selb = sel_data[idxb]
+                dd['{}_{}{}'.format(field, zt, add_str)] = len(selb)
+
+        else:
+            for zt in ztypes:
+                dd['{}_{}{}'.format(field, zt, add_str)] = 0
+
+    fieldTypes = ['DDF', 'WFD']
+
+    for fieldType in fieldTypes:
+        idx = data['fieldType'] == fieldType
+        sel_data = data[idx]
+        dd['{}{}'.format(fieldType, add_str)] = len(sel_data)
+        if len(sel_data) > 0:
+            for zt in ztypes:
+                idxb = sel_data['zType'] == zt
+                selb = sel_data[idxb]
+                dd['{}_{}{}'.format(fieldType, zt, add_str)] = len(selb)
+        else:
+            for zt in ztypes:
+                dd['{}_{}{}'.format(fieldType, zt, add_str)] = 0
+
+    dd['all_Fields{}'.format(add_str)] = len(data)
+
+    return dd
+    """
+    res = data.groupby(['field', 'season']).apply(
+        lambda x: pd.DataFrame({'NSN': [len(x)]})).reset_index()
+
+    resb = res.groupby(['field']).apply(
+        lambda x: pd.DataFrame({'NSN': [x['NSN'].sum()]})).reset_index()
+
+    outdict = {}
+    nsn_tot = 0
+    for i, row in resb.iterrows():
+        field = row['field']
+        nsn = row['NSN']
+        outdict['{}{}'.format(field, add_str)] = nsn
+        nsn_tot += nsn
+
+    outdict['all_Fields{}'.format(add_str)] = nsn_tot
+    return outdict
+    """

@@ -351,6 +351,20 @@ def fom(cov_a, cov_b, cov_ab, deltaXi2=6.17):
 
 
 class MyFit(CosmoFit):
+    def __init__(self, dataValues, dataValues_for_sigmaInt,
+                 dataNames, fitparNames=['w0', 'wa', 'Om0'],
+                 cosmo_model='w0waCDM',
+                 cosmo_default=dict(
+                     zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])),
+                 prior=pd.DataFrame(), par_protect_fit=[]):
+        super().__init__(dataValues, dataNames, fitparNames,
+                         cosmo_model,
+                         cosmo_default,
+                         prior, par_protect_fit)
+
+        for i, vals in enumerate(dataNames):
+            exec(
+                'self.{}_sigmaInt = dataValues_for_sigmaInt[{}]'.format(vals, i))
 
     def fit_function(self,  *parameters):
         '''
@@ -505,10 +519,10 @@ class MyFit(CosmoFit):
 
         Om, w0,  wa = 0.3, -1.0, 0.0
         alpha, beta, Mb = 0.13, 3.1, -19.09
-        z = self.z.to_list()
-        mu_SN = self.mu_SN
+        z = self.z_sigmaInt.to_list()
+        mu_SN = self.mu_SN_sigmaInt
         mu_th = self.mu_astro(z, Om, w0, wa)
-        sigma_mu = self.sigma_mu
+        sigma_mu = self.sigma_mu_sigmaInt
         Ndof = len(self.fitparNames)
 
         if 'alpha' in self.fitparNames:
@@ -518,9 +532,9 @@ class MyFit(CosmoFit):
             for i, vv in enumerate(mu_SNa):
                 print('mu_SN', z[i], vv-mu_SN.to_list()[i])
             """
-        rr = np.sum((mu_SN-mu_th)**2/(self.sigma_mu**2+sigmaInt**2))
+        rr = np.sum((mu_SN-mu_th)**2/(self.sigma_mu_sigmaInt**2+sigmaInt**2))
 
-        ndf = len(self.mu_SN)-Ndof
+        ndf = len(self.mu_SN_sigmaInt)-Ndof
         res = rr-ndf
 
         return res
