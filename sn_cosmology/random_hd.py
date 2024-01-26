@@ -225,6 +225,7 @@ class Random_survey:
         nsn = pd.DataFrame()
         sn_sample = pd.DataFrame()
 
+        """
         zlim = np.arange(0.0, 1.1, 0.1)
         rname = []
         for i in range(len(zlim)-1):
@@ -235,6 +236,7 @@ class Random_survey:
 
         rname.append('nsn')
         rname.append('nsn_survey')
+        """
         dataDir = {}
         dbName = {}
         dataDir['DDF'] = self.dataDir_DD
@@ -266,6 +268,7 @@ class Random_survey:
                     sn_survey[name] = self.random_sample(
                         nsn_season[name], sn_season[name],
                         self.survey, [seas], sn_survey, name)
+
                     sn_samp = pd.concat((sn_samp, sn_survey[name]))
 
                 sn_samp[self.timescale] = seas
@@ -788,9 +791,9 @@ class Random_survey:
             if len(nsn_z_already) > 0:
                 idb = nsn_z_already['field'] == field
                 nsn_z_already = nsn_z_already[idb]
-                if len(nsn_z_already) == 0:
-                    break
-                nsn_z_opti = self.correct_nsn_survey(nsn_z_opti, nsn_z_already)
+                if len(nsn_z_already) != 0:
+                    nsn_z_opti = self.correct_nsn_survey(
+                        nsn_z_opti, nsn_z_already)
 
             nsn_exp = int(nsn_z_opti['nsn'].mean())
             nsn_survey = int(nsn_z_opti['nsn_survey'].mean())
@@ -1653,9 +1656,9 @@ def analyze_data(data, add_str=''):
     return outdict
 
 
-def analyze_data_new(data, add_str='',
-                     fields=['COSMOS', 'XMM-LSS', 'ELAISS1',
-                             'CDFS', 'EDFSa', 'EDFSb']):
+def analyze_data_sample(data, add_str='',
+                        fields=['COSMOS', 'XMM-LSS', 'ELAISS1',
+                                'CDFS', 'EDFSa', 'EDFSb']):
     """
     Function to analyze data
 
