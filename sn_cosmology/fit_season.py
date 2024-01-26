@@ -324,7 +324,7 @@ class Fit_seasons:
 
         from astropy.cosmology import w0waCDM
         H0 = 70.
-        idx = data['sigma_mu'] <= 0.4
+        idx = data['sigma_mu'] <= 0.25
         data = pd.DataFrame(data[idx])
         res_fit = self.hd_fit(data)
 
