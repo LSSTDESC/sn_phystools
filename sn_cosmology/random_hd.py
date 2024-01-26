@@ -107,7 +107,7 @@ class HD_random:
 
             sigmaInt = myfit.get_sigmaInt()
 
-            #sigmaInt = 0.12
+            # sigmaInt = 0.12
             # set sigmaInt
             myfit.set_sigmaInt(sigmaInt)
 
@@ -761,10 +761,8 @@ class Random_survey:
         if namebb in sn_survey.keys():
             nameb = namebb
         if nameb != '':
-            #print('survey already started')
             sn_previous = sn_survey[nameb]
-            nsn_z_already = sn_previous.groupby(['field']).apply(
-                lambda x: self.estimate_nsn_z(x)).reset_index()
+            nsn_z_already = self.estimate_nsn_z_allfields_sigma_mu(sn_previous)
 
         zType = name.split('_')[0]
         for field in fields:
@@ -805,7 +803,7 @@ class Random_survey:
 
             if self.test_mode:
                 df_orig = pd.concat((df_orig, res))
-                nsn_zvals = self.estimate_nsn_z(res)
+                nsn_zvals = self.estimate_nsn_z_allfields_sigma_mu(res)
                 print(nsn_zvals)
 
             # correct for zhost efficiency
@@ -815,6 +813,13 @@ class Random_survey:
             res_host['zType'] = zType
             res_host['zSource'] = zSource
             df_res = pd.concat((df_res, res_host))
+            """
+            res['fieldType'] = fieldType
+            res['zType'] = zType
+            res['zSource'] = zSource
+            #df_res = pd.concat((df_res, res_host))
+            df_res = pd.concat((df_res, res))
+            """
 
         if self.test_mode and self.plot_test:
             ll_ud = ['COSMOS', 'XMM-LSS']
@@ -838,7 +843,7 @@ class Random_survey:
                         df_orig[idxa], df_res[idxb], keyb)
         return df_res
 
-    def correct_nsn_survey(self, dfa, dfb):
+    def correct_nsn_survey(self, dfa, dfb, nsn_survey_corr=False):
         """
         Method to correct for nsn_zmin_zmax
 
@@ -866,6 +871,7 @@ class Random_survey:
             zmax = zlim[i+1]
             bbin.append('z_{}_{}'.format(zmin, zmax))
          """
+
         dfc = dfa.merge(dfb, left_on=['field'], right_on=[
             'field'], suffixes=['', '_y'])
 
@@ -878,11 +884,23 @@ class Random_survey:
 
         dfc[ccols] = dfc[ccols].clip(0)
 
-        """
-        print('before', dfa)
-        print('to substract', dfb)
-        print('finally', dfc)
-        """
+        # special treatment for nsn_survey
+
+        if not nsn_survey_corr:
+            dft = pd.DataFrame(dfa['nsn'].to_list(), columns=['nsn'])
+            dft['nsn_survey'] = dfa['nsn_survey'].to_list()
+            dft['nsn_survey_to_sub'] = dfb['nsn_survey'].to_list()
+            dft['diff'] = dft['nsn']-dft['nsn_survey_to_sub']
+            dft['diff'] = dft['diff'].clip(0)
+
+            dfc['nsn_survey'] = dft[['nsn_survey', 'diff']].min(axis=1)
+
+        if self.test_mode:
+            ccols = ['field', 'nsn_z_0.0_0.1',
+                     'nsn_z_0.0_0.1_low_sigma', 'nsn_survey']
+            print('before', dfa[ccols])
+            print('to substract', dfb[ccols])
+            print('finally', dfc[ccols])
 
         return dfc
 
@@ -1043,7 +1061,8 @@ class Random_survey:
                 # print(nsn_z_low)
                 # correct nsn_z to grab high sigma_mu sample
 
-                nsn_corr = self.correct_nsn_survey(nsn_z, nsn_z_low)
+                nsn_corr = self.correct_nsn_survey(
+                    nsn_z, nsn_z_low, nsn_survey_corr=True)
 
                 # print(nsn_corr)
 
@@ -1078,7 +1097,7 @@ class Random_survey:
                 resb = self.sample_max_lowz(
                     data[~idx], nsn-nsn_frac, nsn_lowz, 1.-self.frac_WFD_low_sigma_mu)
                 res = pd.concat((resa, resb))
-        
+
         if self.test_mode:
             if field == 'WFD':
                 print(field, len(res), nsn, nsn_exp)
@@ -1187,14 +1206,69 @@ class Random_survey:
 
         """
 
+        fields = data_all['field'].unique()
+
+        df = pd.DataFrame()
+        for field in fields:
+            idx = data_all['field'] == field
+            sel_data = data_all[idx]
+
+            dfa = self.estimate_nsn_z_allfields(sel_data)
+
+            dfb = self.estimate_nsn_z_allfields(
+                sel_data, sigma_mu=self.sigmaInt)
+
+            dfc = dfa.merge(dfb, left_on=['field', 'season', 'nsn', 'nsn_survey'],
+                            right_on=['field', 'season', 'nsn', 'nsn_survey'],
+                            suffixes=['', '_low_sigma'])
+
+            df = pd.concat((df, dfc))
+
+        return df
+
+    def estimate_nsn_z_allfields_sigma_mu_deprecated(self, data_all, varx='z'):
+        """
+        Method to estimate nsn per z bin
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        varx : str, optional
+            variable of interest. The default is 'z'.
+
+        Returns
+        -------
+        pandas df
+            nsn per z bins.
+
+        """
+
         dfa = self.estimate_nsn_z_allfields(data_all)
 
+        print('yes one', data_all.columns)
+
+        vv = ['field', 'level_1']
+        for v in vv:
+            if v in dfa.columns:
+                dfa = dfa.drop(columns=[v])
+
+        print('yes two', dfa)
         dfb = self.estimate_nsn_z_allfields(data_all, sigma_mu=self.sigmaInt)
 
+        for v in vv:
+            if v in dfb.columns:
+                dfb = dfb.drop(columns=[v])
+
+        """
         df = dfa.merge(dfb, left_on=['field', 'season', 'nsn', 'nsn_survey'],
                        right_on=['field', 'season', 'nsn', 'nsn_survey'],
                        suffixes=['', '_low_sigma'])
-
+        """
+        df = dfa.merge(dfb, left_on=['season', 'nsn', 'nsn_survey'],
+                       right_on=['season', 'nsn', 'nsn_survey'],
+                       suffixes=['', '_low_sigma'])
+        print('finally', df)
         return df
 
     def estimate_nsn_z_allfields(self, data_all, varx='z', sigma_mu=1.e6):
