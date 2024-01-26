@@ -7,7 +7,7 @@ Created on Wed Jul  5 13:58:35 2023
 """
 import pandas as pd
 import numpy as np
-from sn_cosmology.random_hd import HD_random, Random_survey, analyze_data_new
+from sn_cosmology.random_hd import HD_random, Random_survey, analyze_data_sample
 from sn_tools.sn_utils import multiproc
 
 
@@ -223,8 +223,8 @@ class Fit_seasons:
         data = params['data']
         prior = params['prior']
         prior_params = params['prior_params']
-        hd_fit = HD_random(fitconfig=self.fitconfig,
-                           prior=prior_params, test_mode=self.test_mode)
+        self.hd_fit = HD_random(fitconfig=self.fitconfig,
+                                prior=prior_params, test_mode=self.test_mode)
 
         resfi = pd.DataFrame()
 
@@ -244,37 +244,22 @@ class Fit_seasons:
 
             # loop on the realizations
 
-            if self.surveyDir != '':
-                self.dump_survey(sel_data_fit, year_min, year_max, nsurvey)
-
             if self.test_mode:
                 print('nsn for this run', len(sel_data_fit))
+
+            # fit the data
+            res, sel_data_fit = self.fit_data_iterative(sel_data_fit)
+
+            if self.surveyDir != '':
+                self.dump_survey(sel_data_fit, year_min, year_max, nsurvey)
 
             # analyze the data
             dict_ana = self.analyze_survey_data(sel_data_fit, year_max)
 
-            # fit the data
-            res = hd_fit(sel_data_fit)
+            # merge survey data and fitted params
+            dict_res = self.merge_values(res, dict_ana)
 
-            dict_res = {}
-            # fitted values in a df
-            for key, vals in res.items():
-                vals.update(dict_ana)
-                res = pd.DataFrame.from_dict(transform(vals))
-                if key not in dict_res.keys():
-                    dict_res[key] = pd.DataFrame()
-                dict_res[key] = pd.concat((res, dict_res[key]))
-
-            # print('sequence', time.time()-time_ref)
-            resdfb = pd.DataFrame()
-            for key, vals in dict_res.items():
-                resdfb = pd.concat((resdfb, vals))
-
-            resdfb['dbName_DD'] = self.dbName_DD
-            resdfb['dbName_WFD'] = self.dbName_WFD
-            resdfb['real_survey'] = nsurvey
-            resdfb['prior'] = prior
-            resdfb = resdfb.fillna(-999.)
+            resdfb = self.complete_data(dict_res, nsurvey, prior)
 
             resdf = pd.concat((resdf, resdfb))
 
@@ -288,6 +273,111 @@ class Fit_seasons:
             output_q.put({j: resdf})
         else:
             return resdf
+
+    def fit_data_iterative(self, data):
+        """
+        Method to perform an iterative cosmo fit (outliers removal)
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to fit.
+
+        Returns
+        -------
+        res : dict
+            Fit parameters.
+        sel_data_fit : pandas df
+            Clipped data.
+
+        """
+
+        frac_out = 1.
+        nsigma = 5.
+        frac_outliers = 0.05
+
+        dd = pd.DataFrame(data)
+        while frac_out >= frac_outliers:
+            res, dd, frac_out = self.fit_data_cleaned(dd, nsigma)
+
+        return res, dd
+
+    def fit_data_cleaned(self, data, nsigma):
+        """
+        Method to estimate data at nsigma level of the cosmo fit
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        nsigma : int
+            nsigma fit cut.
+
+        Returns
+        -------
+        data_no_out : pandas df
+            clipped data.
+        frac_out : float
+            Outlier fraction.
+
+        """
+
+        from astropy.cosmology import w0waCDM
+        H0 = 70.
+        idx = data['sigma_mu'] <= 0.4
+        data = pd.DataFrame(data[idx])
+        res_fit = self.hd_fit(data)
+
+        keys = list(res_fit.keys())
+
+        res = res_fit[keys[0]]
+        w0 = res['w0_fit']
+        wa = res['wa_fit']
+        Om = res['Om0_fit']
+
+        cosmology = w0waCDM(H0=H0,
+                            Om0=Om,
+                            Ode0=1.-Om,
+                            w0=w0, wa=wa)
+
+        z_fit = data['z_fit'].to_list()
+        data['mu_fit'] = cosmology.distmod(z_fit).value
+        data['delta_mu'] = (data['mu_SN']-data['mu_fit'])/data['sigma_mu']
+        idx = np.abs(data['delta_mu']) <= nsigma
+        data_no_out = data[idx]
+        frac_out = 1.-len(data_no_out)/len(data)
+
+        if self.test_mode:
+            self.plot_fit_results(data, data_no_out)
+
+        return res_fit, data_no_out, frac_out
+
+    def plot_fit_results(self, data, data_no_out):
+        """
+        Method to plot cosmo fit resuls on top of data
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to plot.
+        data_no_out : pandas df
+            Cleaned data.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        data = data.sort_values(by=['z_fit'])
+        ax.plot(data['z_fit'], data['mu_SN'], 'k.')
+        ax.plot(data['z_fit'], data['mu_fit'], color='r', marker='o')
+
+        figb, axb = plt.subplots()
+        axb.hist(data_no_out['delta_mu'], histtype='step', bins=80)
+        plt.show()
 
     def analyze_survey_data(self, sel_data_fit, year_max):
         """
@@ -308,11 +398,11 @@ class Fit_seasons:
         """
 
         # analyze the data
-        dict_ana = analyze_data_new(sel_data_fit,
-                                    fields=self.fields_for_stat)
+        dict_ana = analyze_data_sample(sel_data_fit,
+                                       fields=self.fields_for_stat)
         # get Nsn with sigmaC <= 0.04
         idx = sel_data_fit['sigma_mu'] <= self.max_sigma_mu
-        dict_ana_b = analyze_data_new(
+        dict_ana_b = analyze_data_sample(
             sel_data_fit[idx], add_str='_sigma_mu',
             fields=self.fields_for_stat)
 
@@ -355,118 +445,66 @@ class Fit_seasons:
                                                             nn)
         data.to_hdf(outName, key='sn')
 
-    def fit_time_deprecated(self, configs, params, j=0, output_q=None):
+    def complete_data(self, dict_res, nn, prior):
         """
-        Method to perform cosmological fits on a set of configurations
+        Method to finalize data
 
         Parameters
         ----------
-        configs : list(list(int))
-            List of years (seasons) to process.
-        params : dict
-            parameters to use.
-        j : int, optional
-            Tag for multiprocessing. The default is 0.
-        output_q : multiprocessing queue, optional
-            Queue for multiprocessing. The default is None.
+        dict_res : dict
+            Data to transform in pandas df.
+        nn : int
+            realization tag.
+        prior : str
+            prior.
 
         Returns
         -------
-        resdf : pandas df
-            fitted cosmological parameters.
+        resdfb : pandas df
+            Output data.
 
         """
 
-        data = params['data']
-        prior = params['prior']
-        prior_params = params['prior_params']
-        hd_fit = HD_random(fitconfig=self.fitconfig,
-                           prior=prior_params, test_mode=self.test_mode)
+        resdfb = pd.DataFrame()
+        for key, vals in dict_res.items():
+            resdfb = pd.concat((resdfb, vals))
 
-        resfi = pd.DataFrame()
-        for config in configs:
-            year_min = config[0]
-            year_max = config[1]
+        resdfb['dbName_DD'] = self.dbName_DD
+        resdfb['dbName_WFD'] = self.dbName_WFD
+        resdfb['real_survey'] = nn
+        resdfb['prior'] = prior
+        resdfb = resdfb.fillna(-999.)
 
-            # select the data corresponding to these years
-            idx = data[self.timescale] >= year_min
-            idx &= data[self.timescale] <= year_max
+        return resdfb
 
-            sel_data = data[idx]
+    def merge_values(self, res, dict_ana):
+        """
+        Method to merge results (from survey info and fit params)
 
-            resdf = pd.DataFrame()
-            # loop on the realizations
+        Parameters
+        ----------
+        res : pandas df
+            fit results.
+        dict_ana : dict
+            survey infos.
 
-            nsurvey = sel_data['survey_real'].unique()
+        Returns
+        -------
+        dict_res : dict
+            Merged data.
 
-            for nn in nsurvey:
-                idc = sel_data['survey_real'] == nn
-                sel_data_fit = sel_data[idc]
+        """
 
-                if self.surveyDir != '':
-                    outName = '{}/survey_sn_{}_{}_{}_{}_{}.hdf5'.format(
-                        self.surveyDir,
-                        self.dbName_DD, self.dbName_WFD,
-                        year_min, year_max, nn)
-                    sel_data_fit.to_hdf(outName, key='sn')
+        dict_res = {}
+        # fitted values in a df
+        for key, vals in res.items():
+            vals.update(dict_ana)
+            res = pd.DataFrame.from_dict(transform(vals))
+            if key not in dict_res.keys():
+                dict_res[key] = pd.DataFrame()
+            dict_res[key] = pd.concat((res, dict_res[key]))
 
-                if self.test_mode:
-                    print('nsn for this run', len(sel_data_fit))
-
-                # analyze the data
-                dict_ana = analyze_data_new(sel_data_fit,
-                                            fields=self.fields_for_stat)
-                # get Nsn with sigmaC <= 0.04
-                idx = sel_data_fit['sigma_mu'] <= self.max_sigma_mu
-                dict_ana_b = analyze_data_new(
-                    sel_data_fit[idx], add_str='_sigma_mu',
-                    fields=self.fields_for_stat)
-                if self.test_mode:
-                    print(dict_ana)
-                    print(dict_ana_b)
-                dict_ana.update(dict_ana_b)
-                # print(dict_ana)
-                dict_ana[self.timescale] = year_max+1
-                # print(dict_ana)
-
-                # fit the data
-                res = hd_fit(sel_data_fit)
-                dict_res = {}
-                # fitted values in a df
-                for key, vals in res.items():
-                    vals.update(dict_ana)
-                    res = pd.DataFrame.from_dict(transform(vals))
-                    if key not in dict_res.keys():
-                        dict_res[key] = pd.DataFrame()
-                    dict_res[key] = pd.concat((res, dict_res[key]))
-
-                # print('sequence', time.time()-time_ref)
-                resdfb = pd.DataFrame()
-                for key, vals in dict_res.items():
-                    resdfb = pd.concat((resdfb, vals))
-
-                resdfb['dbName_DD'] = self.dbName_DD
-                resdfb['dbName_WFD'] = self.dbName_WFD
-                resdfb['real_survey'] = nn
-                resdfb['prior'] = prior
-                resdfb = resdfb.fillna(-999.)
-
-                resdf = pd.concat((resdf, resdfb))
-
-            resfi = pd.concat((resfi, resdf))
-            if self.test_mode:
-                print('final result', resdf)
-                cols = ['w0_fit', 'Om0_fit', 'MoM',
-                        'prior', 'dbName_DD', 'dbName_WFD']
-                print(resdf[cols])
-
-            # if self.outName != '':
-            #    resdf.to_hdf(self.outName, key='cosmofit', append=True)
-
-        if output_q is not None:
-            output_q.put({j: resfi})
-        else:
-            return resdf
+        return dict_res
 
     def fit_seasons_deprecated(self, nrandom, params, j=0, output_q=None):
         """
