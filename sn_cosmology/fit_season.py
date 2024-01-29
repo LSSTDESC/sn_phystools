@@ -124,8 +124,7 @@ class Fit_seasons:
         data = multiproc(seasons_data, params,
                          self.get_random_sample, nproc=self.nproc)
 
-        print('elapse time', time.time()-time_ref,
-              len(np.unique(data[['survey_real', 'season']])))
+        print('elapse time', time.time()-time_ref)
         """
         configs = []
         for seas in self.seasons:
