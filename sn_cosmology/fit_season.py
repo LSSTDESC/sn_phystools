@@ -14,7 +14,7 @@ from sn_tools.sn_utils import multiproc
 class Fit_seasons:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
                  dataDir_WFD, dbName_WFD, dictsel, survey,
-                 prior, host_effi, frac_WFD_low_sigma_mu=0.8,
+                 prior, host_effi, footprints, frac_WFD_low_sigma_mu=0.8,
                  max_sigma_mu=0.12, test_mode=0, plot_test=0,
                  lowz_optimize=0.1,
                  sigmaInt=0.12, surveyDir='',
@@ -45,6 +45,8 @@ class Fit_seasons:
             prior for the fit.
         host_effi: dict
             dict of 1D interpolators for host effi vs z.
+        footprints: pandas df
+            footprints used for spectroz samples
         frac_WFD_low_sigma_mu : float, optional
              fraction of WFD SNe Ia with low sigma_mu. The default is 0.8.
          max_sigma_mu : float, optional
@@ -87,6 +89,7 @@ class Fit_seasons:
         self.survey = survey
         self.prior = prior
         self.host_effi = host_effi
+        self.footprints = footprints
         self.frac_WFD_low_sigma_mu = frac_WFD_low_sigma_mu
         self.max_sigma_mu = max_sigma_mu
         self.test_mode = test_mode
@@ -184,6 +187,7 @@ class Fit_seasons:
                                  self.dictsel, [seas],
                                  survey=self.survey, sigmaInt=self.sigmaInt,
                                  host_effi=self.host_effi,
+                                 footprints=self.footprints,
                                  frac_WFD_low_sigma_mu=self.frac_WFD_low_sigma_mu,
                                  max_sigma_mu=self.max_sigma_mu,
                                  test_mode=self.test_mode,

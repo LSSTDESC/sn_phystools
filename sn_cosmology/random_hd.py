@@ -143,7 +143,7 @@ class Random_survey:
                  survey=pd.DataFrame([('COSMOS', 1.1, 1.e8, 1, 10)],
                                      columns=['field', 'zmax', 'sigmaC',
                                               'season_min', 'season_max']),
-                 sigmaInt=0.12, host_effi={},
+                 sigmaInt=0.12, host_effi={}, footprints=pd.DataFrame(),
                  frac_WFD_low_sigma_mu=0.8, max_sigma_mu=0.12,
                  test_mode=0, plot_test=0, lowz_optimize=0.1,
                  timescale='year', nrandom=50):
@@ -173,6 +173,8 @@ class Random_survey:
           SN intrinsic dispersion. The default is 0.12.
         host_effi: dict, opt
           1D interpolators of host_effi vs z. The default is {}.
+        footprints: pandas df,opt.
+          footprints used for spectroz samples. The default is pd.DataFrame().
         frac_WFD_low_sigmaC : float, optional
              fraction of WFD SNe Ia with low sigmaC. The default is 0.8.
         max_sigma_mu : float, optional
@@ -184,6 +186,9 @@ class Random_survey:
            z-value where the number of SN should be maximized.
         timescale : str, optional
           Time scale to estimate the cosmology. The default is 'year'.
+        nrandom: int, opt.
+          number of random survey. The default is 50.
+
 
         Returns
         -------
@@ -200,6 +205,7 @@ class Random_survey:
         self.survey = survey
         self.sigmaInt = sigmaInt
         self.host_effi = host_effi
+        self.footprints = footprints
         self.frac_WFD_low_sigma_mu = frac_WFD_low_sigma_mu
         self.max_sigma_mu = max_sigma_mu
         self.test_mode = test_mode
@@ -725,7 +731,8 @@ class Random_survey:
 
         plt.show()
 
-    def random_sample(self, nsn_season, sn_season, survey, seasons, sn_survey, name):
+    def random_sample(self, nsn_season, sn_season, survey,
+                      seasons, sn_survey, name):
         """
         Function to extract a random sample of SN
 
@@ -778,7 +785,7 @@ class Random_survey:
             host_effi_key = survey[idf]['host_effi'].values[0]
             fieldType = survey[idf]['fieldType'].values[0]
             zType = survey[idf]['zType'].values[0]
-            zSource = survey[idf]['zSource'].values[0]
+            footprint = survey[idf]['footprint'].values[0]
 
             # get data
             idb = sn_season['field'] == field
@@ -799,7 +806,8 @@ class Random_survey:
             nsn_survey = int(nsn_z_opti['nsn_survey'].mean())
             res = self.sn_sample(
                 sel_sn, nsn_exp, nsn_survey, field,
-                nsn_z_opti, zlow=self.lowz_optimize)
+                nsn_z_opti, zlow=self.lowz_optimize, footprint=footprint,
+                fieldType=fieldType)
 
             # if field == 'WFD' and zType == 'photz':
             #    print(testa)
@@ -814,7 +822,7 @@ class Random_survey:
             res_host = self.effi_zhost(res, host_effi_key)
             res_host['fieldType'] = fieldType
             res_host['zType'] = zType
-            res_host['zSource'] = zSource
+            res_host['footprint'] = footprint
             df_res = pd.concat((df_res, res_host))
             """
             res['fieldType'] = fieldType
@@ -838,10 +846,10 @@ class Random_survey:
                 if len(df_orig[idxa]) > 0:
                     fieldType = df_res[idxb]['fieldType'].unique()[0]
                     zType = df_res[idxb]['zType'].unique()[0]
-                    zSource = df_res[idxb]['zSource'].unique()[0]
-                    print('hohoho', fieldType, zType, zSource)
+                    footprint = df_res[idxb]['footprint'].unique()[0]
+                    print('hohoho', fieldType, zType, footprint)
                     keyb = '{} - {} {} {}'.format(key,
-                                                  fieldType, zType, zSource)
+                                                  fieldType, zType, footprint)
                     self.plot_sample_zhost(
                         df_orig[idxa], df_res[idxb], keyb)
         return df_res
@@ -1016,7 +1024,8 @@ class Random_survey:
 
         return df_res
 
-    def sn_sample(self, data, nsn_exp, nsn, field, nsn_z=0, zlow=0.1):
+    def sn_sample(self, datab, nsn_exp, nsn, field, nsn_z=0, zlow=0.1,
+                  footprint='', fieldType='WFD'):
         """
         Method to grab the sn sample
 
@@ -1043,6 +1052,18 @@ class Random_survey:
             Sampled data.
 
         """
+
+        # before sampling the data: apply footprint impact
+        data = pd.DataFrame(datab)
+        print('before footprint', len(data))
+        data = self.apply_footprint(data, footprint)
+        print('after footprint', len(data), data['field'].unique())
+
+        if self.plot_test:
+            if fieldType == 'WFD':
+                self.plot_Moll(data, rot=(180., 0., 0.))
+            if fieldType == 'DDF':
+                self.plot_Moll(data, nside=128)
 
         res = pd.DataFrame()
         if nsn >= len(data):
@@ -1075,43 +1096,64 @@ class Random_survey:
                 res = pd.concat((sample_lowsigma, sample_highsigma))
         return res
 
+    def apply_footprint(self, data, footprint):
         """
-                print(test)
+        Function to superimpose footprint on data
 
-                # sample build out of two: sigma_mu<=0.12 and sigma_mu>=0.12
-                if nsn > nsn_exp:
-                    nsn = nsn_exp
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        footprint : str
+            Footprint name.
 
-                # first: sample_lowsigma_mu
+        Returns
+        -------
+        data : pandas df
+            Data with footprint.
 
-                frac = self.get_sigma_mu_fraction_in_data(data)
-                nsn_exp_low_sigma_mu = int(nsn_exp*frac)
-                nsn_wanted_low_sigma_mu = nsn*self.frac_WFD_low_sigma_mu
-
-                nsn_frac = np.min(
-                    [nsn_exp_low_sigma_mu, nsn_wanted_low_sigma_mu])
-                nsn = int(nsn)
-                nsn_frac = int(nsn_frac)
-                print('thereeeeeeeeeeeee', nsn, nsn_exp, nsn_frac)
-
-                idx = data['sigma_mu'] <= self.max_sigma_mu
-                resa = self.sample_max_lowz(
-                    data[idx], nsn_frac, nsn_lowz, self.frac_WFD_low_sigma_mu)
-                resb = self.sample_max_lowz(
-                    data[~idx], nsn-nsn_frac, nsn_lowz, 1.-self.frac_WFD_low_sigma_mu)
-                res = pd.concat((resa, resb))
-
-        if self.test_mode:
-            if field == 'WFD':
-                print(field, len(res), nsn, nsn_exp)
-                idx = res['z'] <= 0.1
-                idb = data['z'] <= 0.1
-                idc = res['sigma_mu'] <= self.max_sigma_mu
-                print('hello', len(data), len(data[idb]), len(
-                    res[idx]), len(res[idc]))
-
-        return res
         """
+
+        print('applying footprint', footprint)
+        idx = self.footprints['footprint'] == footprint
+        sel_foot = self.footprints[idx]
+        if len(sel_foot) > 0:
+            list_pix = sel_foot['healpixID'].to_list()
+            idxb = data['healpixID'].isin(list_pix)
+            data = data[idxb]
+
+        return data
+
+    def plot_Moll(self, data, nside=64, rot=(0., 0., 0.)):
+        """
+        Method to plot data in (RA,Dec) (Mollweide view)
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to plot.
+        nside : int, optional
+            nside healpix parameter. The default is 64.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        import matplotlib.pyplot as plt
+        from sn_tools.sn_visu import get_map, plot_pixels
+        map_pixel = get_map(nside)
+
+        ll = data['healpixID'].to_list()
+
+        idx = map_pixel['healpixID'].isin(ll)
+
+        map_pixel.loc[~idx, 'weight'] = -1
+
+        plot_pixels(map_pixel, rot=rot)
+
+        plt.show()
 
     def get_sigmaC_fraction_in_data_deprecated(self, data):
         """
@@ -1610,13 +1652,12 @@ class Random_survey:
         ax.set_ylabel('N$_{SN}$')
         ax.grid()
 
-        """
+        print('hohoho', len(data))
+
         figb, axb = plt.subplots()
         figb.suptitle(field)
-        dfc = df.merge(dfb, left_on=['z'], right_on=['z'])
-        dfc['ratio'] = dfc['NSN_y']/dfc['NSN_x']
-        axb.plot(dfc['z'], dfc['ratio'])
-        """
+        axb.plot(data['RA'], data['Dec'], 'k.')
+
         plt.show()
 
 
