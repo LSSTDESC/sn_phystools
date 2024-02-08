@@ -1059,6 +1059,7 @@ class Random_survey:
 
         if self.plot_test:
             if fieldType == 'WFD':
+                print('data in this footprint:', len(data)/10.)
                 self.plot_Moll(data, rot=(180., 0., 0.))
             if fieldType == 'DDF':
                 self.plot_Moll(data, nside=128)
@@ -1118,6 +1119,8 @@ class Random_survey:
             list_pix = sel_foot['healpixID'].to_list()
             idxb = data['healpixID'].isin(list_pix)
             data = data[idxb]
+        else:
+            print('warning: footprint not found', footprint)
 
         return data
 
@@ -1650,11 +1653,11 @@ class Random_survey:
         ax.grid()
 
         print('hohoho', len(data),
-              data['field'].unique())
+              data['field'].unique(), data.columns)
 
         figb, axb = plt.subplots()
         figb.suptitle(field)
-        axb.plot(data['RA'], data['Dec'], 'k.')
+        axb.plot(data['pixRA'], data['pixDec'], 'k.')
 
         plt.show()
 
