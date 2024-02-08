@@ -834,7 +834,7 @@ class Random_survey:
 
         if self.test_mode and self.plot_test:
             ll_ud = ['COSMOS', 'XMM-LSS']
-            ll_dd = ['XMM-LSS', 'CDFS', 'ELAISS1', 'EDFSa', 'EDFSb']
+            ll_dd = ['CDFS', 'ELAISS1', 'EDFSa', 'EDFSb']
             ll_wfd = ['WFD']
             ll_all = [ll_ud, ll_dd, ll_wfd]
             names = dict(zip(['UD', 'DD', 'WFD'], ll_all))
@@ -1055,9 +1055,7 @@ class Random_survey:
 
         # before sampling the data: apply footprint impact
         data = pd.DataFrame(datab)
-        print('before footprint', len(data))
         data = self.apply_footprint(data, footprint)
-        print('after footprint', len(data), data['field'].unique())
 
         if self.plot_test:
             if fieldType == 'WFD':
@@ -1114,7 +1112,6 @@ class Random_survey:
 
         """
 
-        print('applying footprint', footprint)
         idx = self.footprints['footprint'] == footprint
         sel_foot = self.footprints[idx]
         if len(sel_foot) > 0:
@@ -1652,7 +1649,8 @@ class Random_survey:
         ax.set_ylabel('N$_{SN}$')
         ax.grid()
 
-        print('hohoho', len(data))
+        print('hohoho', len(data),
+              data['field'].unique())
 
         figb, axb = plt.subplots()
         figb.suptitle(field)
