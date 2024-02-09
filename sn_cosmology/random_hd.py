@@ -231,6 +231,169 @@ class Random_survey:
         nsn = pd.DataFrame()
         sn_sample = pd.DataFrame()
 
+        dataDir = {}
+        dbName = {}
+        dataDir['DDF'] = self.dataDir_DD
+        dataDir['WFD'] = self.dataDir_WFD
+        dbName['DDF'] = self.dbName_DD
+        dbName['WFD'] = self.dbName_WFD
+
+        fieldTypes = np.unique(
+            self.survey[['zType', 'fieldType']].to_records(index=False))
+
+        # sort to have spectroz first
+        fieldTypes = sorted(fieldTypes.tolist())[::-1]
+
+        for seas in self.seasons:
+            # load the data corresponding to this seas
+            sn_simu_season = self.load_data_season(
+                fieldTypes, dataDir, dbName, seas)
+
+            # get the data for all the surveys (footprints)
+            data_survey, nsn_survey = self.get_data_surveys(sn_simu_season)
+
+            if self.test_mode:
+                for key, vals in nsn_survey.items():
+                    print(key)
+                    print(vals[['nsn', 'nsn_survey']])
+
+            # now get the random surveys
+
+            for i in range(self.nrandom):
+                res = self.instance_random_survey(data_survey, nsn_survey)
+                res[self.timescale] = seas
+                res['survey_real'] = i+1
+                sn_sample = pd.concat((sn_sample, res))
+
+        sn_sample = self.correct_mu(sn_sample)
+
+        return sn_sample
+
+    def get_data_surveys(self, data_simu):
+        """
+        Method to grab data for all the surveys (defined in self.survey)
+
+        Parameters
+        ----------
+        data_simu : dict
+            Simu data. key=(zType_fieldType), vals=pd.DataFrame
+
+        Returns
+        -------
+        data_survey : dict
+            Data to be used to build the survey.
+            (key,val)=(survey name, pd.Dataframe)
+        nsn_survey : dict
+            nsn for the survey . (key, val)=(survey name, pd.DataFrame)
+
+        """
+
+        data_survey = {}
+        nsn_survey = {}
+
+        for i, row in self.survey.iterrows():
+            survey = row['survey']
+            fType = row['fieldType']
+            zType = row['zType']
+            field = row['field']
+            footprint = row['footprint']
+            surveyName = row['survey']
+
+            data_, nsn_ = self.get_data_survey(data_simu, surveyName,
+                                               zType, fType,
+                                               field, footprint)
+
+            data_survey[survey] = data_
+            nsn_survey[survey] = nsn_
+
+        return data_survey, nsn_survey
+
+    def get_data_survey(self, data_simu, surveyName,
+                        zType, fType, field, footprint):
+        """
+        Method to grab data for a survey
+
+        Parameters
+        ----------
+        data_simu : pandas df
+            Data to select.
+        zType : str
+            z measurement (spectroz/photz).
+        fType : str
+            Field type (DDF/WFD).
+        field : str
+            Field name.
+        footprint : str
+            Foot print to apply.
+
+        Returns
+        -------
+        data_ : pandas df
+            sn data corresponding to the footprint.
+        nsn_ : pandas df
+            number of expected SNe Ie (vs redshift).
+
+        """
+
+        data_type = '{}_{}'.format(zType, fType)
+        data_ = data_simu[data_type]
+        idx = data_['field'] == field
+        data_ = pd.DataFrame(data_[idx])
+        data_['survey'] = surveyName
+        if self.test_mode:
+            print('before foot', len(data_))
+        # apply footprint
+        data_ = self.apply_footprint(data_, footprint)
+
+        if self.test_mode:
+            print(len(data_))
+
+        # get numbers for this survey
+        nsn_ = self.estimate_nsn_z_survey(data_)
+
+        return data_, nsn_
+
+    def instance_random_survey(self, data, nsn):
+        """
+        Method to perform a random realization of the survey
+
+        Parameters
+        ----------
+        data : dict
+            Data to select. (key, val)=(surveyName,SN[pandas df])
+        nsn : dict
+            nsn to get (key,val)=(surveyName,NSN[pandas df]).
+
+        Returns
+        -------
+        sn_survey : pandas df
+            A realization of a (full) survey
+
+        """
+
+        sn_survey = pd.DataFrame()
+        for key, vals in data.items():
+            nsn_survey = nsn[key]['nsn_survey'].unique()[0]
+            if nsn_survey > 0:
+                df = self.random_sample(key, vals, nsn[key], sn_survey)
+                sn_survey = pd.concat((sn_survey, df))
+
+        return sn_survey
+
+    def build_random_samples_deprecated(self):
+        """
+        Method to build a random sample SN of DDF+WFD
+
+        Returns
+        -------
+        sn_sample : pandas df
+            The sn random samples (nrandom realization of the survey).
+
+        """
+
+        nsn = pd.DataFrame()
+        sn_sample = pd.DataFrame()
+
         """
         zlim = np.arange(0.0, 1.1, 0.1)
         rname = []
@@ -253,7 +416,7 @@ class Random_survey:
         fieldTypes = np.unique(
             self.survey[['zType', 'fieldType']].to_records(index=False))
 
-        # sort to have spectroz fist
+        # sort to have spectroz first
         fieldTypes = sorted(fieldTypes.tolist())[::-1]
 
         for seas in self.seasons:
@@ -358,6 +521,57 @@ class Random_survey:
             # nsn_ = self.load_nsn_summary(dataDir[ftype], dbName[ftype],
             #                             '{}_{}'.format(ftype, ztype), [seas])
 
+            # nsn_ = self.estimate_nsn_z_allfields_sigma_mu(data_)
+
+            # nsn_ = self.get_nsn_from_survey(nsn_, self.survey, ftype, ztype)
+
+            data_survey[name] = data_
+            # nsn_survey[name] = nsn_
+
+        return data_survey
+
+    def load_data_season_deprecated(self, fieldTypes, dataDir, dbName, seas):
+        """
+        Method to load data per season
+
+        Parameters
+        ----------
+        fieldTypes : list(str,str)
+            list of (fieldType, zType)
+        dataDir : dict
+            Data dirs
+        dbName : dict
+            Dbnames.
+        seas : list(int)
+            seasons.
+
+        Returns
+        -------
+        data_survey : dict
+            Data.
+        nsn_survey : dict
+            nsn.
+
+        """
+
+        data_survey = {}
+        nsn_survey = {}
+
+        for field in fieldTypes:
+            ztype = field[0]
+            ftype = field[1]
+            name = '{}_{}'.format(ztype, ftype)
+
+            if name not in data_survey.keys():
+                data_survey[name] = {}
+                nsn_survey[name] = {}
+
+            data_ = self.load_data(dataDir[ftype], dbName[ftype],
+                                   '{}_{}'.format(ftype, ztype), ftype, [seas])
+
+            # nsn_ = self.load_nsn_summary(dataDir[ftype], dbName[ftype],
+            #                             '{}_{}'.format(ftype, ztype), [seas])
+
             nsn_ = self.estimate_nsn_z_allfields_sigma_mu(data_)
 
             nsn_ = self.get_nsn_from_survey(nsn_, self.survey, ftype, ztype)
@@ -395,7 +609,62 @@ class Random_survey:
 
         return tt
 
-    def get_nsn_from_survey(self, nsn, survey, fieldType, zType) -> pd.DataFrame:
+    def get_nsn_from_survey(self, nsn):
+        """
+        Method to grab NSN from the survey
+
+        Parameters
+        ----------
+        nsn : pandas df
+            Initial values.
+        survey : pandas df
+            survey to consider.
+        fieldType: str
+          Type of field (DDF/WFD)
+        zType: str
+          z type (spectroz/photz)
+
+        Returns
+        -------
+        nsn_new : pandas df
+            new nsn values according to the survey.
+
+        """
+
+        fields = nsn['field'].unique()
+
+        # get survey info
+        surveyName = nsn['survey'].unique()[0]
+        idx = self.survey['survey'] == surveyName
+        sel_survey = self.survey[idx]
+
+        simu_factor = sel_survey['simuFactor'].values[0]
+        seas_min = sel_survey['season_min']
+        seas_max = sel_survey['season_max']
+        nsn_survey = sel_survey['nsn_max_season'].values[0]
+
+        idxc = nsn[self.timescale] >= seas_min.values[0]
+        idxc &= nsn[self.timescale] <= seas_max.values[0]
+        nsn_sel = pd.DataFrame(nsn[idxc])
+
+        if len(nsn_sel) == 0:
+            nsn_sel = pd.DataFrame(nsn)
+            nsn_sel['nsn_survey'] = 0
+        else:
+            ccols = list(nsn_sel.filter(like='nsn').columns)
+            nsn_sel[ccols] = np.rint(nsn_sel[ccols]/simu_factor)
+            nsn_sel['nsn_survey'] = nsn_survey
+            nsn_sel['nsn_survey'] = nsn_sel[[
+                'nsn', 'nsn_survey']].min(axis=1)
+            ccolsb = list(nsn_sel.filter(like='nsn').columns)
+            nsn_sel = nsn_sel.fillna(0.)
+            nsn_sel[ccolsb] = nsn_sel[ccolsb].astype(int)
+
+        nsn_new = pd.DataFrame(nsn_sel)
+
+        return nsn_new
+
+    def get_nsn_from_survey_deprecated(self, nsn, survey, fieldType, zType) -> pd.DataFrame:
         """
         Method to grab NSN from the survey
 
@@ -458,7 +727,7 @@ class Random_survey:
 
         return nsn_new
 
-    def build_random_sample(self):
+    def build_random_sample_deprecated(self):
         """
         Method to build a random sample SN of DDF+WFD
 
@@ -731,8 +1000,127 @@ class Random_survey:
 
         plt.show()
 
-    def random_sample(self, nsn_season, sn_season, survey,
-                      seasons, sn_survey, name):
+    def random_sample(self, surveyName, sn_data, nsn_z, ongoing_survey):
+        """
+        Method to get a random sn sample corresponding to a survey (surveyName)
+
+        Parameters
+        ----------
+        surveyName : str
+            Name of the survey to consider.
+        sn_data : pandas df
+            sn data sample to use for random choice.
+        nsn_z : pandas df
+            nsn per zbin.
+
+        Returns
+        -------
+        res_host : pandas df
+            The (randomly) selected SNe Ia sample.
+
+        """
+
+        if self.test_mode:
+            print(surveyName, len(sn_data), len(nsn_z))
+
+        idf = self.survey['survey'] == surveyName
+
+        host_effi_key = self.survey[idf]['host_effi'].values[0]
+        fieldType = self.survey[idf]['fieldType'].values[0]
+        zType = self.survey[idf]['zType'].values[0]
+        footprint = self.survey[idf]['footprint'].values[0]
+
+        if self.test_mode:
+            print('rr', host_effi_key, fieldType, zType, footprint)
+        # check whether this field has already been observed
+        sn_data, nsn_z = self.check_survey(
+            surveyName, footprint, sn_data, nsn_z, ongoing_survey)
+
+        res = self.sn_sample(sn_data, nsn_z, fieldType)
+
+        res_host = self.effi_zhost(res, host_effi_key)
+        res_host['fieldType'] = fieldType
+        res_host['zType'] = zType
+        res_host['footprint'] = footprint
+        res_host['survey'] = surveyName
+
+        if self.test_mode:
+            print(res_host.columns)
+            print(len(res_host))
+
+        return res_host
+
+    def check_survey(self, surveyName, footprint,
+                     sn_data, nsn_z, ongoing_survey):
+        """
+        Method to check whether a field has already been observed
+        (and correct for data and nsn_z accordingly)
+
+        Parameters
+        ----------
+        surveyName : str
+            survey name.
+        footprint : str
+            footprint.
+        sn_data : pandas df
+            Data to proces.
+        nsn_z : pandas df
+            NSN(z).
+        ongoing_survey : pandas df
+            SN of the (being built) survey.
+
+        Returns
+        -------
+        sn_data : pandas df
+            corrected data set.
+        nsn_z : pandas df
+            Corrected NSN(z).
+
+        """
+
+        if len(ongoing_survey) == 0:
+            return sn_data, nsn_z
+
+        field = sn_data['field'].unique()
+        idx = ongoing_survey['fieldType'].isin(field)
+
+        sel_survey = ongoing_survey[idx]
+
+        if len(sel_survey) > 0:
+            if self.test_mode:
+                print('this field has already been observed', field)
+            # on the same area as the current survey:
+            # need to estimate how many nsn observed and where
+            # apply the footprint on the (already measured) data
+            common_survey = self.apply_footprint(sel_survey, footprint)
+
+            # get the number of sn in this common_survey
+            nsn_common = self.estimate_nsn_z_survey(common_survey)
+
+            # correct nsn
+
+            """
+            print('before')
+            columns = nsn_z.columns
+            for ccol in columns:
+                print(ccol, nsn_z[ccol].values, nsn_common[ccol].values)
+            """
+
+            nsn_z = self.correct_nsn_survey(nsn_z, nsn_common)
+            """
+            print('after')
+            for ccol in columns:
+                print(ccol, nsn_z[ccol].values)
+            """
+            # remove sn already observed
+            snids = common_survey['SNID'].to_list()
+            idg = sn_data['SNID'].isin(snids)
+            sn_data = pd.DataFrame(sn_data[~idg])
+
+        return sn_data, nsn_z
+
+    def random_sample_deprecated(self, nsn_season, sn_season, survey,
+                                 seasons, sn_survey, name):
         """
         Function to extract a random sample of SN
 
@@ -828,7 +1216,7 @@ class Random_survey:
             res['fieldType'] = fieldType
             res['zType'] = zType
             res['zSource'] = zSource
-            #df_res = pd.concat((df_res, res_host))
+            # df_res = pd.concat((df_res, res_host))
             df_res = pd.concat((df_res, res))
             """
 
@@ -883,6 +1271,11 @@ class Random_survey:
             bbin.append('z_{}_{}'.format(zmin, zmax))
          """
 
+        surveyName = dfa['survey'].unique()[0]
+
+        dfa = dfa.drop(columns=['survey'])
+        dfb = dfb.drop(columns=['survey'])
+
         dfc = dfa.merge(dfb, left_on=['field'], right_on=[
             'field'], suffixes=['', '_y'])
 
@@ -913,6 +1306,7 @@ class Random_survey:
             print('to substract', dfb[ccols])
             print('finally', dfc[ccols])
 
+        dfc['survey'] = surveyName
         return dfc
 
     def random_sample_deprecated(self, nsn_field_season, sn_data, survey, seasons):
@@ -1024,8 +1418,84 @@ class Random_survey:
 
         return df_res
 
-    def sn_sample(self, datab, nsn_exp, nsn, field, nsn_z=0, zlow=0.1,
-                  footprint='', fieldType='WFD'):
+    def sn_sample(self, data, nsn_z, fieldType='WFD'):
+        """
+        Method to grab the sn sample
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        nsn_exp: int
+           Number of expected SN
+        nsn : int
+            number of sn to get.
+        frac_sigmaC : float
+            frac of SN with sigmaC<0.04 to get.
+        field: str
+            field name
+        nsn_lowz : int, optional
+           Number of low-z SN. The default is 0.
+        zlow : float, optional
+           Redshift defining the low-z sample. The default is 0.1.
+
+        Returns
+        -------
+        res : pandas df
+            Sampled data.
+
+        """
+
+        if self.plot_test:
+            if fieldType == 'WFD':
+                print('data in this footprint:', len(data)/10.)
+                self.plot_Moll(data, rot=(180., 0., 0.))
+            if fieldType == 'DDF':
+                self.plot_Moll(data, nside=128)
+
+        res = pd.DataFrame()
+        nsn_survey = nsn_z['nsn_survey'].astype(int).values[0]
+
+        if nsn_survey >= len(data):
+            res = data
+        else:
+            # grab the random sample
+            if fieldType != 'WFD':
+                res = data.sample(n=nsn_survey)
+            else:
+                res = self.sn_sample_z(data, nsn_z)
+
+        return res
+
+    def sn_sample_z(self, data, nsn_z):
+
+        # first: sample_lowsigma_mu
+        idx = data['sigma_mu'] <= self.sigmaInt
+        sel_data = data[idx]
+        sample_lowsigma = self.sample_max_lowz_new(
+            sel_data, nsn_z, suffix='_low_sigma', suffix_search=True)
+
+        # nsn_z_low = self.estimate_nsn_z_allfields_sigma_mu(
+        #    sample_lowsigma)
+
+        nsn_z_low = self.estimate_nsn_z_sigma_mu(sample_lowsigma)
+        # print(nsn_z_low)
+        # correct nsn_z to grab high sigma_mu sample
+
+        nsn_corr = self.correct_nsn_survey(
+            nsn_z, nsn_z_low, nsn_survey_corr=True)
+
+        # print(nsn_corr)
+
+        sample_highsigma = self.sample_max_lowz_new(
+            data[~idx], nsn_corr, suffix='_low_sigma', suffix_search=False)
+
+        res = pd.concat((sample_lowsigma, sample_highsigma))
+
+        return res
+
+    def sn_sample_deprecated(self, datab, nsn_exp, nsn, field, nsn_z=0, zlow=0.1,
+                             footprint='', fieldType='WFD'):
         """
         Method to grab the sn sample
 
@@ -1230,6 +1700,47 @@ class Random_survey:
 
         df = pd.DataFrame.from_dict(dd)
         df['nsn_survey'] = len(data)
+
+        return df
+
+    def estimate_nsn_z_survey(self, data):
+
+        nsn = self.estimate_nsn_z_sigma_mu(data)
+
+        surveyName = data['survey'].unique()[0]
+        nsn['survey'] = surveyName
+        nsn = self.get_nsn_from_survey(nsn)
+
+        return nsn
+
+    def estimate_nsn_z_sigma_mu(self, data, varx='z'):
+        """
+        Method to estimate nsn per z bin
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        varx : str, optional
+            variable of interest. The default is 'z'.
+
+        Returns
+        -------
+        pandas df
+            nsn per z bins.
+
+        """
+
+        dfa = self.estimate_nsn_z_allfields(data)
+        dfb = self.estimate_nsn_z_allfields(data, sigma_mu=self.sigmaInt)
+
+        df = dfa.merge(dfb, left_on=['field', 'season', 'nsn', 'nsn_survey'],
+                       right_on=['field', 'season', 'nsn', 'nsn_survey'],
+                       suffixes=['', '_low_sigma'])
+
+        if 'survey' not in df.columns:
+            surveyName = data['survey'].unique()[0]
+            df['survey'] = surveyName
 
         return df
 
