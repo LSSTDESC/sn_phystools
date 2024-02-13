@@ -346,10 +346,14 @@ class Random_survey:
         data_ = self.apply_footprint(data_, footprint)
 
         if self.test_mode:
-            print(len(data_))
+            print('after foot', len(data_))
 
         # get numbers for this survey
         nsn_ = self.estimate_nsn_z_survey(data_)
+
+        if self.test_mode:
+            for ccol in nsn_.columns:
+                print(ccol, nsn_[ccol].values)
 
         return data_, nsn_
 
@@ -1302,12 +1306,20 @@ class Random_survey:
         if self.test_mode:
             ccols = ['field', 'nsn_z_0.0_0.1',
                      'nsn_z_0.0_0.1_low_sigma', 'nsn_survey']
-            print('before', dfa[ccols])
-            print('to substract', dfb[ccols])
-            print('finally', dfc[ccols])
+            print('before')
+            self.print_nsn_z(dfa)
+            print('to substract')
+            self.print_nsn_z(dfb)
+            print('finally')
+            self.print_nsn_z(dfc)
 
         dfc['survey'] = surveyName
         return dfc
+
+    def print_nsn_z(self, dd):
+
+        for ccol in dd.columns:
+            print(ccol, dd[ccol].values)
 
     def random_sample_deprecated(self, nsn_field_season, sn_data, survey, seasons):
         """
@@ -1486,6 +1498,9 @@ class Random_survey:
             nsn_z, nsn_z_low, nsn_survey_corr=True)
 
         # print(nsn_corr)
+
+        if self.test_mode:
+            print('get high sample')
 
         sample_highsigma = self.sample_max_lowz_new(
             data[~idx], nsn_corr, suffix='_low_sigma', suffix_search=False)
@@ -1973,6 +1988,9 @@ class Random_survey:
         nsn_survey = nsn_z['nsn_survey'].mean()
         nsn_ = nsn_survey
 
+        if nsn_ == 0:
+            return pd.DataFrame()
+
         sn = pd.DataFrame()
         ia, ib = -2, -1
         if suffix_search:
@@ -1985,6 +2003,9 @@ class Random_survey:
             zmax = float(spl[ib])
 
             nsn_exp = nsn_z[col].mean()
+            if nsn_exp < 1:
+                continue
+
             nsn_sample = int(np.min([nsn_exp, nsn_]))
 
             idxd = data['z_fit'] >= zmin
