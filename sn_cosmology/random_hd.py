@@ -2284,6 +2284,13 @@ def analyze_data_sample(data, add_str='',
 
     dd['all_Fields{}'.format(add_str)] = len(data)
 
+    surveys = data['survey'].unique()
+
+    for survey in surveys:
+        idx = data['survey'] == survey
+        sel = data[idx]
+        dd['{}{}'.format(survey, add_str)] = len(sel)
+
     return dd
     """
     res = data.groupby(['field', 'season']).apply(
