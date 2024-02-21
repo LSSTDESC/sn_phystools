@@ -807,6 +807,7 @@ class Random_survey:
         for seas in seasons:
             search_path = '{}/SN_{}_{}_{}_{}.hdf5'.format(
                 search_dir, fieldType, dbName, self.timescale, seas)
+            # print('search path', search_path)
             files += glob.glob(search_path)
 
             for fi in files:
@@ -1749,8 +1750,8 @@ class Random_survey:
         dfa = self.estimate_nsn_z_allfields(data)
         dfb = self.estimate_nsn_z_allfields(data, sigma_mu=self.sigmaInt)
 
-        df = dfa.merge(dfb, left_on=['field', 'season', 'nsn', 'nsn_survey'],
-                       right_on=['field', 'season', 'nsn', 'nsn_survey'],
+        df = dfa.merge(dfb, left_on=['field', self.timescale, 'nsn', 'nsn_survey'],
+                       right_on=['field', self.timescale, 'nsn', 'nsn_survey'],
                        suffixes=['', '_low_sigma'])
 
         if 'survey' not in df.columns:
