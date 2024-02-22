@@ -534,3 +534,27 @@ def loadData_fakeSimu(theDir, theFile=''):
     restot.convert_bytestring_to_unicode()
 
     return restot.to_pandas()
+
+
+def transform(dicta):
+    """
+    Function to transform a dict of var to a dict of list(var)
+
+    Parameters
+    ----------
+    dicta : dict
+        input dict.
+
+    Returns
+    -------
+    dictb : dict
+        output dict.
+
+    """
+
+    dictb = {}
+
+    for key, vals in dicta.items():
+        dictb[key] = [vals]
+
+    return dictb

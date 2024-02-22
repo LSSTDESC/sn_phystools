@@ -7,11 +7,197 @@ Created on Wed Jul  5 13:58:35 2023
 """
 import pandas as pd
 import numpy as np
-from sn_cosmology.random_hd import HD_random, Random_survey, analyze_data_sample
+from sn_cosmology.random_hd import HD_random, Fit_surveys, analyze_data_sample
 from sn_tools.sn_utils import multiproc
 
 
 class Fit_seasons:
+    def __init__(self, fitconfig, dataDir_DD, dbName_DD,
+                 dataDir_WFD, dbName_WFD, dictsel, survey,
+                 prior, host_effi, footprints, frac_WFD_low_sigma_mu=0.8,
+                 max_sigma_mu=0.12, test_mode=0, plot_test=0,
+                 sigmaInt=0.12, surveyDir='',
+                 timescale='year', outName='',
+                 fields_for_stat=['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',
+                                  'EDFSa', 'EDFSb'],
+                 seasons=range(1, 11), nrandom=50, nproc=8):
+        """
+        Class to perform fits for sets of season
+
+        Parameters
+        ----------
+        fitconfig : dict
+            Fit confoguration.
+        dataDir_DD : str
+            DD data dir.
+        dbName_DD : str
+            DD db name.
+        dataDir_WFD : str
+            WFD data dir.
+        dbName_WFD : str
+            WFD db name.
+        dictsel : list(str)
+            Selection criteria.
+        survey : pandas df
+            Survey.
+        prior : pandas df
+            prior for the fit.
+        host_effi: dict
+            dict of 1D interpolators for host effi vs z.
+        footprints: pandas df
+            footprints used for spectroz samples
+        frac_WFD_low_sigma_mu : float, optional
+             fraction of WFD SNe Ia with low sigma_mu. The default is 0.8.
+         max_sigma_mu : float, optional
+             Max sigma_mu value defining the low sigma_mu sample.
+             The default is 0.12.
+        test_mode: int, optional
+          to run the program in test mode. The default is 0.
+        sigmaInt : float, optional
+           SNe Ia intrinsic dispersion. The default is 0.12.
+        surveyDir : str, optional
+           the dir where to dump the surveys. The default is ''.
+        timescale : str, optional
+           Time scale to estimate the cosmology. The default is 'year'.
+        outName: str, optional
+           output file name. The default is ''.
+        fields_for_stat : list(str), optional
+            List of fields for stat. The default is
+            ['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS','EDFSa', 'EDFSb'].
+        seasons : list(int), optional
+            List of seasons for which cosmology is be estimated.
+            The default is range(1,11).
+        nrandom: int, optional.
+            Number of random survey for season/year. The default is 50. 
+        nproc: int, optional.
+            Number of procs for processing. The default is 8.
+        Returns
+        -------
+        None.
+
+        """
+
+        self.fitconfig = fitconfig
+        self.dataDir_DD = dataDir_DD
+        self.dbName_DD = dbName_DD
+        self.dataDir_WFD = dataDir_WFD
+        self.dbName_WFD = dbName_WFD
+        self.dictsel = dictsel
+        self.survey = survey
+        self.prior = prior
+        self.host_effi = host_effi
+        self.footprints = footprints
+        self.frac_WFD_low_sigma_mu = frac_WFD_low_sigma_mu
+        self.max_sigma_mu = max_sigma_mu
+        self.test_mode = test_mode
+        self.plot_test = plot_test
+        self.sigmaInt = sigmaInt
+        self.surveyDir = surveyDir
+        self.timescale = timescale
+        self.outName = outName
+        self.fields_for_stat = fields_for_stat
+        self.seasons = seasons
+        self.nrandom = nrandom
+        self.nproc = nproc
+
+    def __call__(self):
+
+        restot = pd.DataFrame()
+        params = {}
+        for key, vals in self.prior.items():
+            params['prior'] = key
+            params['prior_params'] = vals
+            #res = multiproc(configs, params, self.fit_time, nproc=self.nproc)
+            res = self.fit_time(params)
+            restot = pd.concat((restot, res))
+
+        if self.outName != '':
+            restot.to_hdf(self.outName, key='cosmofit')
+
+    def fit_time(self, params):
+
+        # fit instance
+        prior = params['prior']
+        prior_params = params['prior_params']
+        vardf = ['z_fit', 'mu', 'sigma_mu', 'mu_SN']
+        dataNames = ['z', 'mu', 'sigma_mu', 'mu_SN']
+        self.hd_fit = HD_random(vardf=vardf, dataNames=dataNames,
+                                fitconfig=self.fitconfig,
+                                prior=prior_params, test_mode=self.test_mode)
+
+        # fit random data
+        fit_random = Fit_surveys(self.dataDir_DD, self.dbName_DD,
+                                 self.dataDir_WFD, self.dbName_WFD,
+                                 self.dictsel, self.seasons,
+                                 survey=self.survey, sigmaInt=self.sigmaInt,
+                                 host_effi=self.host_effi,
+                                 footprints=self.footprints,
+                                 frac_WFD_low_sigma_mu=self.frac_WFD_low_sigma_mu,
+                                 max_sigma_mu=self.max_sigma_mu,
+                                 test_mode=self.test_mode,
+                                 plot_test=self.plot_test,
+                                 timescale=self.timescale,
+                                 nrandom=self.nrandom,
+                                 hd_fit=self.hd_fit,
+                                 fields_for_stat=self.fields_for_stat,
+                                 nproc=self.nproc)
+
+        res_fit = fit_random.fit_sn_samples()
+
+        return res_fit
+
+        print(test)
+
+        resfi = pd.DataFrame()
+
+        year_min = 1
+        resdf = pd.DataFrame()
+
+        for i, row in configs.iterrows():
+
+            year_max = row[self.timescale]
+            nsurvey = row['survey_real']
+
+            # select the data corresponding to these years
+            idx = data[self.timescale] >= year_min
+            idx &= data[self.timescale] <= year_max
+            idx &= data['survey_real'] == nsurvey
+            sel_data_fit = data[idx]
+
+            # loop on the realizations
+
+            if self.test_mode:
+                print('nsn for this run', len(sel_data_fit))
+
+            # fit the data
+            res, sel_data_fit = self.fit_data_iterative(sel_data_fit)
+
+            if self.surveyDir != '':
+                self.dump_survey(sel_data_fit, year_min, year_max, nsurvey)
+
+            # analyze the data
+            dict_ana = self.analyze_survey_data(sel_data_fit, year_max)
+
+            # merge survey data and fitted params
+            dict_res = self.merge_values(res, dict_ana)
+
+            resdfb = self.complete_data(dict_res, nsurvey, prior)
+
+            resdf = pd.concat((resdf, resdfb))
+
+        if self.test_mode:
+            print('final result', resdf)
+            cols = ['w0_fit', 'Om0_fit', 'MoM',
+                    'prior', 'dbName_DD', 'dbName_WFD']
+            print(resdf[cols])
+
+        if output_q is not None:
+            output_q.put({j: resdf})
+        else:
+            return resdf
+
+
+class Fit_seasons_deprecated:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
                  dataDir_WFD, dbName_WFD, dictsel, survey,
                  prior, host_effi, footprints, frac_WFD_low_sigma_mu=0.8,
