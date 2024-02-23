@@ -568,8 +568,9 @@ class Fit_surveys:
                 data_survey[name] = {}
                 nsn_survey[name] = {}
 
-            data_ = self.load_data(dataDir[ftype], dbName[ftype],
-                                   '{}_{}'.format(ftype, ztype), ftype, [seas])
+            data_ = self.load_data(
+                dataDir[ftype], dbName[ftype], name, ftype, [seas])
+
             data_ = data_[self.vardf]
             # nsn_ = self.load_nsn_summary(dataDir[ftype], dbName[ftype],
             #                             '{}_{}'.format(ftype, ztype), [seas])
