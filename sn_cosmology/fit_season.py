@@ -20,6 +20,7 @@ class Fit_seasons:
                  timescale='year', outName='',
                  fields_for_stat=['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',
                                   'EDFSa', 'EDFSb'],
+                 simu_norm_factor=pd.DataFrame(),
                  seasons=range(1, 11), nrandom=50, nproc=8):
         """
         Class to perform fits for sets of season
@@ -96,6 +97,7 @@ class Fit_seasons:
         self.timescale = timescale
         self.outName = outName
         self.fields_for_stat = fields_for_stat
+        self.simu_norm_factor = simu_norm_factor
         self.seasons = seasons
         self.nrandom = nrandom
         self.nproc = nproc
@@ -140,6 +142,7 @@ class Fit_seasons:
                                  nrandom=self.nrandom,
                                  hd_fit=self.hd_fit,
                                  fields_for_stat=self.fields_for_stat,
+                                 simu_norm_factor=self.simu_norm_factor,
                                  nproc=self.nproc)
 
         res_fit = fit_random.fit_sn_samples()

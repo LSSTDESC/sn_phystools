@@ -151,6 +151,7 @@ class Fit_surveys:
                  timescale='year', nrandom=50, hd_fit=None,
                  fields_for_stat=['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',
                                   'EDFSa', 'EDFSb'],
+                 simu_norm_factor=pd.DataFrame(),
                  nproc=8,
                  vardf=['z_fit', 'mu', 'sigma_mu', 'field', 'healpixID']):
         """
@@ -221,6 +222,7 @@ class Fit_surveys:
         self.nrandom = nrandom
         self.hd_fit = hd_fit
         self.fields_for_stat = fields_for_stat
+        self.simu_norm_factor = simu_norm_factor
         self.nproc = nproc
         self.vardf = vardf+['SNID']+[self.timescale]
 
@@ -322,16 +324,26 @@ class Fit_surveys:
 
         # build random samples for each season
         sn_sample = pd.DataFrame()
-        rand_survey = Random_survey(sn_simu_season, self.survey,
+        rand_survey = Random_survey(self.survey,
                                     self.footprints, self.timescale,
                                     self.sigmaInt, self.host_effi,
                                     self.plot_test, self.test_mode)
         for seas in self.seasons:
             #res = self.build_sample(sn_simu_season[seas], seas)
-            res = rand_survey(seas)
+            sn_simu_seas = sn_simu_season[seas]
+
+            # make a realization of this survey
+            rand_LSST = self.random_LSST(sn_simu_seas)
+
+            res = rand_survey(rand_LSST, seas)
             sn_sample = pd.concat((sn_sample, res))
 
         year_max = sn_sample[self.timescale].max()
+
+        # clean the survey to remove duplicate
+
+        sn_sample = self.clean_survey(sn_sample)
+
         # fit this sample
         res, sel_data_fit = self.fit_data_iterative(sn_sample)
 
@@ -350,6 +362,97 @@ class Fit_surveys:
         resdf = self.complete_data(dict_res, prior)
 
         return resdf
+
+    def random_LSST(self, sn_simu_seas):
+        """
+        Method to buil a realization of the survey
+
+        Parameters
+        ----------
+        sn_simu_seas : dict
+            dict of data (pandas df)
+
+        Returns
+        -------
+        dd : dict
+            output surveys.
+
+        """
+
+        dd = {}
+        for key, vals in sn_simu_seas.items():
+            idx = self.simu_norm_factor['survey'] == key
+            norm = self.simu_norm_factor[idx]['norm_factor'].values[0]
+            sn_survey = pd.DataFrame()
+            for field in vals['field'].unique():
+                idx = vals['field'] == field
+                sel = vals[idx]
+                nsn = int(len(sel)/norm)
+                samp_ = sel.sample(nsn)
+                sn_survey = pd.concat((sn_survey, samp_))
+
+            dd[key] = sn_survey
+
+        return dd
+
+    def clean_survey(self, data, var='SNID'):
+        """
+        Method to remove duplicate in SNID
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+
+        Returns
+        -------
+        res : pandas df
+            Data with duplicates dropped.
+
+        """
+        dfdup = data[data[var].duplicated(keep=False)]
+
+        snids_dup = dfdup[var].to_list()
+
+        idx = data[var].isin(snids_dup)
+        df_dup = data[idx]
+        df_dup = df_dup.groupby([var]).apply(lambda x: self.add_survey(x))
+        print(df_dup[[var, 'survey']])
+
+        df_res = pd.DataFrame(data[~idx])
+        df_res = pd.concat((df_res, df_dup))
+
+        res = df_res.drop_duplicates(subset='SNID')
+
+        return res
+
+    def add_survey(self, grp):
+        """
+        Method to concatenate surveys that have common SNIDs
+
+        Parameters
+        ----------
+        grp : pandas df
+            Data to process.
+
+        Returns
+        -------
+        df : pandas df
+            Output df.
+
+        """
+
+        df = pd.DataFrame(grp)
+
+        rr = ''
+        for i, vv in grp.iterrows():
+            rr += '{}+'.format(vv['survey'])
+
+        rr = '/'.join(rr.split('+')[:-1])
+
+        df['survey'] = rr
+
+        return df
 
     def fit_data_iterative(self, data):
         """
@@ -459,7 +562,7 @@ class Fit_surveys:
         for field in fieldTypes:
             ztype = field[0]
             ftype = field[1]
-            name = '{}_{}'.format(ztype, ftype)
+            name = '{}_{}'.format(ftype, ztype)
 
             if name not in data_survey.keys():
                 data_survey[name] = {}
@@ -703,7 +806,7 @@ class Fit_surveys:
 
 
 class Random_survey:
-    def __init__(self, sn_simu_season, survey, footprints,
+    def __init__(self, survey, footprints,
                  timescale, sigmaInt, host_effi,
                  plot_test=False, test_mode=False):
         """
@@ -711,8 +814,6 @@ class Random_survey:
 
         Parameters
         ----------
-        sn_simu_season : dict
-            Data available to build the survey
         survey : pandas df
             Survey parameter.
         footprints : pandas df
@@ -734,7 +835,6 @@ class Random_survey:
 
         """
 
-        self.sn_simu_season = sn_simu_season
         self.survey = survey
         self.footprints = footprints
         self.timescale = timescale
@@ -743,7 +843,7 @@ class Random_survey:
         self.plot_test = plot_test
         self.test_mode = test_mode
 
-    def __call__(self, seas):
+    def __call__(self, data_survey, seas):
         """
         Method to build sn sample
 
@@ -759,23 +859,23 @@ class Random_survey:
 
         """
 
-        sn_simu_seas = self.sn_simu_season[seas]
-        sn_sample = pd.DataFrame()
-
         # get the data for all the surveys (footprints)
-        data_survey, nsn_survey = self.get_data_surveys(sn_simu_seas)
+        # data_survey, nsn_survey = self.get_data_surveys(sn_simu_seas)
+
+        """
+        for key, val in data_survey.items():
+            print(key, len(val), nsn_survey[key][['nsn', 'nsn_survey']])
 
         if self.test_mode:
             for key, vals in nsn_survey.items():
                 print(key)
                 print(vals[['nsn', 'nsn_survey']])
-
+        """
         # now get the random surveys
 
-        res = self.instance_random_survey(data_survey, nsn_survey)
+        res = self.instance_random_survey(data_survey, seas)
 
         del data_survey
-        del nsn_survey
         res = self.correct_mu(res)
         res[self.timescale] = seas
 
@@ -869,7 +969,84 @@ class Random_survey:
 
         return data_, nsn_
 
-    def instance_random_survey(self, data, nsn):
+    def instance_random_survey(self, survey_lsst, seas):
+        """
+        Method to perform a random realization of the survey
+
+        Parameters
+        ----------
+        survey_lsst : dict
+            Data to select. (key, val)=(surveyName,SN[pandas df])
+        seas: int
+          data season.
+
+        Returns
+        -------
+        sn_survey : pandas df
+            A realization of a (full) survey with footprints
+
+        """
+
+        sn_sample = pd.DataFrame()
+        for i, vv in self.survey.iterrows():
+            idx = seas >= vv['season_min']
+            idx &= seas <= vv['season_max']
+            if not idx:
+                continue
+            sname = '{}_{}'.format(vv['fieldType'], vv['zType'])
+            data = survey_lsst[sname]
+            # get the field in this data
+
+            df_samp = self.sn_sample_survey(data, vv)
+            sn_sample = pd.concat((sn_sample, df_samp))
+
+            del df_samp
+
+        return sn_sample
+
+    def sn_sample_survey(self, data, vv):
+        """
+        Method to build a SNe Ia sample for a survey
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to use.
+        vv : pandas series
+            survey parameters.
+
+        Returns
+        -------
+        res_host : pandas df
+            SNe Ia sample.
+
+        """
+
+        idxc = data['field'] == vv['field']
+        idxc &= data['z_fit'] <= vv['zmax']
+        dataf = data[idxc]
+        # apply footprint
+        datafoot = self.apply_footprint(dataf, vv['footprint'])
+        nsn_foot = len(datafoot)
+        nsn_sample = np.min([nsn_foot, vv['nsn_max_season']])
+
+        # grab the sample
+        df_samp = datafoot.sample(int(nsn_sample))
+
+        # apply effi host
+        res_host = self.effi_zhost(df_samp, vv['host_effi'])
+        res_host['fieldType'] = vv['fieldType']
+        res_host['zType'] = vv['zType']
+        res_host['footprint'] = vv['footprint']
+        res_host['survey'] = vv['survey']
+
+        del dataf
+        del datafoot
+        del df_samp
+
+        return res_host
+
+    def instance_random_survey_deprecated(self, data, nsn):
         """
         Method to perform a random realization of the survey
 
