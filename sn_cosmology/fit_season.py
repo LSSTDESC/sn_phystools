@@ -14,7 +14,7 @@ from sn_tools.sn_utils import multiproc
 class Fit_seasons:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
                  dataDir_WFD, dbName_WFD, dictsel, survey,
-                 prior, host_effi, footprints, frac_WFD_low_sigma_mu=0.8,
+                 prior, host_effi, footprints, low_z_optimize=True,
                  max_sigma_mu=0.12, test_mode=0, plot_test=0,
                  sigmaInt=0.12, surveyDir='',
                  timescale='year', outName='',
@@ -47,8 +47,8 @@ class Fit_seasons:
             dict of 1D interpolators for host effi vs z.
         footprints: pandas df
             footprints used for spectroz samples
-        frac_WFD_low_sigma_mu : float, optional
-             fraction of WFD SNe Ia with low sigma_mu. The default is 0.8.
+        low_z_optimize : bool, optional
+             To maximize NSN at low z. The default is True
          max_sigma_mu : float, optional
              Max sigma_mu value defining the low sigma_mu sample.
              The default is 0.12.
@@ -88,7 +88,7 @@ class Fit_seasons:
         self.prior = prior
         self.host_effi = host_effi
         self.footprints = footprints
-        self.frac_WFD_low_sigma_mu = frac_WFD_low_sigma_mu
+        self.low_z_optimize = low_z_optimize
         self.max_sigma_mu = max_sigma_mu
         self.test_mode = test_mode
         self.plot_test = plot_test
@@ -117,6 +117,20 @@ class Fit_seasons:
             restot.to_hdf(self.outName, key='cosmofit')
 
     def fit_time(self, params):
+        """
+        Method to fit HD random surveys
+
+        Parameters
+        ----------
+        params : dict
+            Parameters.
+
+        Returns
+        -------
+        pandas df
+            Fit params+survey info.
+
+        """
 
         # fit instance
         prior = params['prior']
@@ -134,7 +148,7 @@ class Fit_seasons:
                                  survey=self.survey, sigmaInt=self.sigmaInt,
                                  host_effi=self.host_effi,
                                  footprints=self.footprints,
-                                 frac_WFD_low_sigma_mu=self.frac_WFD_low_sigma_mu,
+                                 low_z_optimize=self.low_z_optimize,
                                  max_sigma_mu=self.max_sigma_mu,
                                  test_mode=self.test_mode,
                                  plot_test=self.plot_test,

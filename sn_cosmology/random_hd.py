@@ -146,7 +146,7 @@ class Fit_surveys:
                                      columns=['field', 'zmax', 'sigmaC',
                                               'season_min', 'season_max']),
                  sigmaInt=0.12, host_effi={}, footprints=pd.DataFrame(),
-                 frac_WFD_low_sigma_mu=0.8, max_sigma_mu=0.12,
+                 low_z_optimize=True, max_sigma_mu=0.12,
                  test_mode=0, plot_test=0, lowz_optimize=0.1,
                  timescale='year', nrandom=50, hd_fit=None,
                  fields_for_stat=['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',
@@ -182,8 +182,8 @@ class Fit_surveys:
           1D interpolators of host_effi vs z. The default is {}.
         footprints: pandas df,opt.
           footprints used for spectroz samples. The default is pd.DataFrame().
-        frac_WFD_low_sigmaC : float, optional
-             fraction of WFD SNe Ia with low sigmaC. The default is 0.8.
+       low_z_optimize: bool, optional
+         to maximize low-z NSN. The default is True
         max_sigma_mu : float, optional
              Max sigmaC value defining the low sigma_mu sample.
              The default is 0.12.
@@ -213,7 +213,7 @@ class Fit_surveys:
         self.sigmaInt = sigmaInt
         self.host_effi = host_effi
         self.footprints = footprints
-        self.frac_WFD_low_sigma_mu = frac_WFD_low_sigma_mu
+        self.low_z_optimize = low_z_optimize
         self.max_sigma_mu = max_sigma_mu
         self.test_mode = test_mode
         self.plot_test = plot_test
@@ -238,7 +238,7 @@ class Fit_surveys:
         """
 
         nsn = pd.DataFrame()
-        #sn_sample = pd.DataFrame()
+        # sn_sample = pd.DataFrame()
 
         dataDir = {}
         dbName = {}
@@ -265,7 +265,7 @@ class Fit_surveys:
         print('data loaded')
 
         params = {}
-        #params['sn_simu_season'] = sn_simu_season
+        # params['sn_simu_season'] = sn_simu_season
         randomlist = list(range(1, self.nrandom+1, 1))
         resdf = multiproc(randomlist, params, self.fit_parallel, self.nproc)
 
@@ -293,7 +293,7 @@ class Fit_surveys:
 
         """
 
-        #sn_simu_season = params['sn_simu_season']
+        # sn_simu_season = params['sn_simu_season']
 
         resdf = pd.DataFrame()
         for rr in randlist:
@@ -327,9 +327,10 @@ class Fit_surveys:
         rand_survey = Random_survey(self.survey,
                                     self.footprints, self.timescale,
                                     self.sigmaInt, self.host_effi,
+                                    self.low_z_optimize,
                                     self.plot_test, self.test_mode)
         for seas in self.seasons:
-            #res = self.build_sample(sn_simu_season[seas], seas)
+            # res = self.build_sample(sn_simu_season[seas], seas)
             sn_simu_seas = sn_simu_season[seas]
 
             # make a realization of this survey
@@ -417,7 +418,9 @@ class Fit_surveys:
         idx = data[var].isin(snids_dup)
         df_dup = data[idx]
         df_dup = df_dup.groupby([var]).apply(lambda x: self.add_survey(x))
-        print(df_dup[[var, 'survey']])
+
+        if len(df_dup) > 0 and self.test_mode:
+            print("duplicate", df_dup[[var, 'survey']])
 
         df_res = pd.DataFrame(data[~idx])
         df_res = pd.concat((df_res, df_dup))
@@ -808,7 +811,7 @@ class Fit_surveys:
 
 class Random_survey:
     def __init__(self, survey, footprints,
-                 timescale, sigmaInt, host_effi,
+                 timescale, sigmaInt, host_effi, low_z_optimize=True,
                  plot_test=False, test_mode=False):
         """
         class to generate random surveys
@@ -841,6 +844,7 @@ class Random_survey:
         self.timescale = timescale
         self.sigmaInt = sigmaInt
         self.host_effi = host_effi
+        self.low_z_optimize = low_z_optimize
         self.plot_test = plot_test
         self.test_mode = test_mode
 
@@ -882,7 +886,7 @@ class Random_survey:
 
         return res
 
-    def get_data_surveys(self, data_simu):
+    def get_data_surveys_deprecated(self, data_simu):
         """
         Method to grab data for all the surveys (defined in self.survey)
 
@@ -921,8 +925,8 @@ class Random_survey:
 
         return data_survey, nsn_survey
 
-    def get_data_survey(self, data_simu, surveyName,
-                        zType, fType, field, footprint):
+    def get_data_survey_deprecated(self, data_simu, surveyName,
+                                   zType, fType, field, footprint):
         """
         Method to grab data for a survey
 
@@ -999,6 +1003,7 @@ class Random_survey:
             # get the field in this data
 
             df_samp = self.sn_sample_survey(data, vv)
+
             sn_sample = pd.concat((sn_sample, df_samp))
 
             del df_samp
@@ -1029,10 +1034,24 @@ class Random_survey:
         # apply footprint
         datafoot = self.apply_footprint(dataf, vv['footprint'])
         nsn_foot = len(datafoot)
-        nsn_sample = np.min([nsn_foot, vv['nsn_max_season']])
 
-        # grab the sample
-        df_samp = datafoot.sample(int(nsn_sample))
+        if vv['survey'] != 'WFD_TiDES':
+            nsn_sample = np.min([nsn_foot, vv['nsn_max_season']])
+
+            # grab the sample
+            df_samp = datafoot.sample(int(nsn_sample))
+
+        else:
+            if self.low_z_optimize:
+                nsn_z = self.estimate_nsn_z_survey(datafoot)
+                nsn_z['survey'] = vv['survey']
+                nsn_z['nsn_survey'] = vv['nsn_max_season']
+                df_samp = self.sn_sample_z(datafoot, nsn_z)
+            else:
+                nsn_sample = np.min([nsn_foot, vv['nsn_max_season']])
+
+                # grab the sample
+                df_samp = datafoot.sample(int(nsn_sample))
 
         # apply effi host
         res_host = self.effi_zhost(df_samp, vv['host_effi'])
@@ -1494,8 +1513,8 @@ class Random_survey:
 
         surveyName = dfa['survey'].unique()[0]
 
-        dfa = dfa.drop(columns=['survey'])
-        dfb = dfb.drop(columns=['survey'])
+        # dfa = dfa.drop(columns=['survey'])
+        # dfb = dfb.drop(columns=['survey'])
 
         dfc = dfa.merge(dfb, left_on=['field'], right_on=[
             'field'], suffixes=['', '_y'])
@@ -1612,6 +1631,7 @@ class Random_survey:
             sel_data, nsn_z, suffix='_low_sigma', suffix_search=True)
 
         del sel_data
+
         # nsn_z_low = self.estimate_nsn_z_allfields_sigma_mu(
         #    sample_lowsigma)
 
@@ -1720,10 +1740,11 @@ class Random_survey:
 
         nsn = self.estimate_nsn_z_sigma_mu(data)
 
+        """
         surveyName = data['survey'].unique()[0]
         nsn['survey'] = surveyName
         nsn = self.get_nsn_from_survey(nsn)
-
+        """
         return nsn
 
     def estimate_nsn_z_sigma_mu(self, data, varx='z'):
@@ -1751,10 +1772,11 @@ class Random_survey:
                        right_on=['field', self.timescale, 'nsn', 'nsn_survey'],
                        suffixes=['', '_low_sigma'])
 
+        """
         if 'survey' not in df.columns:
             surveyName = data['survey'].unique()[0]
             df['survey'] = surveyName
-
+        """
         return df
 
     def estimate_nsn_z_allfields_sigma_mu(self, data_all, varx='z_fit'):
@@ -1962,7 +1984,7 @@ class Random_survey:
             nsn_sample = int(np.min([nsn_exp, nsn_]))
 
             if self.test_mode:
-                print('allo', np.unique(data[['field', 'survey']]),
+                print('allo', np.unique(data[['field']]),
                       data[self.timescale].unique(), len(data))
 
             idxd = data['z_fit'] >= zmin
