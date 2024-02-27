@@ -613,3 +613,13 @@ def load_cosmo_data(theDir, dbName, timescale, spectro_config,
     dfb['spectro_config'] = spectro_config
 
     return dfb
+
+
+def get_spline(df, xvar, yvar):
+
+    from scipy.interpolate import make_interp_spline
+    xnew = np.linspace(np.min(df[xvar]), np.max(df[xvar]), 100)
+    spl = make_interp_spline(df[xvar], df[yvar], k=3)  # type: BSpline
+    spl_smooth = spl(xnew)
+
+    return xnew, spl_smooth
