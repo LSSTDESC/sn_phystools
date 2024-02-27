@@ -157,7 +157,7 @@ class Fit_seasons:
                                  hd_fit=self.hd_fit,
                                  fields_for_stat=self.fields_for_stat,
                                  simu_norm_factor=self.simu_norm_factor,
-                                 nproc=self.nproc)
+                                 nproc=self.nproc, surveyDir=self.surveyDir)
 
         res_fit = fit_random.fit_sn_samples()
 
