@@ -163,56 +163,6 @@ class Fit_seasons:
 
         return res_fit
 
-        print(test)
-
-        resfi = pd.DataFrame()
-
-        year_min = 1
-        resdf = pd.DataFrame()
-
-        for i, row in configs.iterrows():
-
-            year_max = row[self.timescale]
-            nsurvey = row['survey_real']
-
-            # select the data corresponding to these years
-            idx = data[self.timescale] >= year_min
-            idx &= data[self.timescale] <= year_max
-            idx &= data['survey_real'] == nsurvey
-            sel_data_fit = data[idx]
-
-            # loop on the realizations
-
-            if self.test_mode:
-                print('nsn for this run', len(sel_data_fit))
-
-            # fit the data
-            res, sel_data_fit = self.fit_data_iterative(sel_data_fit)
-
-            if self.surveyDir != '':
-                self.dump_survey(sel_data_fit, year_min, year_max, nsurvey)
-
-            # analyze the data
-            dict_ana = self.analyze_survey_data(sel_data_fit, year_max)
-
-            # merge survey data and fitted params
-            dict_res = self.merge_values(res, dict_ana)
-
-            resdfb = self.complete_data(dict_res, nsurvey, prior)
-
-            resdf = pd.concat((resdf, resdfb))
-
-        if self.test_mode:
-            print('final result', resdf)
-            cols = ['w0_fit', 'Om0_fit', 'MoM',
-                    'prior', 'dbName_DD', 'dbName_WFD']
-            print(resdf[cols])
-
-        if output_q is not None:
-            output_q.put({j: resdf})
-        else:
-            return resdf
-
 
 class Fit_seasons_deprecated:
     def __init__(self, fitconfig, dataDir_DD, dbName_DD,
