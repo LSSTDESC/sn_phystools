@@ -558,3 +558,58 @@ def transform(dicta):
         dictb[key] = [vals]
 
     return dictb
+
+
+def load_cosmo_data(theDir, dbName, timescale, spectro_config,
+                    cols=['MoM', 'WFD_TiDES', 'all_Fields']):
+    """
+
+    Function to load cosmo data and estimate (mean, std)
+
+    Parameters
+    ----------
+    theDir : str
+        Data dir.
+    dbName : str
+        dbName of interest.
+    timescale : str
+        Time scale (season/year).
+    spectro_config : str
+        survey spectro config.
+    cols : list(int), optional
+        List of columns to estimate (mean,std). 
+        The default is ['MoM', 'WFD_TiDES', 'all_Fields'].
+
+    Returns
+    -------
+    dfb : TYPE
+        DESCRIPTION.
+
+    """
+
+    fName = '{}/cosmo_{}*.hdf5'.format(theDir, dbName)
+    fis = glob.glob(fName)
+
+    df = pd.DataFrame()
+
+    print('allo', fis)
+    for fi in fis:
+        dd = pd.read_hdf(fi)
+        df = pd.concat((df, dd))
+
+    dictagg = {}
+
+    for ccol in cols:
+        dictagg[ccol] = ['mean', 'std']
+
+    dfb = df.groupby([timescale]).agg(dictagg).reset_index()
+
+    cols_fi = [timescale]
+    for vv in cols:
+        cols_fi += ['{}_mean'.format(vv), '{}_std'.format(vv)]
+
+    dfb.columns = cols_fi
+    dfb['dbName'] = dbName
+    dfb['spectro_config'] = spectro_config
+
+    return dfb
