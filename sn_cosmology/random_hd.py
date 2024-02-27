@@ -153,7 +153,8 @@ class Fit_surveys:
                                   'EDFSa', 'EDFSb'],
                  simu_norm_factor=pd.DataFrame(),
                  nproc=8,
-                 vardf=['z_fit', 'mu', 'sigma_mu', 'field', 'healpixID']):
+                 vardf=['z_fit', 'mu', 'sigma_mu', 'field', 'healpixID'],
+                 surveyDir=''):
         """
         Class to build a complete (WFD+DDF) random survey
 
@@ -225,6 +226,7 @@ class Fit_surveys:
         self.simu_norm_factor = simu_norm_factor
         self.nproc = nproc
         self.vardf = vardf+['SNID']+[self.timescale]
+        self.surveyDir = surveyDir
 
     def fit_sn_samples(self):
         """
@@ -297,7 +299,7 @@ class Fit_surveys:
 
         resdf = pd.DataFrame()
         for rr in randlist:
-            res_fit = self.fit_random_sample()
+            res_fit = self.fit_random_sample(rr)
             res_fit['real_survey'] = rr
             resdf = pd.concat((resdf, res_fit))
 
@@ -306,7 +308,77 @@ class Fit_surveys:
         else:
             return resdf
 
-    def fit_random_sample(self):
+    def fit_random_sample(self, sreal):
+        """
+        Method to fit a random sample
+
+        Parameters
+        ----------
+        sn_simu_season : dict
+            available sn (key=season) for random HD.
+
+        Returns
+        -------
+        resdf : pandas df
+            Fit result.
+
+        """
+
+        # build random samples for each season
+        df_tot = pd.DataFrame()
+        sn_sample = pd.DataFrame()
+
+        rand_survey = Random_survey(self.survey,
+                                    self.footprints, self.timescale,
+                                    self.sigmaInt, self.host_effi,
+                                    self.low_z_optimize,
+                                    self.plot_test, self.test_mode)
+        for seas in self.seasons:
+            # res = self.build_sample(sn_simu_season[seas], seas)
+            sn_simu_seas = sn_simu_season[seas]
+
+            # make a realization of this survey
+            rand_LSST = self.random_LSST(sn_simu_seas)
+
+            res = rand_survey(rand_LSST, seas)
+            sn_sample = pd.concat((sn_sample, res))
+
+            year_max = sn_sample[self.timescale].max()
+
+            # clean the survey to remove duplicate
+
+            sn_sample = self.clean_survey(sn_sample)
+
+            # fit this sample
+            res, sel_data_fit = self.fit_data_iterative(sn_sample)
+
+            #del sn_sample
+
+            # analyze the data
+
+            dict_ana = self.analyze_survey_data(sel_data_fit, year_max)
+
+            # merge survey data and fitted params
+            dict_res = self.merge_values(res, dict_ana)
+
+            prior = 'noprior'
+            if len(self.hd_fit.prior) > 0:
+                prior = 'prior'
+
+            resdf = self.complete_data(dict_res, prior)
+            df_tot = pd.concat((resdf, df_tot))
+            del resdf
+
+        del sn_sample
+
+        if self.surveyDir != '':
+            year_min = df_tot[self.timescale].min()
+            year_max = df_tot[self.timescale].max()
+            self.dump_survey(df_tot, year_min, year_max, sreal)
+
+        return df_tot
+
+    def fit_random_sample_deprecated(self):
         """
         Method to fit a random sample
 
