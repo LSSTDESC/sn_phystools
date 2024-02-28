@@ -333,6 +333,11 @@ class Fit_surveys:
                                     self.sigmaInt, self.host_effi,
                                     self.low_z_optimize,
                                     self.plot_test, self.test_mode)
+
+        footprints = self.survey['survey'].to_list()
+        footprints = list(map(lambda x: '{}_footprint'.format(x), footprints))
+        footprints = set(footprints)
+
         for seas in self.seasons:
             # res = self.build_sample(sn_simu_season[seas], seas)
             sn_simu_seas = sn_simu_season[seas]
@@ -340,7 +345,9 @@ class Fit_surveys:
             # make a realization of this survey
             rand_LSST = self.random_LSST(sn_simu_seas)
 
-            res = rand_survey(rand_LSST, seas)
+            # make a random survey for the season
+            res, res_foot = rand_survey(rand_LSST, seas)
+
             sn_sample = pd.concat((sn_sample, res))
 
             year_max = sn_sample[self.timescale].max()
@@ -351,8 +358,6 @@ class Fit_surveys:
 
             # fit this sample
             res, sel_data_fit = self.fit_data_iterative(sn_sample)
-
-            #del sn_sample
 
             # analyze the data
 
@@ -366,9 +371,20 @@ class Fit_surveys:
                 prior = 'prior'
 
             resdf = self.complete_data(dict_res, prior)
+
+            # add nsn footprint here
+            ccols = set(res_foot.columns.to_list())
+
+            diffcol = list(footprints ^ ccols)
+            if diffcol:
+                res_foot[diffcol] = 0
+
+            resdf = pd.concat((resdf, res_foot), axis=1)
+
             df_tot = pd.concat((resdf, df_tot))
             del resdf
 
+        #del sn_sample
         del sn_sample
 
         if self.surveyDir != '':
@@ -950,13 +966,13 @@ class Random_survey:
         """
         # now get the random surveys
 
-        res = self.instance_random_survey(data_survey, seas)
+        res, res_foot = self.instance_random_survey(data_survey, seas)
 
         del data_survey
         res = self.correct_mu(res)
         res[self.timescale] = seas
 
-        return res
+        return res, res_foot
 
     def get_data_surveys_deprecated(self, data_simu):
         """
@@ -1065,6 +1081,7 @@ class Random_survey:
         """
 
         sn_sample = pd.DataFrame()
+        sn_foot = pd.DataFrame()
         for i, vv in self.survey.iterrows():
             idx = seas >= vv['season_min']
             idx &= seas <= vv['season_max']
@@ -1076,11 +1093,12 @@ class Random_survey:
 
             df_samp = self.sn_sample_survey(data, vv)
 
+            sn_foot['{}_footprint'.format(vv['survey'])] = [df_samp.nsn_foot]
             sn_sample = pd.concat((sn_sample, df_samp))
 
             del df_samp
 
-        return sn_sample
+        return sn_sample, sn_foot
 
     def sn_sample_survey(self, data, vv):
         """
@@ -1136,6 +1154,7 @@ class Random_survey:
         del datafoot
         del df_samp
 
+        res_host.nsn_foot = nsn_foot
         return res_host
 
     def instance_random_survey_deprecated(self, data, nsn):
@@ -2271,6 +2290,14 @@ def analyze_data_sample(data, add_str='',
     ztypes = ['photz', 'spectroz']
 
     dd = {}
+
+    # get the total number z>0.7, 0.8
+
+    for vv in [0.7, 0.8]:
+        idx = data['z_fit'] >= vv
+        sel = data[idx]
+        dd['nsn_z_{}{}'.format(np.round(vv, 1), add_str)] = len(sel)
+
     for field in fields:
         idx = data['field'] == field
         sel_data = data[idx]
