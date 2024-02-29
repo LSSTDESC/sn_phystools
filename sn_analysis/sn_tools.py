@@ -560,7 +560,7 @@ def transform(dicta):
     return dictb
 
 
-def load_cosmo_data(theDir, dbName, timescale, spectro_config,
+def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
                     cols=['MoM', 'WFD_TiDES', 'all_Fields']):
     """
 
@@ -592,23 +592,32 @@ def load_cosmo_data(theDir, dbName, timescale, spectro_config,
 
     df = pd.DataFrame()
 
-    print('allo', fis)
     for fi in fis:
         dd = pd.read_hdf(fi)
         df = pd.concat((df, dd))
 
     dictagg = {}
 
-    for ccol in cols:
+    colsb = set(df.columns).intersection(set(cols))
+    colsb = list(colsb)
+
+    print('aooo', colsb)
+    for ccol in colsb:
         dictagg[ccol] = ['mean', 'std']
 
-    dfb = df.groupby([timescale]).agg(dictagg).reset_index()
+    dfb = df.groupby(cols_group).agg(dictagg).reset_index()
 
-    cols_fi = [timescale]
-    for vv in cols:
+    cols_fi = cols_group.copy()
+    for vv in colsb:
         cols_fi += ['{}_mean'.format(vv), '{}_std'.format(vv)]
 
     dfb.columns = cols_fi
+
+    diffcol = set(cols).difference(set(colsb))
+    if diffcol:
+        for vv in diffcol:
+            dfb['{}_mean'.format(vv)] = 0
+            dfb['{}_std'.format(vv)] = 0
     dfb['dbName'] = dbName
     dfb['spectro_config'] = spectro_config
 
