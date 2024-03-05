@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from . import plt, filtercolors, filtermarkers
 from .ana_os_tools import translate, coadd_night, m5_coadd_grp
+from sn_tools.sn_utils import multiproc
 
 
 class Anaplot_OS:
@@ -98,16 +99,46 @@ class Anaplot_OS:
 
             # coadd data
 
-            data = self.coadd(data)
+            # data = self.coadd(data)
+            fields = np.unique(data['note'])
+            params = {}
+            params['data'] = data
+            data = multiproc(
+                fields, params, self.coadd_multi, len(fields))
+
             # datac = data[idx]
             data = pd.DataFrame.from_records(data)
             data['dbName'] = dbName
             # datac = data[idx]
+            self.print_info(data)
 
             # print('hhh', data['note'].unique())
+            print(data.columns)
+
             df = pd.concat((df, data))
 
         return df
+
+    def print_info(self, data):
+
+        dd = data.groupby(['season', 'note', 'filter']).apply(
+            lambda x: self.calc(x)).reset_index()
+
+        print(dd[['season', 'note', 'filter', 'Nvisits', 'Nvisits_tot']])
+
+    def calc(self, grp):
+
+        meanexp = grp['visitExposureTime'].mean()
+
+        ddout = pd.DataFrame([meanexp], columns=['visitExposureTime'])
+        ddout['Nvisits'] = ddout['visitExposureTime']/30.
+        ddout['Nvisits_tot'] = len(grp)*ddout['Nvisits']
+        ddout['delta_m5_visit'] = 1.25*np.log10(ddout['Nvisits'])
+        ddout['m5_single'] = np.mean(
+            grp['fiveSigmaDepth']-1.25*np.log10(grp['visitExposureTime']/30.))
+        ddout['m5'] = 1.25*np.log10(np.sum(10**(0.8*grp['fiveSigmaDepth'])))
+
+        return ddout
 
     def get_season(self, data):
         """
@@ -165,6 +196,37 @@ class Anaplot_OS:
             df = pd.concat((df, obs))
 
         return df
+
+    def coadd_multi(self, fields, params, j=0, output_q=None):
+        """
+        Method to coadd data
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to coadd.
+
+        Returns
+        -------
+        df : pandas df
+            Coadded data.
+
+        """
+        data = params['data']
+
+        df = pd.DataFrame()
+        from sn_tools.sn_stacker import CoaddStacker
+        stacker = CoaddStacker()
+        for field in fields:
+            idx = data['note'] == field
+            obs = pd.DataFrame(stacker._run(data[idx]))
+            obs['note'] = field
+            df = pd.concat((df, obs))
+
+        if output_q is not None:
+            return output_q.put({j: df})
+        else:
+            return df
 
     def plot_cadence_mean(self):
         """
@@ -466,13 +528,14 @@ class Anaplot_OS:
         plt.xticks(color='w')
         plt.tight_layout()
 
-    def plot_m5_PZ(self):
+    def get_m5_results(self):
         """
-        Method to plot delta_m5 = m5_data_m5_req(PZ)
+        Method to grab m5 results and compare to reqs
 
         Returns
         -------
-        None.
+        restot : pandas df
+            Output results.
 
         """
 
@@ -504,7 +567,21 @@ class Anaplot_OS:
         # restot['note'] = restot['note'].map(lambda x: self.corresp_dd_names[x])
         vv = ['note', 'm5_y1', 'm5_y2_y10', 'm5_y1_ref', 'm5_y2_y10_ref',
               'diff_m5_y1', 'diff_m5_y2_y10']
-        print(restot[vv])
+        # print(restot[vv])
+
+        return restot
+
+    def plot_m5_PZ(self):
+        """
+        Method to plot delta_m5 = m5_data_m5_req(PZ)
+
+        Returns
+        -------
+        None.
+
+        """
+
+        restot = self.get_m5_results()
 
         self.plot_diff_m5_indiv_one_page(restot)
 
@@ -702,6 +779,13 @@ class Anaplot_OS:
             xmin, xmax = ax[pos].get_xlim()
             ax[pos].plot([xmin, xmax], [ybar]*2,
                          linestyle='dashed', lw=3, color='k')
+            if 'm5' in vary:
+                ax[pos].plot([xmin, xmax], [-0.3]*2,
+                             linestyle='dotted', lw=3, color='k')
+                """
+                ax[pos].plot([xmin, xmax], [0.2]*2,
+                             linestyle='dotted', lw=3, color='k')
+                """
             ax[pos].grid()
             if pos == (1, 0):
                 ax[pos].set_ylabel(ylabel)
@@ -829,13 +913,15 @@ class Anaplot_OS:
                 plt.savefig(outName)
                 plt.close(fig)
 
-    def plot_Nvisits_WL(self):
+    def get_Nvisits_results(self):
         """
-        Method to plot the ratio of visits visits_data/visits_req_WL
+        Method to get Nvisits results
 
-        Returns
-        -------
-        None.
+
+         Returns
+         -------
+         pandas df
+             Nvisits results.
 
         """
 
@@ -845,7 +931,7 @@ class Anaplot_OS:
         Nv_WL['Nv_WL'] = Nv_WL['frac_band']*self.Nvisits_WL
         Nv_WL['Nv_WL'] = Nv_WL['Nv_WL'].astype(int)
         Nv_WL['Nv_WL'] /= 10
-        print('reference', Nv_WL)
+        # print('reference', Nv_WL)
         # get the corresponding number of visits
 
         bands = 'ugrizy'
@@ -860,12 +946,12 @@ class Anaplot_OS:
             # get the total number of visits per band and per field
             df = data[['note', 'filter', 'numExposures',
                        'visitExposureTime', 'season']]
-            print(df)
-            print(data.columns)
+            # print(df)
+            # print(data.columns)
             sumdf = data.groupby(['note', 'filter', 'season']).apply(
                 lambda x: pd.DataFrame({'Nv_WL': [x['visitExposureTime'].sum()]})).reset_index()
             sumdf['Nv_WL'] /= 30.
-            print(sumdf)
+            # print(sumdf)
             sumdf = sumdf.rename(columns={'filter': 'band'})
             sumdf = sumdf.merge(Nv_WL, left_on=['band'], right_on=[
                 'band'], suffixes=['', '_ref'])
@@ -876,12 +962,25 @@ class Anaplot_OS:
         idx = restot['season'] > 1
         sel = restot[idx]
         vv = 'Nv_WL'
-        print(sel.columns)
+        # print(sel.columns)
         sel = sel.groupby(['note', 'band', 'name'])[vv].sum().reset_index()
         sel = sel.merge(Nv_WL, left_on=['band'], right_on=[
             'band'], suffixes=['', '_ref'])
         sel['ratio_Nv_WL'] = sel['Nv_WL']/(9.*sel['Nv_WL_ref'])
 
+        return restot, pd.DataFrame(sel)
+
+    def plot_Nvisits_WL(self):
+        """
+        Method to plot the ratio of visits visits_data/visits_req_WL
+
+        Returns
+        -------
+        None.
+
+        """
+
+        restot, sel = self.get_Nvisits_results()
         print(sel.columns)
         self.plot_diff_m5_indiv_one_page(sel, varx='name', vary='ratio_Nv_WL',
                                          # ylabel='$\frac{N_visits}{N_{visits}^{WL}$',
@@ -898,3 +997,166 @@ class Anaplot_OS:
                          latex_cond=bbb,
                          latex_req='WL',
                          label='tab:wlreq')
+
+    def plot_m5_Nvisits(self):
+
+        print('there man')
+        # get m5
+        m5_res = self.get_m5_results()
+
+        print(m5_res.columns)
+
+        # get Nvisits
+
+        restot, nvisits_res = self.get_Nvisits_results()
+
+        print(nvisits_res.columns)
+
+        vv = ['note', 'band', 'name']
+        df_tot = m5_res.merge(nvisits_res,
+                              left_on=vv, right_on=vv, suffixes=['', ''])
+
+        print(df_tot['note'].unique())
+
+        fig, ax = plt.subplots(figsize=(14, 8))
+        fig.subplots_adjust(right=0.75, bottom=0.15)
+
+        dbNames = df_tot['name'].unique()
+
+        ddf_list = ['DD:COSMOS', 'DD:ECDFS', 'DD:ELAISS1', 'DD:XMM_LSS']
+
+        print(self.config_scen)
+
+        miss_req = pd.DataFrame()
+        pass_req = pd.DataFrame()
+        for io, row in self.config_scen.iterrows():
+            idx = df_tot['name'] == row['dbName']
+            dbName = row['dbName']
+            dbName = '_'.join(dbName.split('_')[:-1])
+            sel = df_tot[idx]
+            idxb = sel['note'].isin(ddf_list)
+            selc = sel[idxb]
+            ax.plot(selc['ratio_Nv_WL'],
+                    selc['diff_m5_y2_y10'],
+                    color=row['color'], marker=row['marker'],
+                    linestyle='None', mfc='None', label=dbName)
+            pa, pb = self.get_reqinfo(selc, row['dbName'], delta_m5=0.)
+            miss_req = pd.concat((miss_req, pb))
+            pass_req = pd.concat((pass_req, pa))
+
+        xmin, xmax = ax.get_xlim()
+        ymin, ymax = ax.get_ylim()
+        ax.plot([1]*2, [ymin, ymax], linestyle='solid', lw=3, color='k')
+        ax.plot([xmin, xmax], [0.]*2, linestyle='solid', lw=3, color='k')
+        ax.grid(visible=True)
+        xlabel = r'$r^{WL}=\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$'
+        ylabel = '$\Delta m_5~=~m_5^{OS}-m_5^{PZ~req}$'
+
+        ax.set_xlabel(r'{}'.format(xlabel))
+        ax.set_ylabel(r'{}'.format(ylabel))
+        ax.legend(loc='upper center',
+                  bbox_to_anchor=(1.20, 0.7),
+                  ncol=1, fontsize=15, frameon=False)
+
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+
+        self.plot_combi_reqs(pass_req, miss_req)
+
+        plt.show()
+
+    def get_reqinfo(self, data, dbName, delta_m5=0., ratio_Nv_Wl=1):
+
+        n_init = len(data)
+        idx = data['diff_m5_y2_y10'] >= delta_m5
+        idx &= data['ratio_Nv_WL'] >= ratio_Nv_Wl
+        sel = data[idx]
+
+        print(len(data), len(sel))
+
+        print(data[~idx][['note', 'band', 'diff_m5_y2_y10', 'ratio_Nv_WL']])
+
+        no_pass = data[~idx]
+
+        req_pass = pd.DataFrame([dbName], columns=['dbName'])
+        req_pass['frac_pass'] = len(sel)/len(data)
+
+        return req_pass, no_pass
+
+    def plot_combi_reqs(self, dfa, dfb):
+
+        print(dfa.columns)
+        print(dfb.columns)
+
+        dfc = pd.read_csv('smom_final.csv', comment='#')
+        dfa = dfa.merge(dfc, left_on=['dbName'], right_on=[
+                        'dbName'], suffixes=['', ''])
+
+        print(dfa)
+        print(self.config_scen)
+        fig, ax = plt.subplots(figsize=(14, 8))
+        fig.subplots_adjust(right=0.75, bottom=0.15)
+        # for dbName in dfa['dbName'].unique():
+        for i, row in self.config_scen.iterrows():
+            dbName = row['dbName']
+            ido = dfa['dbName'] == dbName
+            sel = dfa[ido]
+            dbName_p = '_'.join(dbName.split('_')[:-1])
+            ax.plot(sel['MoM_mean'], sel['frac_pass'],
+                    marker=row['marker'], color=row['color'],
+                    mfc='None', label=dbName_p, linestyle='None',
+                    markeredgewidth=2, ms=12)
+
+        ax.legend(loc='upper center', bbox_to_anchor=(
+            1.20, 0.7), ncol=1, fontsize=15, frameon=False)
+        ax.grid(visible=True)
+        ax.set_xlabel(r'SMoM')
+        ax.set_ylabel(r'frac$_{PZ, WL~reqs}^{OK}$')
+
+        fig, ax = plt.subplots(figsize=(15, 8), nrows=2)
+        fig.subplots_adjust(hspace=0., bottom=0.20)
+        bands = 'ugrizy'
+
+        names = dfb['name'].to_list()
+        res = list(map(lambda st: str.replace(st, "_0.07", ""), names))
+        dfb['name'] = res
+        for b in bands:
+            idx = dfb['band'] == b
+            sel = dfb[idx]
+            ax[0].plot(sel['name'], sel['diff_m5_y2_y10'],
+                       color=filtercolors[b], marker=filtermarkers[b],
+                       markeredgewidth=2, ms=12, mfc='None')
+            ax[1].plot(sel['name'], sel['ratio_Nv_WL'],
+                       color=filtercolors[b], marker=filtermarkers[b],
+                       markeredgewidth=2, ms=12, mfc='None')
+
+        plt.setp(ax[1].get_xticklabels(), rotation=45,
+                 ha="right", va="top", fontsize=12)
+
+        xmin, xmax = ax[0].get_xlim()
+        ax[0].plot([xmin, xmax], [0]*2, linestyle='dotted', color='k', lw=3)
+        ax[0].grid(visible=True)
+        ax[0].set_ylabel('$\Delta m_5~=~m_5^{OS}-m_5^{PZ~req}$')
+        ax[0].set_xlim(xmin, xmax)
+        ax[0].set_xticklabels([])
+        xmin, xmax = ax[1].get_xlim()
+        ax[1].plot([xmin, xmax], [1.]*2, linestyle='dotted', color='k', lw=3)
+        ax[1].grid(visible=True)
+        ax[1].set_ylabel(
+            r'$r^{WL}=\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$')
+        ax[1].set_xlim(xmin, xmax)
+
+        xdep = 0.92
+        ydep = 0.6
+        shift = 0.05
+        for ik, b in enumerate('ugrizy'):
+            ax[1].plot([xdep, xdep+0.04], [ydep-ik*shift]*2,
+                       linestyle='solid',
+                       color=filtercolors[b],
+                       marker=filtermarkers[b],
+                       transform=fig.transFigure,
+                       clip_on=False, mfc='None', markeredgewidth=2,
+                       ms=12, markevery=1)
+            ax[1].text(xdep+0.060, ydep-ik*shift, b,
+                       horizontalalignment='center',
+                       verticalalignment='center', transform=fig.transFigure)
