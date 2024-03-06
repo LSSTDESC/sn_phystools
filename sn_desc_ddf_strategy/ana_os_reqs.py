@@ -1040,7 +1040,8 @@ class Anaplot_OS:
                     selc['diff_m5_y2_y10'],
                     color=row['color'], marker=row['marker'],
                     linestyle='None', mfc='None', label=dbName)
-            pa, pb = self.get_reqinfo(selc, row['dbName'], delta_m5=0.)
+            pa, pb = self.get_reqinfo(
+                selc, row['dbName'], delta_m5=-0.1, ratio_Nv_WL=0.99)
             miss_req = pd.concat((miss_req, pb))
             pass_req = pd.concat((pass_req, pa))
 
@@ -1065,11 +1066,33 @@ class Anaplot_OS:
 
         plt.show()
 
-    def get_reqinfo(self, data, dbName, delta_m5=0., ratio_Nv_Wl=1):
+    def get_reqinfo(self, data, dbName, delta_m5=0., ratio_Nv_WL=1):
+        """
+        Method to get infos on PZ and WL metrics
+
+        Parameters
+        ----------
+        data : pandas df
+            Data to process.
+        dbName : str
+            Os to process.
+        delta_m5 : float, optional
+            Min delta m5 for reqs to be fulfilled (PZ). The default is 0..
+        ratio_Nv_WL : float, optional
+            Min ratio for reqs to be fulfilled (WL). The default is 1.
+
+        Returns
+        -------
+        req_pass : pandas df
+            Infos on channel (fields/filter) that passed reqs.
+        no_pass : pandas df
+            Data that did not pass PZ AND WL reqs..
+
+        """
 
         n_init = len(data)
         idx = data['diff_m5_y2_y10'] >= delta_m5
-        idx &= data['ratio_Nv_WL'] >= ratio_Nv_Wl
+        idx &= data['ratio_Nv_WL'] >= ratio_Nv_WL
         sel = data[idx]
 
         print(len(data), len(sel))
@@ -1113,13 +1136,16 @@ class Anaplot_OS:
         ax.set_xlabel(r'SMoM')
         ax.set_ylabel(r'frac$_{PZ, WL~reqs}^{OK}$')
 
-        fig, ax = plt.subplots(figsize=(15, 8), nrows=2)
+        fig, ax = plt.subplots(figsize=(11, 9), nrows=2)
         fig.subplots_adjust(hspace=0., bottom=0.20)
         bands = 'ugrizy'
 
         names = dfb['name'].to_list()
         res = list(map(lambda st: str.replace(st, "_0.07", ""), names))
         dfb['name'] = res
+        tt = dfb.groupby(['name'])['diff_m5_y2_y10'].min().reset_index()
+        tt = tt.sort_values(by=['diff_m5_y2_y10'])
+        print('mins', tt)
         for b in bands:
             idx = dfb['band'] == b
             sel = dfb[idx]
@@ -1131,7 +1157,7 @@ class Anaplot_OS:
                        markeredgewidth=2, ms=12, mfc='None')
 
         plt.setp(ax[1].get_xticklabels(), rotation=45,
-                 ha="right", va="top", fontsize=12)
+                 ha="right", va="top", fontsize=13)
 
         xmin, xmax = ax[0].get_xlim()
         ax[0].plot([xmin, xmax], [0]*2, linestyle='dotted', color='k', lw=3)
