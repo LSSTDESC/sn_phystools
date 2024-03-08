@@ -1115,8 +1115,8 @@ class Anaplot_OS:
         dfa = dfa.merge(dfc, left_on=['dbName'], right_on=[
                         'dbName'], suffixes=['', ''])
 
-        print(dfa)
-        print(self.config_scen)
+        # print(dfa)
+
         fig, ax = plt.subplots(figsize=(14, 8))
         fig.subplots_adjust(right=0.75, bottom=0.15)
         # for dbName in dfa['dbName'].unique():
@@ -1143,6 +1143,18 @@ class Anaplot_OS:
         names = dfb['name'].to_list()
         res = list(map(lambda st: str.replace(st, "_0.07", ""), names))
         dfb['name'] = res
+
+        idx = dfb['name'].isin(
+            ['DDF_DESC_0.80_co', 'DDF_DESC_0.75_co', 'DDF_DESC_0.70_co'])
+        ccols = ['name', 'note', 'diff_m5_y2_y10',
+                 'ratio_Nv_WL', 'Nv_WL', 'Nv_WL_ref', 'band']
+        dfb[idx].groupby(['note']).apply(lambda x: print(x[ccols]))
+
+        tto = dfb[idx].groupby(['note', 'band'])[
+            'diff_m5_y2_y10'].mean().reset_index()
+        tto['diff_m5_y2_y10'] = tto['diff_m5_y2_y10'].round(2)
+        print(tto)
+
         tt = dfb.groupby(['name'])['diff_m5_y2_y10'].min().reset_index()
         tt = tt.sort_values(by=['diff_m5_y2_y10'])
         print('mins', tt)
@@ -1151,10 +1163,10 @@ class Anaplot_OS:
             sel = dfb[idx]
             ax[0].plot(sel['name'], sel['diff_m5_y2_y10'],
                        color=filtercolors[b], marker=filtermarkers[b],
-                       markeredgewidth=2, ms=12, mfc='None')
+                       markeredgewidth=2, ms=12, mfc='None', linestyle='None')
             ax[1].plot(sel['name'], sel['ratio_Nv_WL'],
                        color=filtercolors[b], marker=filtermarkers[b],
-                       markeredgewidth=2, ms=12, mfc='None')
+                       markeredgewidth=2, ms=12, mfc='None', linestyle='None')
 
         plt.setp(ax[1].get_xticklabels(), rotation=45,
                  ha="right", va="top", fontsize=13)
