@@ -594,6 +594,7 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
 
     for fi in fis:
         dd = pd.read_hdf(fi)
+        dd['nsn_rat_highz'] = dd['nsn_z_0.8_sigma_mu'] / dd['nsn_z_0.8']
         df = pd.concat((df, dd))
 
     dictagg = {}
