@@ -780,12 +780,16 @@ class Anaplot_OS:
             ax[pos].plot([xmin, xmax], [ybar]*2,
                          linestyle='dashed', lw=3, color='k')
             if 'm5' in vary:
+                """
                 ax[pos].plot([xmin, xmax], [-0.3]*2,
                              linestyle='dotted', lw=3, color='k')
-                """
+
                 ax[pos].plot([xmin, xmax], [0.2]*2,
                              linestyle='dotted', lw=3, color='k')
                 """
+            if 'WL' in vary:
+                ax[pos].plot([xmin, xmax], [1.6]*2,
+                             linestyle='dotted', lw=3, color='k')
             ax[pos].grid()
             if pos == (1, 0):
                 ax[pos].set_ylabel(ylabel)
