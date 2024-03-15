@@ -13,7 +13,8 @@ from .ana_os_tools import doInt, coadd_night, translate, nmax, gime_combi
 
 
 class Plot_cadence:
-    def __init__(self, dbDir, dbName, df_config_scen, outDir, corresp_dd_names):
+    def __init__(self, dbDir, dbName, dbNamePlot,
+                 df_config_scen, outDir, corresp_dd_names):
         """
         Class to make cadence plots
 
@@ -88,7 +89,9 @@ class Plot_cadence:
         print(dfe[['fieldType', 'seas_min', 'seas_max', 'filter_alloc', 'visits_band',
                   'cadence', 'note']])
 
-        self.plot_resu(dfb, dfe, dbName.split('.npy')[0])
+        print(dfb.columns)
+        print(dfe.columns)
+        self.plot_resu(dfb, dfe, dbName.split('.npy')[0], dbNamePlot)
 
     def coadd_season(self, grp):
         """
@@ -194,7 +197,7 @@ class Plot_cadence:
 
         return pd.DataFrame.from_dict(dictout)
 
-    def plot_resu(self, df_all, df_coadd, dbName):
+    def plot_resu(self, df_all, df_coadd, dbName, dbNamePlot):
         """
         Method to plot the cadence results
 
@@ -220,6 +223,7 @@ class Plot_cadence:
         valc = 'MJD_season'
         fig, ax = plt.subplots(nrows=len(configs), figsize=(15, 8))
         dbNameb = '_'.join(dbName.split('_')[:-1])
+        dbNameb = dbNamePlot
         fig.suptitle(dbNameb, fontweight='bold')
         fig.subplots_adjust(wspace=0., hspace=0., bottom=0.15)
         configs = np.sort(configs)

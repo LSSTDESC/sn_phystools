@@ -109,6 +109,7 @@ class Anaplot_OS:
             # datac = data[idx]
             data = pd.DataFrame.from_records(data)
             data['dbName'] = dbName
+            data['dbNamePlot'] = row['dbNamePlot']
             # datac = data[idx]
             self.print_info(data)
 
@@ -480,6 +481,7 @@ class Anaplot_OS:
             idx = self.data['dbName'] == dbName
             data = self.data[idx]
             dbNameb = '_'.join(dbName.split('_')[:-1])
+            dbNameb = row['dbNamePlot']
             # sum numexposures by night
             # divide by 2 to get the number of visits
             dt = data.groupby(['night']).apply(
@@ -557,6 +559,7 @@ class Anaplot_OS:
             res = data.groupby('note').apply(
                 lambda x: m5_coadd_grp(x)).reset_index()
             res['name'] = dbName
+            res['namePlot'] = data['dbNamePlot'].unique()[0]
             res = res.rename(columns={'filter': 'band'})
             res = res.merge(pz_req, left_on=['band'], right_on=[
                 'band'], suffixes=('', '_ref'))
@@ -722,7 +725,7 @@ class Anaplot_OS:
             if j == 1:
                 ax[i, j].set_yticks([])
 
-    def plot_diff_m5_indiv_one_page(self, data, varx='name', vary='diff_m5_y2_y10',
+    def plot_diff_m5_indiv_one_page(self, data, varx='namePlot', vary='diff_m5_y2_y10',
                                     ylabel='$\Delta m_5=m_5^{OS}-m_5^{PZ~req}$',
                                     title='y2 to y10', ybar=0., log=False):
         """
@@ -749,6 +752,7 @@ class Anaplot_OS:
 
         """
 
+        print('alllllllllllllll', data.columns)
         fields = data['note'].unique()
 
         data['name'] = data['name'].map(lambda x: '_'.join(x.split('_')[:-1]))
@@ -960,6 +964,7 @@ class Anaplot_OS:
             sumdf = sumdf.merge(Nv_WL, left_on=['band'], right_on=[
                 'band'], suffixes=['', '_ref'])
             sumdf['name'] = dbName
+            sumdf['namePlot'] = data['dbNamePlot'].unique()[0]
             sumdf['ratio_Nv_WL'] = sumdf['Nv_WL']/sumdf['Nv_WL_ref']
             restot = pd.concat((restot, sumdf))
 
@@ -967,7 +972,8 @@ class Anaplot_OS:
         sel = restot[idx]
         vv = 'Nv_WL'
         # print(sel.columns)
-        sel = sel.groupby(['note', 'band', 'name'])[vv].sum().reset_index()
+        sel = sel.groupby(['note', 'band', 'name', 'namePlot'])[
+            vv].sum().reset_index()
         sel = sel.merge(Nv_WL, left_on=['band'], right_on=[
             'band'], suffixes=['', '_ref'])
         sel['ratio_Nv_WL'] = sel['Nv_WL']/(9.*sel['Nv_WL_ref'])
@@ -986,7 +992,7 @@ class Anaplot_OS:
 
         restot, sel = self.get_Nvisits_results()
         print(sel.columns)
-        self.plot_diff_m5_indiv_one_page(sel, varx='name', vary='ratio_Nv_WL',
+        self.plot_diff_m5_indiv_one_page(sel, varx='namePlot', vary='ratio_Nv_WL',
                                          # ylabel='$\frac{N_visits}{N_{visits}^{WL}$',
                                          ylabel=r'$r^{WL}=\frac{N_{visits}^{OS}}{N_{visits}^{WL~req}}$',
                                          title='WL reqs', ybar=1, log=True)

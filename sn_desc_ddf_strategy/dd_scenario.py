@@ -1567,7 +1567,7 @@ class DD_Scenario:
 
         """
 
-        fig, ax = plt.subplots(figsize=(14, 9))
+        fig, ax = plt.subplots(figsize=(16, 9))
         fig.suptitle(figtitle)
         fig.subplots_adjust(right=0.8)
         # ls = dict(zip([1, 2, 3], ['solid', 'dotted', 'dashed']))
@@ -1719,7 +1719,7 @@ class DD_Scenario:
                                 int(y), int(x), self.cad_DD, self.sl_DD, 3))
 
         ax.legend(bbox_to_anchor=(1.3, 0.55),
-                  ncol=1, frameon=False, fontsize=13)
+                  ncol=1, frameon=False, fontsize=15)
         ax.grid()
 
         res = None
