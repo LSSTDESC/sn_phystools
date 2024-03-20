@@ -21,7 +21,7 @@ class Fit_seasons:
                  fields_for_stat=['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',
                                   'EDFSa', 'EDFSb'],
                  simu_norm_factor=pd.DataFrame(),
-                 seasons=range(1, 11), nrandom=50, nproc=8):
+                 seasons=range(1, 11), nrandom=50, nproc=8, tagsurvey='notag'):
         """
         Class to perform fits for sets of season
 
@@ -72,6 +72,8 @@ class Fit_seasons:
             Number of random survey for season/year. The default is 50. 
         nproc: int, optional.
             Number of procs for processing. The default is 8.
+        tagsurvey: str, optional.
+            tag for the (full) survey. The default is notag.
         Returns
         -------
         None.
@@ -101,6 +103,7 @@ class Fit_seasons:
         self.seasons = seasons
         self.nrandom = nrandom
         self.nproc = nproc
+        self.tagsurvey = tagsurvey
 
     def __call__(self):
 
@@ -112,6 +115,8 @@ class Fit_seasons:
             #res = multiproc(configs, params, self.fit_time, nproc=self.nproc)
             res = self.fit_time(params)
             restot = pd.concat((restot, res))
+
+        restot['tagsurvey'] = self.tagsurvey
 
         if self.outName != '':
             restot.to_hdf(self.outName, key='cosmofit')
