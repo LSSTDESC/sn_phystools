@@ -376,6 +376,7 @@ class Fit_surveys:
             ccols = set(res_foot.columns.to_list())
 
             diffcol = list(footprints ^ ccols)
+
             if diffcol:
                 res_foot[diffcol] = 0
 
@@ -384,7 +385,7 @@ class Fit_surveys:
             df_tot = pd.concat((resdf, df_tot))
             del resdf
 
-        #del sn_sample
+        # del sn_sample
         del sn_sample
 
         if self.surveyDir != '':
