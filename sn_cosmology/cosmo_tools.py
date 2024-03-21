@@ -72,7 +72,6 @@ def get_nickname(ll, data):
 
     idx = data['survey'].isin(ll)
     sel = data[idx]
-    print('test', len(sel), len(ll))
     assert len(sel) == len(ll), 'Problem when building survey nickname'
     res = '_'.join(sel['nickname'].to_list())
 
@@ -101,7 +100,7 @@ def get_survey_nickname(tagsurvey, surveys, data):
 
     """
 
-    if tagsurvey == 'no_tag':
+    if tagsurvey == 'notag':
         tagsurvey = get_nickname(surveys, data)
     else:
         surveys = get_surveys(tagsurvey, data)
