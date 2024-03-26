@@ -587,7 +587,7 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
 
     """
 
-    fName = '{}/cosmo_{}*.hdf5'.format(theDir, dbName)
+    fName = '{}/cosmo_{}.hdf5'.format(theDir, dbName)
     fis = glob.glob(fName)
 
     df = pd.DataFrame()
@@ -603,7 +603,6 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
     colsb = set(df.columns).intersection(set(cols))
     colsb = list(colsb)
 
-    print('aooo', colsb)
     for ccol in colsb:
         dictagg[ccol] = ['mean', 'std']
 
