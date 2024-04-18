@@ -70,14 +70,38 @@ class PixelPSFSeeing:
         idx &= np.abs(df['ypixel']) < 1.e-5
         df = df[idx]
 
-        grp = df.groupby(['seeing']).apply(lambda x: pd.DataFrame({'pixel_frac_max': [x['pixel_frac'].max()],
-                                                                   'pixel_frac_min': [x['pixel_frac'].min()],
-                                                                   'pixel_frac_med': [x['pixel_frac'].median()]})).reset_index()
+        grp = df.groupby(['seeing']).apply(
+            lambda x: self.calcsum(x)).reset_index()
 
         finalresu = grp[['seeing', 'pixel_frac_max',
                          'pixel_frac_min', 'pixel_frac_med']].to_records(index=False)
 
         return finalresu
+
+    def calcsum(self, grp, what='pixel_frac'):
+        """
+        Method to estimate df values
+
+        Parameters
+        ----------
+        grp : pandas df
+            Data to process.
+        what : str, optional
+            column name for estimation. The default is 'pixel_frac'.
+
+        Returns
+        -------
+        pandas df
+            Computed of min, max, median.
+
+        """
+
+        dd = {}
+        dd['pixel_frac_max'] = [grp.what.max()]
+        dd['pixel_frac_min'] = [grp.what.min()]
+        dd['pixel_frac_med'] = [grp.what.median()]
+
+        return pd.DataFrame.from_dict(dd)
 
     def loop_seeing(self):
         """
@@ -393,7 +417,8 @@ class PSF_pixels:
         if self.scanfast:
             xcm, ycm = np.mgrid[xmin_c:xmax_c:3j, ymin_c:ymax_c:3j]
         else:
-            xcm, ycm = np.mgrid[xmin_c:xmax_c:10j, ymin_c:ymax_c:10j]
+            xcm, ycm = np.mgrid[xmin_c:xmax_c:21j, ymin_c:ymax_c:21j]
+
         positions = np.vstack([xcm.ravel(), ycm.ravel()])
 
         # pixel centers on the grid
@@ -429,7 +454,11 @@ class PSF_pixels:
                 imax = batches[j+1]
                 pos = positions_main[imin:imax]
                 p = multiprocessing.Process(name='Subprocess-'+str(j),
-                                            target=self.loop_process, args=(integ_type, pos, dx, dy, positions[0], positions[1], j, result_queue))
+                                            target=self.loop_process,
+                                            args=(integ_type,
+                                                  pos, dx, dy,
+                                                  positions[0], positions[1],
+                                                  j, result_queue))
                 p.start()
 
             resultdict = {}
@@ -497,61 +526,6 @@ class PSF_pixels:
             output_q.put({j: res})
         else:
             return res
-
-
-def PlotMaxFrac(psf_type='single_gauss', title='Single gaussian profile'):
-    """
-    Function to display max frac pixel vs seeing
-
-    Parameters
-    --------------
-    psf_type: str, opt
-      PSF type (default: single_gauss)
-    title: str, opt
-      title for the plot (default: Single gaussian profile)
-
-    """
-
-    tab = np.load('PSF_pixel_{}.npy'.format(psf_type))
-
-    # first grab the pixels with the frac max flux (per seeing)
-
-    df = pd.DataFrame(tab)
-    min_seeing = df['seeing'].min()
-    max_seeing = df['seeing'].max()
-
-    df = df.round({'xpixel': 2, 'ypixel': 2, 'xc': 2, 'yc': 2, 'seeing': 2})
-
-    # take the pixel in (0,0)
-    idx = np.abs(df['xpixel']) < 1.e-5
-    idx &= np.abs(df['ypixel']) < 1.e-5
-    df = df[idx]
-
-    grp = df.groupby(['seeing']).apply(lambda x: pd.DataFrame({'pixel_frac_max': [x['pixel_frac'].max()],
-                                                               'pixel_frac_min': [x['pixel_frac'].min()],
-                                                              'pixel_frac_med': [x['pixel_frac'].median()]})).reset_index()
-    print(grp)
-
-    # fontsize = 20
-    fig, ax = plt.subplots(figsize=(12, 8))
-    # ax.set_title(title,fontsize=fontsize)
-    ax.set_title(title)
-    ax.plot(grp['seeing'], grp['pixel_frac_med'],
-            ls='-', color='r', linewidth=2)
-    ax.fill_between(grp['seeing'], grp['pixel_frac_min'],
-                    grp['pixel_frac_max'], alpha=0.5)
-    # ax[i].set_ylim([0.,0.35])
-    ax.set_xlim([min_seeing, max_seeing])
-    ax.grid()
-    """
-    ax.set_xlabel(r'seeing ["]',fontsize=fontsize)
-    ax.set_ylabel(r'Max frac pixel flux',fontsize=fontsize)
-    ax.tick_params(labelsize = fontsize)
-    """
-    ax.set_xlabel(r'seeing ["]')
-    ax.set_ylabel(r'Max frac pixel flux')
-    # ax.tick_params(labelsize = fontsize)
-    plt.savefig('max_frac_seeing_{}.png'.format(psf_type))
 
 
 def test_newmethod():
