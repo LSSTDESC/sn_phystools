@@ -279,14 +279,14 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8,
     if len(files) == 0:
         return pd.DataFrame()
 
-    #restot = pd.DataFrame()
+    # restot = pd.DataFrame()
     params = dict(zip(['objtype'], [dataType]))
-    #params = dict(zip(['objtype'], ['pandasDataFrame']))
+    # params = dict(zip(['objtype'], ['pandasDataFrame']))
 
     restot = multiproc(files, params, loopStack_params, nproc)
     # restot.convert_bytestring_to_unicode()
 
-    #resfi = restot.to_pandas()
+    # resfi = restot.to_pandas()
     """
     for fi in files:
         res = loopStack([fi], objtype='astropyTable').to_pandas()
@@ -295,7 +295,7 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8,
     return restot
 
 
-def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.4, beta=3,
+def load_complete_dbSimu(dbDir, dbName, inDir, alpha=0.13, beta=3.1,
                          listDDF='COSMOS,CDFS,XMM-LSS,ELAISS1,EDFSa,EDFSb',
                          seasons='*', nproc=8,
                          dataType='pandasDataFrame', suffix=''):
@@ -528,7 +528,7 @@ def loadData_fakeSimu(theDir, theFile=''):
     else:
         files = ['{}/{}'.format(theDir, theFile)]
 
-    #restot = pd.DataFrame()
+    # restot = pd.DataFrame()
     params = dict(zip(['objtype'], ['astropyTable']))
     restot = multiproc(files, params, loopStack_params, 1)
     restot.convert_bytestring_to_unicode()
@@ -587,7 +587,7 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
 
     """
 
-    fName = '{}/cosmo_{}.hdf5'.format(theDir, dbName)
+    fName = '{}/cosmo_{}_*.hdf5'.format(theDir, dbName)
     fis = glob.glob(fName)
 
     df = pd.DataFrame()
