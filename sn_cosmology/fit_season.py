@@ -116,7 +116,7 @@ class Fit_seasons:
         for key, vals in self.prior.items():
             params['prior'] = key
             params['prior_params'] = vals
-            #res = multiproc(configs, params, self.fit_time, nproc=self.nproc)
+            # res = multiproc(configs, params, self.fit_time, nproc=self.nproc)
             res = self.fit_time(params)
             restot = pd.concat((restot, res))
 
