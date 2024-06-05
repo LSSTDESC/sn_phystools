@@ -708,7 +708,10 @@ class Fit_surveys:
             search_path = '{}/SN_{}_{}_{}_{}.hdf5'.format(
                 search_dir, fieldType, dbName, self.timescale, seas)
             # print('search path', search_path)
-            files += glob.glob(search_path)
+            fis = glob.glob(search_path)
+            if len(fis) == 0:
+                print('pb here: no file found in path', search_path)
+            files += fis
 
             for fi in files:
                 da = pd.read_hdf(fi)
@@ -765,6 +768,7 @@ class Fit_surveys:
         """
 
         # analyze the data
+
         dict_ana = analyze_data_sample(sel_data_fit,
                                        fields=self.fields_for_stat)
         # get Nsn with sigmaC <= 0.04
@@ -2332,10 +2336,18 @@ def analyze_data_sample(data, add_str='',
 
     surveys = data['survey'].unique()
 
+    survey_ref = 'WFD_TiDES,WFD_desi_bgs,WFD_desi_lrg'
     for survey in surveys:
         idx = data['survey'] == survey
         sel = data[idx]
-        dd['{}{}'.format(survey, add_str)] = len(sel)
+        scr = '{}{}'.format(survey, add_str)
+        dd[scr] = len(sel)
+        for survey_r in survey_ref.split(','):
+            nn = '{}_all{}'.format(survey_r, add_str)
+            if nn not in dd.keys():
+                dd[nn] = 0.
+            if survey_r in survey:
+                dd[nn] += len(sel)
 
     return dd
     """
