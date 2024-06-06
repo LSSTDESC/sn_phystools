@@ -2336,18 +2336,22 @@ def analyze_data_sample(data, add_str='',
 
     surveys = data['survey'].unique()
 
-    survey_ref = 'WFD_TiDES,WFD_desi_bgs,WFD_desi_lrg'
+    survey_ref = ['WFD_TiDES', 'WFD_desi_bgs', 'WFD_desi_lrg',
+                  'WFD_desi2', 'WFD_4hs', 'WFD_crs_lrg', 'WFD_crs_bg']
+    nsn_wfd = 0.
     for survey in surveys:
         idx = data['survey'] == survey
         sel = data[idx]
         scr = '{}{}'.format(survey, add_str)
         dd[scr] = len(sel)
-        for survey_r in survey_ref.split(','):
+        nsn_wfd += len(sel)
+        for survey_r in survey_ref:
             nn = '{}_all{}'.format(survey_r, add_str)
             if nn not in dd.keys():
                 dd[nn] = 0.
             if survey_r in survey:
                 dd[nn] += len(sel)
+    dd['WFD{}'.format(add_str)] = nsn_wfd
 
     return dd
     """
