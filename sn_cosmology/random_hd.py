@@ -94,7 +94,7 @@ class HD_random:
         # prior = pd.DataFrame()
 
         dict_fits = {}
-        idx = data['zType'] == 'spectroz'
+        idx = data['zType'].isin(['spectroz', 'spectroz_nosat'])
         data_sigmaInt = data[idx]
         dataValues_sigmaInt = [data_sigmaInt[key] for key in self.vardf]
 
@@ -604,7 +604,9 @@ class Fit_surveys:
 
         res = res_fit[keys[0]]
         w0 = res['w0_fit']
-        wa = res['wa_fit']
+        wa = 0
+        if 'wa_fit' in res.keys():
+            res['wa_fit']
         Om = res['Om0_fit']
 
         cosmology = w0waCDM(H0=H0,
@@ -663,6 +665,9 @@ class Fit_surveys:
             data_ = self.load_data(
                 dataDir[ftype], dbName[ftype], name, ftype, [seas])
 
+            if ftype == 'WFD':
+                data_ = self.select(data_)
+
             data_ = data_[self.vardf]
             # nsn_ = self.load_nsn_summary(dataDir[ftype], dbName[ftype],
             #                             '{}_{}'.format(ftype, ztype), [seas])
@@ -675,6 +680,29 @@ class Fit_surveys:
             # nsn_survey[name] = nsn_
 
         return data_survey
+
+    def select(self, dd):
+        """
+        Method to select SN
+
+        Parameters
+        ----------
+        dd : pandas df
+            Data to process.
+
+        Returns
+        -------
+        pandas df
+            Selected data.
+
+        """
+        idx = dd['sigma_c'] <= 0.04
+        idx &= dd['n_epochs_bef'] >= 5
+        idx &= dd['n_epochs_aft'] >= 10
+        idx &= dd['n_epochs_m10_p5'] >= 5
+        idx &= dd['n_epochs_phase_minus_10'] >= 2
+
+        return pd.DataFrame(dd[idx])
 
     def load_data(self, dataDir, dbName, runType, fieldType, seasons):
         """
