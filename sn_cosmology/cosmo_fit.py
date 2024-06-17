@@ -498,7 +498,7 @@ class MyFit(CosmoFit):
         from random import gauss
         Mb = -19.09
         self.Mb_rand = gauss(Mb, 0.12)
-        #self.mbb = self.mb-(self.Mb_rand-Mb)
+        # self.mbb = self.mb-(self.Mb_rand-Mb)
 
         return optimize.newton(self.chi2ndf_sigmaInt, 0.01)
 
