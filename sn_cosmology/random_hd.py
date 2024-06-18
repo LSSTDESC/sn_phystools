@@ -702,7 +702,9 @@ class Fit_surveys:
         idx &= dd['n_epochs_m10_p5'] >= 5
         idx &= dd['n_epochs_phase_minus_10'] >= 2
 
-        return pd.DataFrame(dd[idx])
+        sel = pd.DataFrame(dd[idx])
+
+        return sel
 
     def load_data(self, dataDir, dbName, runType, fieldType, seasons):
         """
