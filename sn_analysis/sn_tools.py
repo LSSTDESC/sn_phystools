@@ -590,7 +590,7 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
     fName = '{}/cosmo_{}*.hdf5'.format(theDir, dbName)
     fis = glob.glob(fName)
     if len(fis) == 0:
-        print('Problem here: file not foun in path', fName)
+        print('Problem here: file not found in path', fName)
 
     df = pd.DataFrame()
 
@@ -599,6 +599,11 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
         if 'nsn_z_0.8_sigma_mu' in dd.columns:
             dd['nsn_rat_highz'] = dd['nsn_z_0.8_sigma_mu'] / dd['nsn_z_0.8']
         df = pd.concat((df, dd))
+
+    print(df.columns)
+    # re-calculate SMoM here if necessary
+    if 'wa_fit' not in df.columns:
+        df = recalc(df)
 
     dictagg = {}
 
@@ -625,6 +630,18 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
     dfb['spectro_config'] = spectro_config
 
     return dfb
+
+
+def recalc(df):
+
+    sigma_Om0 = df['Cov_Om0_Om0_fit']**0.5
+    sigma_w0 = df['Cov_w0_w0_fit']**0.5
+    rho = df['Cov_Om0_w0_fit']/(sigma_Om0*sigma_w0)
+    delta_chi = 6.17
+    smom_inv = delta_chi*sigma_w0*sigma_Om0*(1.-rho**2)**0.5
+
+    df['MoM'] = 1./smom_inv
+    return df
 
 
 def get_spline(df, xvar, yvar):
