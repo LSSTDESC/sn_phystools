@@ -605,6 +605,11 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
     if 'wa_fit' not in df.columns:
         df = recalc(df)
 
+    for vv in ['Om0', 'w0', 'wa']:
+        vvb = 'Cov_{}_{}_fit'.format(vv, vv)
+        if vvb in df.columns:
+            df['sigma_{}'.format(vv)] = df[vvb]**0.5
+
     dictagg = {}
 
     colsb = set(df.columns).intersection(set(cols))
@@ -632,15 +637,40 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
     return dfb
 
 
-def recalc(df):
+def recalc(df, cova='Cov_Om0_Om0_fit',
+           covb='Cov_w0_w0_fit',
+           covab='Cov_Om0_w0_fit',
+           delta_chi=6.17):
+    """
+    Function to recalc the SMoM metric
 
-    sigma_Om0 = df['Cov_Om0_Om0_fit']**0.5
-    sigma_w0 = df['Cov_w0_w0_fit']**0.5
-    rho = df['Cov_Om0_w0_fit']/(sigma_Om0*sigma_w0)
-    delta_chi = 6.17
+    Parameters
+    ----------
+    df : pandas df
+        Data to process.
+    cova : str, optional
+        first var cov. The default is 'Cov_Om0_Om0_fit'.
+    covb : str, optional
+        second var cov. The default is 'Cov_w0_w0_fit'.
+    covab : str, optional
+        cov(a,b). The default is 'Cov_Om0_w0_fit'.
+    delta_chi : float, optional
+        Chisquare (C.L.). The default is 6.17.
+
+    Returns
+    -------
+    df : pandas df
+        original df plus SMoM value.
+
+    """
+
+    sigma_Om0 = df[cova]**0.5
+    sigma_w0 = df[covb]**0.5
+    rho = df[covab]/(sigma_Om0*sigma_w0)
     smom_inv = delta_chi*sigma_w0*sigma_Om0*(1.-rho**2)**0.5
 
     df['MoM'] = 1./smom_inv
+
     return df
 
 
