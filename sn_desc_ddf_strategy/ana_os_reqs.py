@@ -1022,7 +1022,8 @@ class Anaplot_OS:
 
         print(nvisits_res.columns)
 
-        vv = ['note', 'band', 'name']
+        vv = ['note', 'band', 'name', 'namePlot']
+
         df_tot = m5_res.merge(nvisits_res,
                               left_on=vv, right_on=vv, suffixes=['', ''])
 
@@ -1147,7 +1148,7 @@ class Anaplot_OS:
         ax.set_ylabel(r'frac$_{PZ, WL~reqs}^{OK}$')
 
         fig, ax = plt.subplots(figsize=(11, 9), nrows=2)
-        fig.subplots_adjust(hspace=0., bottom=0.20)
+        fig.subplots_adjust(hspace=0.05, bottom=0.20)
         bands = 'ugrizy'
 
         names = dfb['name'].to_list()
