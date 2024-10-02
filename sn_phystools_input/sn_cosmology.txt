@@ -7,7 +7,7 @@ selconfig G10_JLA str #sel config
 outDir ../cosmo_fit str #output dir
 outName cosmo_fit str #output file name
 survey input/cosmology/scenarios/survey_scenario.csv str #survey to use
-lookup_survey input/cosmology/scenarios/lookup_survey.csv str #lookup table for scenarios
+#lookup_survey input/cosmology/scenarios/lookup_survey.csv str #lookup table for scenarios
 hosteffiDir input/cosmology/host_effi str #host effi dir
 footprintDir input/cosmology/footprints str #footprint dir
 max_sigma_mu 0.12 float #Max sigma_mu defining low sigma_mu sample
@@ -24,8 +24,8 @@ nrandom 50 int #number of random sample (per season/year) to generate
 nproc 8 int #number of procs to use
 wfd_tagsurvey notag str #tag for the WFD survey
 dd_tagsurvey notag str #tag for the DD survey
-DD_surveys DDF_COSMOS,DDF_XMM,DDF_ELAIS,DDF_CDFS str #DD surveys to consider
-WFD_surveysWFD_TiDES,WFD_desi_lrg,WFD_desi_bgs,WFD_desi2,WFD_4hs,WFD_crs_lrg,WFD_crs_bg str #WFD surveys to consider
+#DD_surveys DDF_COSMOS,DDF_XMM,DDF_ELAIS,DDF_CDFS str #DD surveys to consider
+#WFD_surveys WFD_TiDES,WFD_desi_lrg,WFD_desi_bgs,WFD_desi2,WFD_4hs,WFD_crs_lrg,WFD_crs_bg str #WFD surveys to consider
 fitparam_names w0,wa,Om0 str #fit parameter names
 fitparam_values -1.0,0.0,0.3 str #fit parameter init values
 prior 1 int #prior for the fit
