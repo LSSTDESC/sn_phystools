@@ -15,7 +15,7 @@ test_mode 0 int #test mode run
 plot_test 0 int #test mode run+of the program and plots
 low_z_optimize 1 int #maximize the lowz sample
 sigmaInt 0.12 float #sigmaInt for SN
-surveyDir " str #to dump surveys on disk
+surveyDir None str #to dump surveys on disk
 timescale year str #timescale for the cosmology (year or season)
 fields_for_stat COSMOS,XMM-LSS,ELAISS1,CDFS,EDFSa,EDFSb str #field list for stat (fit)
 simu_norm_factor input/cosmology/simuinfo/normfactor.csv str #norm factors for simu
