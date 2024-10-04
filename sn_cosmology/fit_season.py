@@ -110,6 +110,14 @@ class Fit_seasons:
         self.dd_tagsurvey = dd_tagsurvey
 
     def __call__(self):
+        """
+        call method
+
+        Returns
+        -------
+        None.
+
+        """
 
         restot = pd.DataFrame()
         params = {}
