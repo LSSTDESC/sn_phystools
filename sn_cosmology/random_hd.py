@@ -2375,12 +2375,14 @@ def analyze_data_sample(data, add_str='',
         scr = '{}{}'.format(survey, add_str)
         dd[scr] = len(sel)
         nsn_wfd += len(sel)
+        """
         for survey_r in survey_ref:
             nn = '{}_all{}'.format(survey_r, add_str)
             if nn not in dd.keys():
                 dd[nn] = 0.
             if survey_r in survey:
                 dd[nn] += len(sel)
+        """
     dd['WFD{}'.format(add_str)] = nsn_wfd
 
     return dd
