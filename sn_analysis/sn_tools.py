@@ -587,7 +587,7 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
 
     """
 
-    fName = '{}/cosmo_{}*.hdf5'.format(theDir, dbName)
+    fName = '{}/cosmo_*{}*.hdf5'.format(theDir, dbName)
     fis = glob.glob(fName)
     if len(fis) == 0:
         print('Problem here: file not found in path', fName)
