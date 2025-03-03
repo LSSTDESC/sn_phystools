@@ -348,7 +348,11 @@ class Fit_surveys:
             # make a random survey for the season
             res, res_foot = rand_survey(rand_LSST, seas)
 
+            # concat to the existing sample to cumulate season results
             sn_sample = pd.concat((sn_sample, res))
+
+            # analyze the sample here
+            # self.analyze_survey(sn_sample)
 
             year_max = sn_sample[self.timescale].max()
 
@@ -394,6 +398,26 @@ class Fit_surveys:
             self.dump_survey(df_tot, year_min, year_max, sreal)
 
         return df_tot
+
+    def analyze_survey(self, sn_sample):
+        """
+        Method to analyze the survey
+
+        Parameters
+        ----------
+        sn_sample : pandas df
+            Data to process.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        fields = sn_sample['field'].unique()
+        for field in fields:
+            idx = sn_sample['field'] == field
+            print(field, len(sn_sample[idx]))
 
     def fit_random_sample_deprecated(self):
         """
@@ -668,6 +692,7 @@ class Fit_surveys:
             if ftype == 'WFD':
                 data_ = self.select(data_)
 
+            # print('data ', seas, name, ftype, len(data_))
             data_ = data_[self.vardf]
             # nsn_ = self.load_nsn_summary(dataDir[ftype], dbName[ftype],
             #                             '{}_{}'.format(ftype, ztype), [seas])
