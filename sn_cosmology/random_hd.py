@@ -154,7 +154,69 @@ class Fit_surveys:
                  simu_norm_factor=pd.DataFrame(),
                  nproc=8,
                  vardf=['z_fit', 'mu', 'sigma_mu', 'field', 'healpixID'],
-                 surveyDir=''):
+                 surveyDir='', select_DDF=False, select_WFD=True):
+        """
+
+
+        Parameters
+        ----------
+        dataDir_DD : TYPE
+            DESCRIPTION.
+        dbName_DD : TYPE
+            DESCRIPTION.
+        dataDir_WFD : TYPE
+            DESCRIPTION.
+        dbName_WFD : TYPE
+            DESCRIPTION.
+        sellist : TYPE
+            DESCRIPTION.
+        seasons : TYPE
+            DESCRIPTION.
+        survey : TYPE, optional
+            DESCRIPTION. The default is pd.DataFrame([('COSMOS', 1.1, 1.e8, 1, 10)],                                     columns=['field', 'zmax', 'sigmaC',                                              'season_min', 'season_max']).
+        sigmaInt : TYPE, optional
+            DESCRIPTION. The default is 0.12.
+        host_effi : TYPE, optional
+            DESCRIPTION. The default is {}.
+        footprints : TYPE, optional
+            DESCRIPTION. The default is pd.DataFrame().
+        low_z_optimize : TYPE, optional
+            DESCRIPTION. The default is True.
+        max_sigma_mu : TYPE, optional
+            DESCRIPTION. The default is 0.12.
+        test_mode : TYPE, optional
+            DESCRIPTION. The default is 0.
+        plot_test : TYPE, optional
+            DESCRIPTION. The default is 0.
+        lowz_optimize : TYPE, optional
+            DESCRIPTION. The default is 0.1.
+        timescale : TYPE, optional
+            DESCRIPTION. The default is 'year'.
+        nrandom : TYPE, optional
+            DESCRIPTION. The default is 50.
+        hd_fit : TYPE, optional
+            DESCRIPTION. The default is None.
+        fields_for_stat : TYPE, optional
+            DESCRIPTION. The default is ['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',                                  'EDFSa', 'EDFSb'].
+        simu_norm_factor : TYPE, optional
+            DESCRIPTION. The default is pd.DataFrame().
+        nproc : TYPE, optional
+            DESCRIPTION. The default is 8.
+        vardf : TYPE, optional
+            DESCRIPTION. The default is ['z_fit', 'mu', 'sigma_mu', 'field', 'healpixID'].
+        surveyDir : TYPE, optional
+            DESCRIPTION. The default is ''.
+        select_DDF : TYPE, optional
+            DESCRIPTION. The default is False.
+        select_WFD : TYPE, optional
+            DESCRIPTION. The default is True.
+
+        Returns
+        -------
+        None.
+
+        """
+
         """
         Class to build a complete (WFD+DDF) random survey
 
@@ -196,7 +258,27 @@ class Fit_surveys:
           Time scale to estimate the cosmology. The default is 'year'.
         nrandom: int, opt.
           number of random survey. The default is 50.
-
+        hd_fit : TYPE, optional
+            DESCRIPTION. The default is None.
+        fields_for_stat : list(str), optional
+            List of DDFs. 
+            The default is 
+            ['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS','EDFSa', 'EDFSb'].
+        simu_norm_factor : float, optional
+            normalisation factor for simulations. The default is pd.DataFrame().
+        nproc : int, optional
+            number of procs for multiprocessing. The default is 8.
+        vardf : list(str), optional
+            list of variables. The default is 
+            ['z_fit', 'mu', 'sigma_mu', 'field', 'healpixID'].
+        surveyDir : str, optional
+            Survey directory. The default is ''.
+        select_DDF : bool, optional
+            to select DDFs using the 'cosmology grade' sample criteria. 
+            The default is False.
+        select_WFD : bool, optional
+            to select the WFD sample using the 'cosmology grade' sample criteria.
+            The default is True.
 
         Returns
         -------
@@ -227,6 +309,8 @@ class Fit_surveys:
         self.nproc = nproc
         self.vardf = vardf+['SNID']+[self.timescale]
         self.surveyDir = surveyDir
+        self.select_DDF = select_DDF
+        self.select_WFD = select_WFD
 
     def fit_sn_samples(self):
         """
@@ -686,8 +770,11 @@ class Fit_surveys:
             data_ = self.load_data(
                 dataDir[ftype], dbName[ftype], name, ftype, [seas])
 
-            if ftype == 'WFD':
-                data_ = self.select(data_)
+            if ftype == 'WFD' and self.select_WFD:
+                data_ = self.select_SN_WFD(data_)
+
+            if ftype != 'WFD' and self.select_DDF:
+                data_ = self.select_SN_DDF(data_)
 
             # print('data ', seas, name, ftype, len(data_))
             data_ = data_[self.vardf]
@@ -703,7 +790,7 @@ class Fit_surveys:
 
         return data_survey
 
-    def select(self, dd):
+    def select_SN_WFD(self, dd):
         """
         Method to select SN
 
@@ -720,6 +807,31 @@ class Fit_surveys:
         """
         idx = dd['sigma_c'] <= 0.04
         idx &= dd['n_epochs_bef'] >= 5
+        idx &= dd['n_epochs_aft'] >= 10
+        idx &= dd['n_epochs_m10_p5'] >= 5
+        idx &= dd['n_epochs_phase_minus_10'] >= 2
+
+        sel = pd.DataFrame(dd[idx])
+
+        return sel
+
+    def select_SN_DDF(self, dd):
+        """
+        Method to select SN
+
+        Parameters
+        ----------
+        dd : pandas df
+            Data to process.
+
+        Returns
+        -------
+        pandas df
+            Selected data.
+
+        """
+        # idx = dd['sigma_c'] <= 99999999.
+        idx = dd['n_epochs_bef'] >= 5
         idx &= dd['n_epochs_aft'] >= 10
         idx &= dd['n_epochs_m10_p5'] >= 5
         idx &= dd['n_epochs_phase_minus_10'] >= 2

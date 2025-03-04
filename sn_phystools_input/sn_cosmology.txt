@@ -29,3 +29,5 @@ dd_tagsurvey notag str #tag for the DD survey
 fitparam_names w0,wa,Om0 str #fit parameter names
 fitparam_values -1.0,0.0,0.3 str #fit parameter init values
 prior 1 int #prior for the fit
+select_DDF 0 int #to select DDF SN for the fit
+select_WFD 0 int #to select WFD SN for the fit

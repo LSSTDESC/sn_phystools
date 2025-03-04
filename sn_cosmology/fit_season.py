@@ -22,7 +22,8 @@ class Fit_seasons:
                                   'EDFSa', 'EDFSb'],
                  simu_norm_factor=pd.DataFrame(),
                  seasons=range(1, 11), nrandom=50, nproc=8,
-                 wfd_tagsurvey='notag', dd_tagsurvey='notag'):
+                 wfd_tagsurvey='notag', dd_tagsurvey='notag',
+                 select_DDF=False, select_WFD=True):
         """
         Class to perform fits for sets of season
 
@@ -77,6 +78,11 @@ class Fit_seasons:
             tag for the (full) WFD survey. The default is notag.        
         dd_tagsurvey: str, optional.
             tag for the (full) DD survey. The default is notag.
+        select_DDF : bool, optional
+            to select SN for the cosmology-grade sample. The default is False.
+        select_WFD : bool, optional
+                to select SN for the cosmology-grade sample. The default is True.
+
         Returns
         -------
         None.
@@ -108,6 +114,8 @@ class Fit_seasons:
         self.nproc = nproc
         self.wfd_tagsurvey = wfd_tagsurvey
         self.dd_tagsurvey = dd_tagsurvey
+        self.select_DDF = select_DDF
+        self.select_WFD = select_WFD
 
     def __call__(self):
         """
@@ -175,7 +183,9 @@ class Fit_seasons:
                                  hd_fit=self.hd_fit,
                                  fields_for_stat=self.fields_for_stat,
                                  simu_norm_factor=self.simu_norm_factor,
-                                 nproc=self.nproc, surveyDir=self.surveyDir)
+                                 nproc=self.nproc, surveyDir=self.surveyDir,
+                                 select_DDF=self.select_DDF,
+                                 select_WFD=self.select_WFD)
 
         res_fit = fit_random.fit_sn_samples()
 
