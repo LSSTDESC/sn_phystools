@@ -348,17 +348,25 @@ class Fit_surveys:
             # make a random survey for the season
             res, res_foot = rand_survey(rand_LSST, seas)
 
+            if self.test_mode:
+                print('random sample analysis')
+                analyze_survey(res)
             # concat to the existing sample to cumulate season results
             sn_sample = pd.concat((sn_sample, res))
 
             # analyze the sample here
-            # self.analyze_survey(sn_sample)
+            if self.test_mode:
+                print('sample analysis')
+                analyze_survey(sn_sample)
 
             year_max = sn_sample[self.timescale].max()
 
             # clean the survey to remove duplicate
 
             sn_sample = self.clean_survey(sn_sample)
+            if self.test_mode:
+                print('after cleaning')
+                analyze_survey(sn_sample)
 
             # fit this sample
             res, sel_data_fit = self.fit_data_iterative(sn_sample)
@@ -398,26 +406,6 @@ class Fit_surveys:
             self.dump_survey(df_tot, year_min, year_max, sreal)
 
         return df_tot
-
-    def analyze_survey(self, sn_sample):
-        """
-        Method to analyze the survey
-
-        Parameters
-        ----------
-        sn_sample : pandas df
-            Data to process.
-
-        Returns
-        -------
-        None.
-
-        """
-
-        fields = sn_sample['field'].unique()
-        for field in fields:
-            idx = sn_sample['field'] == field
-            print(field, len(sn_sample[idx]))
 
     def fit_random_sample_deprecated(self):
         """
@@ -503,6 +491,8 @@ class Fit_surveys:
                 sel = vals[idx]
                 nsn = int(len(sel)/norm)
                 samp_ = sel.sample(nsn)
+                if self.test_mode:
+                    print('field sample', field, nsn)
                 sn_survey = pd.concat((sn_survey, samp_))
 
             dd[key] = sn_survey
@@ -590,11 +580,18 @@ class Fit_surveys:
 
         frac_out = 1.
         nsigma = 5.
+        # nsigma = 100.
         frac_outliers = 0.05
 
         dd = pd.DataFrame(data)
+        if self.test_mode:
+            print('fit_data_iterative')
+            analyze_survey(dd)
         while frac_out >= frac_outliers:
             res, dd, frac_out = self.fit_data_cleaned(dd, nsigma)
+            if self.test_mode:
+                print('fit_data_iterative cleaning', frac_out)
+                analyze_survey(dd)
 
         return res, dd
 
@@ -620,7 +617,7 @@ class Fit_surveys:
 
         from astropy.cosmology import w0waCDM
         H0 = 70.
-        idx = data['sigma_mu'] <= 0.25
+        idx = data['sigma_mu'] <= 9999.
         data = pd.DataFrame(data[idx])
         res_fit = self.hd_fit(data)
 
@@ -1028,6 +1025,9 @@ class Random_survey:
 
         res, res_foot = self.instance_random_survey(data_survey, seas)
 
+        if self.test_mode:
+            print('analyzing the survey', seas)
+            analyze_survey(res)
         del data_survey
         res = self.correct_mu(res)
         res[self.timescale] = seas
@@ -2429,3 +2429,24 @@ def analyze_data_sample(data, add_str='',
     outdict['all_Fields{}'.format(add_str)] = nsn_tot
     return outdict
     """
+
+
+def analyze_survey(sn_sample):
+    """
+    Function to analyze the survey
+
+    Parameters
+    ----------
+    sn_sample : pandas df
+        Data to process.
+
+    Returns
+    -------
+    None.
+
+    """
+
+    fields = sn_sample['field'].unique()
+    for field in fields:
+        idx = sn_sample['field'] == field
+        print(field, len(sn_sample[idx]))
