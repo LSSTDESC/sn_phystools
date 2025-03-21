@@ -49,5 +49,6 @@ def selection_criteria():
                           ('sigmaC', operator.le, 0.04),
                           ]
     """
+    dict_sel['no_sel'] = [('z', operator.le, 3.)]
 
     return dict_sel
