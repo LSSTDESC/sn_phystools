@@ -41,14 +41,15 @@ def selection_criteria():
 
     # dict_sel['G10_JLA_z0.7'] = dict_sel['G10_JLA']+sdict['z0.7']
 
-    """
-    dict_sel['metric'] = [('n_epochs_bef', operator.ge, 4),
-                          ('n_epochs_aft', operator.ge, 10),
-                          ('n_epochs_phase_minus_10', operator.ge, 1),
-                          ('n_epochs_phase_plus_20', operator.ge, 1),
-                          ('sigmaC', operator.le, 0.04),
-                          ]
-    """
+    sdict['sn_tight'] = [('n_epochs_bef', operator.ge, 5),
+                         ('n_epochs_aft', operator.ge, 10),
+                         ('n_epochs_phase_minus_10', operator.ge, 5),
+                         ('n_epochs_phase_plus_20', operator.ge, 2),
+                         ('sigmaC', operator.le, 0.04)]
+
     dict_sel['no_sel'] = [('z', operator.le, 3.)]
+
+    dict_sel['cosmo_wfd'] = sdict['phases'] + \
+        sdict['G10']+sdict['JLA']+sdict['sn_tight']
 
     return dict_sel
