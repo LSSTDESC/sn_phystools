@@ -7,7 +7,7 @@ Created on Thu Jun  8 08:52:27 2023
 """
 import os
 import pandas as pd
-from sn_analysis.sn_calc_plot import select
+from sn_analysis.sn_selection import select
 from sn_analysis.sn_tools import load_complete_dbSimu
 from sn_analysis.sn_calc_plot import bin_it
 import numpy as np

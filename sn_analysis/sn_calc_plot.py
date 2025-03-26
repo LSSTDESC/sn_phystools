@@ -286,28 +286,6 @@ def bin_it_combi(res, xvar='z', yvar='mu', errvar='sigma_mu',
     return df
 
 
-def select(res, list_sel):
-    """
-    Function to select a pandas df
-
-    Parameters
-    ----------
-    res : pandas df
-        data to select.
-
-    Returns
-    -------
-    pandas df
-        selected df.
-
-    """
-    idx = True
-    for vals in list_sel:
-        idx &= vals[1](res[vals[0]], vals[2])
-
-    return res[idx]
-
-
 def histSN_params(data, vars=['x1', 'color', 'z', 'daymax']):
     """
     Function to plot SN parameters

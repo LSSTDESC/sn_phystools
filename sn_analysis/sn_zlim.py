@@ -1,7 +1,8 @@
 from sn_analysis.sn_tools import loadData_fakeSimu
 import matplotlib.pyplot as plt
 import numpy as np
-from sn_analysis.sn_calc_plot import Calc_zlim, select
+from sn_analysis.sn_calc_plot import Calc_zlim
+from sn_analysis.sn_selection import select
 from sn_analysis.sn_calc_plot import effi
 import pandas as pd
 from . import plt, filtercolors
