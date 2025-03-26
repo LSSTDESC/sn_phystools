@@ -122,7 +122,6 @@ def get_nsn(grp, sellist, zmin=0.01, zmax=1.2, dz=0.1):
 
     nsn_bin = nsn_bin.merge(grpy, how='cross')
 
-    print(nsn_bin)
     nsn_bin = nsn_bin.rename(columns={'zmeas_new': 'zmeas'})
     # plot the results
     # plot_effi_nsn(zz, effiInterp, effiInterp_err, nsn, nsn_err)
@@ -160,7 +159,6 @@ def nsn_bin_err(data, xvar='zmeas', yvar='nsn', yvar_err='nsn_err',
 
     df = pd.DataFrame(df)
 
-    print(df)
     _centers = (bins[:-1] + bins[1:])/2
     # df = df.drop(columns=[xvar])
     df[f'{xvar}_new'] = _centers
