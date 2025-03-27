@@ -249,7 +249,7 @@ def getRates(rate='Hounsell', survey_area=9.6, season_length=180.,
     """
 
     rateSN = SN_Rate(rate=rate, H0=H0, Om0=Om0,
-                     min_rf_phase=-15., max_rf_phase=30.)
+                     min_rf_phase=-10., max_rf_phase=35.)
 
     # estimate the rates and nsn vs z
     zz, rate, err_rate, nsn, err_nsn, age_universe = rateSN(zmin=zmin,
