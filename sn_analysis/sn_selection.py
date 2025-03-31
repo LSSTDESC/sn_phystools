@@ -43,6 +43,7 @@ def selection_criteria():
     # dict_sel['G10_sigmaC_z0.7'] = dict_sel['G10_sigmaC'] + sdict['z0.7']
 
     dict_sel['G10_JLA'] = sdict['phases']+sdict['G10']+sdict['JLA']
+
     dict_sel['G10_JLA_sigmaC'] = sdict['phases'] + \
         sdict['G10']+sdict['JLA']+sdict['sigmaC']
 
