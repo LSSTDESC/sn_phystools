@@ -356,8 +356,8 @@ class Select_filt:
             idx = sel_data[self.timescale] == vv
             selb = pd.DataFrame(sel_data[idx])
 
-            for vv in vals:
-                selb[vv] = selb[vv].astype(int)
+            for vvb in vals:
+                selb[vvb] = selb[vvb].astype(int)
 
             selb.to_hdf(self.get_name_wfd(vv, RAmin, RAmax),
                         key='SN', append=True)
