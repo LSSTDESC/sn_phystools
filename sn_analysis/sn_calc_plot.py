@@ -237,8 +237,8 @@ def bin_it_effi(data, xvar='z', yvar='sigma_mu', yvar_cut=0.12,
 
     # estimate efficiency here
     effi = group_sel.size()/group.size()
-    var = effi*(1.-effi)*group.size()
-    effi_err = np.sqrt(var)
+    var = effi*(1.-effi)
+    effi_err = np.sqrt(var/group.size())
 
     df = pd.DataFrame(bin_centers, columns=['z'])
     df['effi'] = effi.array
