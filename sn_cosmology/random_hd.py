@@ -576,7 +576,7 @@ class Fit_surveys:
                 nsn = int(len(sel)/norm)
                 samp_ = sel.sample(nsn)
                 if self.test_mode:
-                    print('field sample', field, nsn)
+                    print('field sample', key, field, nsn, norm)
                 sn_survey = pd.concat((sn_survey, samp_))
 
             dd[key] = sn_survey
@@ -610,7 +610,8 @@ class Fit_surveys:
             print("duplicate", df_dup[[var, 'survey']])
 
         df_res = pd.DataFrame(data[~idx])
-        df_res = pd.concat((df_res, df_dup))
+        if len(df_dup) > 0:
+            df_res = pd.concat((df_res, df_dup))
 
         res = df_res.drop_duplicates(subset='SNID')
 
@@ -778,6 +779,7 @@ class Fit_surveys:
 
             # print('data ', seas, name, ftype, len(data_))
             data_ = data_[self.vardf]
+
             # nsn_ = self.load_nsn_summary(dataDir[ftype], dbName[ftype],
             #                             '{}_{}'.format(ftype, ztype), [seas])
 
@@ -2321,7 +2323,7 @@ class Random_survey:
         zmax = 1.2
         bins = np.arange(zmin, zmax, bin_width)
         bins_center = (bins[:-1] + bins[1:])/2
-        group = data.groupby(pd.cut(data['z_fit'], bins))
+        group = data.groupby(pd.cut(data['z_fit'], bins), observed=False)
         df = pd.DataFrame(group.size().to_list(), columns=['nsn'])
 
         df['effi'] = self.host_effi[host_effi_key](bins_center)
