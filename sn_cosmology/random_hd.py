@@ -153,10 +153,11 @@ class Fit_surveys:
                                   'EDFSa', 'EDFSb'],
                  simu_norm_factor=pd.DataFrame(),
                  nproc=8,
-                 vardf=['z_fit', 'mu', 'sigma_mu', 'field', 'healpixID'],
-                 surveyDir='', select_DDF=False, select_WFD=True):
+                 surveyDir='', select_DDF=False, select_WFD=True,
+                 H0=70, Om0=0.3, Ode0=0.7,
+                 w0=-1., wa=0.0, alpha=0.13, beta=3.1):
         """
-
+        Class to build a complete (WFD+DDF) random survey
 
         Parameters
         ----------
@@ -202,83 +203,26 @@ class Fit_surveys:
             DESCRIPTION. The default is pd.DataFrame().
         nproc : TYPE, optional
             DESCRIPTION. The default is 8.
-        vardf : TYPE, optional
-            DESCRIPTION. The default is ['z_fit', 'mu', 'sigma_mu', 'field', 'healpixID'].
         surveyDir : TYPE, optional
             DESCRIPTION. The default is ''.
         select_DDF : TYPE, optional
             DESCRIPTION. The default is False.
         select_WFD : TYPE, optional
             DESCRIPTION. The default is True.
-
-        Returns
-        -------
-        None.
-
-        """
-
-        """
-        Class to build a complete (WFD+DDF) random survey
-
-        Parameters
-        ----------
-        dataDir_DD : str
-           Location dir of DDF data.
-        dbName_DD : str
-           dbName of DD data.
-        dataDir_WFD : str
-           Location dir of WFD data.
-        dbName_WFD : str
-           dbName of WFD data.
-        sellist : list(str)
-           selection criteria.
-        seasons : list(int)
-            List of seasons to process.
-        survey : pandas df, optional
-            DESCRIPTION. The default is
-            pd.DataFrame([('COSMOS', 1.1, 1.e8, 1, 10)],
-                         columns=['field', 'zmax', 'sigmaC',
-                                  'season_min', 'season_max']).
-        sigmaInt: float, opt.
-          SN intrinsic dispersion. The default is 0.12.
-        host_effi: dict, opt
-          1D interpolators of host_effi vs z. The default is {}.
-        footprints: pandas df,opt.
-          footprints used for spectroz samples. The default is pd.DataFrame().
-       low_z_optimize: bool, optional
-         to maximize low-z NSN. The default is True
-        max_sigma_mu : float, optional
-             Max sigmaC value defining the low sigma_mu sample.
-             The default is 0.12.
-        test_mode: int, optional
-            to run the program in test mode. The default is 0.
-        lowz_optimize: float, opt.
-           z-value where the number of SN should be maximized.
-        timescale : str, optional
-          Time scale to estimate the cosmology. The default is 'year'.
-        nrandom: int, opt.
-          number of random survey. The default is 50.
-        hd_fit : TYPE, optional
-            DESCRIPTION. The default is None.
-        fields_for_stat : list(str), optional
-            List of DDFs. 
-            The default is 
-            ['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS','EDFSa', 'EDFSb'].
-        simu_norm_factor : float, optional
-            normalisation factor for simulations. The default is pd.DataFrame().
-        nproc : int, optional
-            number of procs for multiprocessing. The default is 8.
-        vardf : list(str), optional
-            list of variables. The default is 
-            ['z_fit', 'mu', 'sigma_mu', 'field', 'healpixID'].
-        surveyDir : str, optional
-            Survey directory. The default is ''.
-        select_DDF : bool, optional
-            to select DDFs using the 'cosmology grade' sample criteria. 
-            The default is False.
-        select_WFD : bool, optional
-            to select the WFD sample using the 'cosmology grade' sample criteria.
-            The default is True.
+        H0 : float, optional
+            H0 parameter. The default is 70.
+        Om0 : float, optional
+            Om0 parameter. The default is 0.3.
+        Ode0 : float, optional
+            Ode0 parameter. The default is 0.7.
+        w0 : float, optional
+            w0 parameter. The default is -1..
+        wa : float, optional
+            wa parameter. The default is 0.0.
+        alpha: float, optional.
+            nuisance parameter for SN. The default is 0.13
+        beta: float, optional.
+                nuisance parameter for SN. The default is 3.1
 
         Returns
         -------
@@ -307,10 +251,19 @@ class Fit_surveys:
         self.fields_for_stat = fields_for_stat
         self.simu_norm_factor = simu_norm_factor
         self.nproc = nproc
-        self.vardf = vardf+['SNID']+[self.timescale]
+        self.vardf = hd_fit.vardf+['SNID'] + \
+            [self.timescale]+['field', 'healpixID']
+        self.vardf.remove('mu_SN')
         self.surveyDir = surveyDir
         self.select_DDF = select_DDF
         self.select_WFD = select_WFD
+        self.H0 = H0
+        self.Om0 = Om0
+        self.Ode0 = Ode0
+        self.w0 = w0
+        self.wa = wa
+        self.alpha = alpha
+        self.beta = beta
 
     def fit_sn_samples(self):
         """
@@ -415,8 +368,16 @@ class Fit_surveys:
         rand_survey = Random_survey(self.survey,
                                     self.footprints, self.timescale,
                                     self.sigmaInt, self.host_effi,
-                                    self.low_z_optimize,
-                                    self.plot_test, self.test_mode)
+                                    H0=self.H0,
+                                    Om0=self.Om0,
+                                    Ode0=self. Ode0,
+                                    w0=self.w0,
+                                    wa=self.wa,
+                                    alpha=self.alpha,
+                                    beta=self.beta,
+                                    low_z_optimize=self.low_z_optimize,
+                                    plot_test=self.plot_test,
+                                    test_mode=self.test_mode)
 
         footprints = self.survey['survey'].to_list()
         footprints = list(map(lambda x: '{}_footprint'.format(x), footprints))
@@ -664,7 +625,7 @@ class Fit_surveys:
         """
 
         frac_out = 1.
-        nsigma = 5.
+        nsigma = 3.
         # nsigma = 100.
         frac_outliers = 0.05
 
@@ -1070,8 +1031,10 @@ class Fit_surveys:
 
 class Random_survey:
     def __init__(self, survey, footprints,
-                 timescale, sigmaInt, host_effi, low_z_optimize=True,
-                 plot_test=False, test_mode=False):
+                 timescale, sigmaInt, host_effi,
+                 H0=70, Om0=0.3, Ode0=0.7,
+                 w0=-1., wa=0.0, alpha=0.13, beta=3.1,
+                 low_z_optimize=True, plot_test=False, test_mode=False):
         """
         class to generate random surveys
 
@@ -1087,6 +1050,20 @@ class Random_survey:
             sigma_int parameter.
         host_effi : interp1D
             Host-z efficiency.
+        H0 : float, optional
+            H0 parameter. The default is 70.
+        Om0 : float, optional
+            Om0 parameter. The default is 0.3.
+        Ode0 : float, optional
+            Ode0 parameter. The default is 0.7.
+        w0 : float, optional
+            w0 parameter. The default is -1..
+        wa : float, optional
+            wa parameter. The default is 0.0.
+        alpha: float, optional.
+            nuisance parameter for SN. The default is 0.13
+        beta: float, optional.
+                nuisance parameter for SN. The default is 3.1
         plot_test : int, optional
             To plot in test mode. The default is False.
         test_mode : int, optional
@@ -1103,6 +1080,13 @@ class Random_survey:
         self.timescale = timescale
         self.sigmaInt = sigmaInt
         self.host_effi = host_effi
+        self.H0 = H0
+        self.Om0 = Om0
+        self.Ode0 = Ode0
+        self.w0 = w0
+        self.wa = wa
+        self.alpha = alpha
+        self.beta = beta
         self.low_z_optimize = low_z_optimize
         self.plot_test = plot_test
         self.test_mode = test_mode
@@ -1678,8 +1662,7 @@ class Random_survey:
 
         return sn_data, nsn_z
 
-    def correct_mu(self, data, H0=70, Om0=0.3, Ode0=0.7,
-                   w0=-1., wa=0.0, alpha=0.13, beta=3.1):
+    def correct_mu(self, data):
         """
         Method to re-estimate distance moduli (MB correction)
         and add sigmaInt to the distance modulus error.
@@ -1688,20 +1671,6 @@ class Random_survey:
         ----------
         data : pandas df
             Data to process.
-        H0 : float, optional
-            H0 parameter. The default is 70.
-        Om0 : float, optional
-            Om0 parameter. The default is 0.3.
-        Ode0 : float, optional
-            Ode0 parameter. The default is 0.7.
-        w0 : float, optional
-            w0 parameter. The default is -1..
-        wa : float, optional
-            wa parameter. The default is 0.0.
-        alpha: float, optional.
-            nuisance parameter for SN. The default is 0.13
-        beta: float, optional.
-            nuisance parameter for SN. The default is 3.1
 
         Returns
         -------
@@ -1712,17 +1681,20 @@ class Random_survey:
 
         from random import gauss
         from astropy.cosmology import w0waCDM
-        cosmo = w0waCDM(H0=H0, Om0=Om0, Ode0=Ode0, w0=w0, wa=wa)
+        cosmo = w0waCDM(H0=self.H0, Om0=self.Om0,
+                        Ode0=self.Ode0, w0=self.w0, wa=self.wa)
 
         sigmu = data['sigma_mu'].to_list()
-        """
-        var_mu = data['Cov_mbmb']\
-            + (alpha**2)*data['Cov_x1x1']\
-            + (beta**2)*data['Cov_colorcolor']\
-            + 2*alpha*data['Cov_x1mb']\
-            - 2*beta*data['Cov_colormb']\
-            - 2*alpha*beta*data['Cov_x1color']
-        """
+
+        if 'Cov_mbmb' in data.columns:
+            sigmu = data['Cov_mbmb']\
+                + (self.alpha**2)*data['Cov_x1x1']\
+                + (self.beta**2)*data['Cov_colorcolor']\
+                + 2*self.alpha*data['Cov_x1mb']\
+                - 2*self.beta*data['Cov_colormb']\
+                - 2*self.alpha*self.beta*data['Cov_x1color']
+            sigmu = np.sqrt(sigmu)
+
         bins = data['z_fit'].to_list()
         dist_mu = cosmo.distmod(bins).value
 
@@ -2130,7 +2102,7 @@ class Random_survey:
         """
 
         zlim = np.arange(0.0, 1.2, 0.1)
-        group = data.groupby(pd.cut(data[varx], zlim))
+        group = data.groupby(pd.cut(data[varx], zlim), observed=False)
 
         nsn = group.size().to_list()
 
