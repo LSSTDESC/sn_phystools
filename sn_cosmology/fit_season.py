@@ -23,7 +23,9 @@ class Fit_seasons:
                  simu_norm_factor=pd.DataFrame(),
                  seasons=range(1, 11), nrandom=50, nproc=8,
                  wfd_tagsurvey='notag', dd_tagsurvey='notag',
-                 select_DDF=False, select_WFD=True):
+                 select_DDF=False, select_WFD=True,
+                 H0=70, Om0=0.3, Ode0=0.7,
+                 w0=-1., wa=0.0, alpha=0.13, beta=3.1, recalc_sigmu=0):
         """
         Class to perform fits for sets of season
 
@@ -82,6 +84,22 @@ class Fit_seasons:
             to select SN for the cosmology-grade sample. The default is False.
         select_WFD : bool, optional
                 to select SN for the cosmology-grade sample. The default is True.
+        H0 : float, optional
+            H0 parameter. The default is 70.
+        Om0 : float, optional
+            Om0 parameter. The default is 0.3.
+        Ode0 : float, optional
+            Ode0 parameter. The default is 0.7.
+        w0 : float, optional
+            w0 parameter. The default is -1..
+        wa : float, optional
+            wa parameter. The default is 0.0.
+        alpha: float, optional.
+            nuisance parameter for SN. The default is 0.13
+        beta: float, optional.
+            nuisance parameter for SN. The default is 3.1
+        recalc_sigmu: int, optional
+            to recalc sigma_mu        
 
         Returns
         -------
@@ -116,6 +134,14 @@ class Fit_seasons:
         self.dd_tagsurvey = dd_tagsurvey
         self.select_DDF = select_DDF
         self.select_WFD = select_WFD
+        self.H0 = H0
+        self.Om0 = Om0
+        self.Ode0 = Ode0
+        self.w0 = w0
+        self.wa = wa
+        self.alpha = alpha
+        self.beta = beta
+        self.recalc_sigmu = recalc_sigmu
 
     def __call__(self):
         """
@@ -161,11 +187,17 @@ class Fit_seasons:
         # fit instance
         prior = params['prior']
         prior_params = params['prior_params']
-        vardf = ['z_fit', 'mu', 'sigma_mu', 'mu_SN']
-        dataNames = ['z', 'mu', 'sigma_mu', 'mu_SN']
-        self.hd_fit = HD_random(vardf=vardf, dataNames=dataNames,
-                                fitconfig=self.fitconfig,
-                                prior=prior_params, test_mode=self.test_mode)
+
+        if self.recalc_sigmu:
+            self.hd_fit = HD_random(fitconfig=self.fitconfig,
+                                    prior=prior_params, test_mode=self.test_mode)
+        else:
+            vardf = ['z_fit', 'mu', 'sigma_mu', 'mu_SN']
+            dataNames = ['z', 'mu', 'sigma_mu', 'mu_SN']
+
+            self.hd_fit = HD_random(vardf=vardf, dataNames=dataNames,
+                                    fitconfig=self.fitconfig,
+                                    prior=prior_params, test_mode=self.test_mode)
 
         # fit random data
         fit_random = Fit_surveys(self.dataDir_DD, self.dbName_DD,
@@ -183,9 +215,17 @@ class Fit_seasons:
                                  hd_fit=self.hd_fit,
                                  fields_for_stat=self.fields_for_stat,
                                  simu_norm_factor=self.simu_norm_factor,
-                                 nproc=self.nproc, surveyDir=self.surveyDir,
+                                 nproc=self.nproc,
+                                 surveyDir=self.surveyDir,
                                  select_DDF=self.select_DDF,
-                                 select_WFD=self.select_WFD)
+                                 select_WFD=self.select_WFD,
+                                 H0=self.H0,
+                                 Om0=self.Om0,
+                                 Ode0=self. Ode0,
+                                 w0=self.w0,
+                                 wa=self.wa,
+                                 alpha=self.alpha,
+                                 beta=self.beta)
 
         res_fit = fit_random.fit_sn_samples()
 
