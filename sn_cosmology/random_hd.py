@@ -413,8 +413,19 @@ class Fit_surveys:
                 print('after cleaning')
                 analyze_survey(sn_sample)
 
+            if self.surveyDir != '':
+                year_min = sn_sample[self.timescale].min()
+                year_max = sn_sample[self.timescale].max()
+                self.dump_survey(sn_sample, year_min, year_max, sreal)
+
             # fit this sample
             res, sel_data_fit = self.fit_data_iterative(sn_sample)
+
+            if self.surveyDir != '':
+                year_min = sn_sample[self.timescale].min()
+                year_max = sn_sample[self.timescale].max()
+                self.dump_survey(sel_data_fit, year_min,
+                                 year_max, sreal, '_for_fit')
 
             # analyze the data
 
@@ -445,11 +456,13 @@ class Fit_surveys:
         # del sn_sample
         del sn_sample
 
+        """
         if self.surveyDir != '':
+            print('dumping survey', df_tot.columns)
             year_min = df_tot[self.timescale].min()
             year_max = df_tot[self.timescale].max()
             self.dump_survey(df_tot, year_min, year_max, sreal)
-
+        """
         return df_tot
 
     def fit_random_sample_deprecated(self):
@@ -914,7 +927,7 @@ class Fit_surveys:
 
         return dict_ana
 
-    def dump_survey(self, data, year_min, year_max, nn):
+    def dump_survey(self, data, year_min, year_max, nn, add_str=''):
         """
         Method to dump a survey on disk
 
@@ -928,6 +941,8 @@ class Fit_surveys:
             year max of the survey.
         nn : int
             number to tag the realization of the survey.
+        add_str: str, optional
+          to add a tag name
 
         Returns
         -------
@@ -935,12 +950,12 @@ class Fit_surveys:
 
         """
 
-        outName = '{}/survey_sn_{}_{}_{}_{}_{}.hdf5'.format(self.surveyDir,
-                                                            self.dbName_DD,
-                                                            self.dbName_WFD,
-                                                            year_min,
-                                                            year_max,
-                                                            nn)
+        outName = '{}/survey_sn_{}_{}_{}_{}_{}{}.hdf5'.format(self.surveyDir,
+                                                              self.dbName_DD,
+                                                              self.dbName_WFD,
+                                                              year_min,
+                                                              year_max,
+                                                              nn, add_str)
         data.to_hdf(outName, key='sn')
 
     def complete_data(self, dict_res, prior):
@@ -1712,6 +1727,7 @@ class Random_survey:
         data['mu_SN'] = dist_mu+mu_shift
         # data['sigma_mu_SN'] = sigmu
         data['sigma_mu'] = sigmu
+        data['sigma_mu_int'] = sigma_mu
 
         # idx = data['zType'] == 'photz'
         # z_shift = shift = np.random.normal(0., 0.02*(1.+data[idx]['z']))
