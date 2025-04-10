@@ -31,3 +31,11 @@ fitparam_values -1.0,0.0,0.3 str #fit parameter init values
 prior 1 int #prior for the fit
 select_DDF 0 int #to select DDF SN for the fit
 select_WFD 0 int #to select WFD SN for the fit
+H0 70 float #cosmo par
+Om0 0.3 float #cosmo par
+Ode0 0.7 float #cosmo par
+w0 -1. float #cosmo par
+wa 0.0 float #cosmo par
+alpha 0.13 float #nuisance par
+beta 3.1 float #nuisance par
+recalc_sigmu 0 int #recalc sigma_mu
