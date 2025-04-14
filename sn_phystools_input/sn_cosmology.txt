@@ -17,7 +17,7 @@ low_z_optimize 1 int #maximize the lowz sample
 sigmaInt 0.12 float #sigmaInt for SN
 surveyDir None str #to dump surveys on disk
 timescale year str #timescale for the cosmology (year or season)
-fields_for_stat COSMOS,XMM-LSS,ELAISS1,CDFS,EDFSa,EDFSb str #field list for stat (fit)
+fields_for_stat COSMOS,XMM-LSS,ELAISS1,CDFS,EDFS_a,EDFS_b str #field list for stat (fit)
 simu_norm_factor input/cosmology/simuinfo/normfactor.csv str #norm factors for simu
 seasons_cosmo 1-10 str #seasons to estimate cosmology params
 nrandom 50 int #number of random sample (per season/year) to generate
