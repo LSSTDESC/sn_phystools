@@ -19,7 +19,7 @@ class Fit_seasons:
                  sigmaInt=0.12, surveyDir='',
                  timescale='year', outName='',
                  fields_for_stat=['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',
-                                  'EDFSa', 'EDFSb'],
+                                  'EDFS_a', 'EDFS_b'],
                  simu_norm_factor=pd.DataFrame(),
                  seasons=range(1, 11), nrandom=50, nproc=8,
                  wfd_tagsurvey='notag', dd_tagsurvey='notag',
@@ -68,7 +68,7 @@ class Fit_seasons:
            output file name. The default is ''.
         fields_for_stat : list(str), optional
             List of fields for stat. The default is
-            ['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS','EDFSa', 'EDFSb'].
+            ['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS','EDFS_a', 'EDFS_b'].
         seasons : list(int), optional
             List of seasons for which cosmology is be estimated.
             The default is range(1,11).
@@ -241,7 +241,7 @@ class Fit_seasons_deprecated:
                  sigmaInt=0.12, surveyDir='',
                  timescale='year', outName='',
                  fields_for_stat=['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',
-                                  'EDFSa', 'EDFSb'],
+                                  'EDFS_a', 'EDFS_b'],
                  seasons=range(1, 11), nrandom=50, nproc=8):
         """
         Class to perform fits for sets of season

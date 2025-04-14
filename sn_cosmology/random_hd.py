@@ -150,7 +150,7 @@ class Fit_surveys:
                  test_mode=0, plot_test=0, lowz_optimize=0.1,
                  timescale='year', nrandom=50, hd_fit=None,
                  fields_for_stat=['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',
-                                  'EDFSa', 'EDFSb'],
+                                  'EDFS_a', 'EDFS_b'],
                  simu_norm_factor=pd.DataFrame(),
                  nproc=8,
                  surveyDir='', select_DDF=False, select_WFD=True,
@@ -198,7 +198,8 @@ class Fit_surveys:
         hd_fit : TYPE, optional
             DESCRIPTION. The default is None.
         fields_for_stat : TYPE, optional
-            DESCRIPTION. The default is ['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS',                                  'EDFSa', 'EDFSb'].
+            DESCRIPTION. The default is 
+            ['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS','EDFS_a', 'EDFS_b'].
         simu_norm_factor : TYPE, optional
             DESCRIPTION. The default is pd.DataFrame().
         nproc : TYPE, optional
@@ -762,6 +763,7 @@ class Fit_surveys:
             # nsn_ = self.get_nsn_from_survey(nsn_, self.survey, ftype, ztype)
 
             data_survey[name] = data_
+
             # nsn_survey[name] = nsn_
 
         return data_survey
@@ -1139,7 +1141,7 @@ class Random_survey:
         res, res_foot = self.instance_random_survey(data_survey, seas)
 
         if self.test_mode:
-            print('analyzing the survey', seas)
+            print('analyzing the survey seas', seas)
             analyze_survey(res)
         del data_survey
         res = self.correct_mu(res)
@@ -1260,11 +1262,12 @@ class Random_survey:
             idx &= seas <= vv['season_max']
             if not idx:
                 continue
+
             sname = '{}_{}'.format(vv['fieldType'], vv['zType'])
             data = survey_lsst[sname]
             # get the field in this data
 
-            df_samp = self.sn_sample_survey(data, vv)
+            df_samp = self.sn_sample_survey(data, vv, vv['fieldType'])
 
             sn_foot['{}_footprint'.format(vv['survey'])] = [df_samp.nsn_foot]
             sn_sample = pd.concat((sn_sample, df_samp))
@@ -1273,7 +1276,7 @@ class Random_survey:
 
         return sn_sample, sn_foot
 
-    def sn_sample_survey(self, data, vv):
+    def sn_sample_survey(self, data, vv, fieldType='DDF'):
         """
         Method to build a SNe Ia sample for a survey
 
@@ -1295,7 +1298,8 @@ class Random_survey:
         idxc &= data['z_fit'] <= vv['zmax']
         dataf = data[idxc]
         # apply footprint
-        datafoot = self.apply_footprint(dataf, vv['footprint'])
+        datafoot = self.apply_footprint(dataf, vv['footprint'], fieldType)
+
         nsn_foot = len(datafoot)
 
         if vv['survey'] != 'WFD_TiDES':
@@ -1907,7 +1911,7 @@ class Random_survey:
 
         return res
 
-    def apply_footprint(self, data, footprint):
+    def apply_footprint(self, data, footprint, fieldType='DDF'):
         """
         Function to superimpose footprint on data
 
@@ -1917,6 +1921,8 @@ class Random_survey:
             Data to process.
         footprint : str
             Footprint name.
+        fieldType: str, optional.
+            field type to address
 
         Returns
         -------
@@ -1924,6 +1930,9 @@ class Random_survey:
             Data with footprint.
 
         """
+
+        if fieldType == 'DDF':
+            return data
 
         idx = self.footprints['footprint'] == footprint
         sel_foot = self.footprints[idx]
@@ -2431,7 +2440,7 @@ def analyze_data(data, add_str=''):
 
 def analyze_data_sample(data, add_str='',
                         fields=['COSMOS', 'XMM-LSS', 'ELAISS1',
-                                'CDFS', 'EDFSa', 'EDFSb']):
+                                'CDFS', 'EDFS_a', 'EDFS_b']):
     """
     Function to analyze data
 
@@ -2549,6 +2558,7 @@ def analyze_survey(sn_sample):
     """
 
     fields = sn_sample['field'].unique()
+    print('boooooo', fields)
     for field in fields:
         idx = sn_sample['field'] == field
         print(field, len(sn_sample[idx]))
