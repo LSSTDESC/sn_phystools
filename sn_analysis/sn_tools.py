@@ -410,6 +410,11 @@ def complete_df(res, alpha=0.13, beta=3.1, Mb=-19.1):
     res['mu'] = res['mb_fit']+alpha * \
         res['x1_fit']-beta*res['color_fit']-Mb
 
+    res['mb'] = -2.5*np.log10(res['x0']) + 10.635
+    res['mu_exp'] = res['mb']+alpha * \
+        res['x1']-beta*res['color']-Mb
+    res['diff_mu'] = res['mu_exp']-res['mu']
+
     return res
 
 
