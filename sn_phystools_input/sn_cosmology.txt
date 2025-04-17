@@ -38,4 +38,4 @@ w0 -1. float #cosmo par
 wa 0.0 float #cosmo par
 alpha 0.13 float #nuisance par
 beta 3.1 float #nuisance par
-recalc_sigmu 0 int #recalc sigma_mu
+recalc_sigmu 1 int #recalc sigma_mu

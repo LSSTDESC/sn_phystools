@@ -19,6 +19,8 @@ class HD_random:
                         'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',
                         'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',
                         'mu_SN'],
+                 varcompl=['Cov_t0t0', 'x0_fit', 'Cov_x0x0',
+                           'Cov_x0x1', 'Cov_x0color', 'x0', 'x1', 'color'],
                  dataNames=['z', 'x1', 'color', 'mb', 'Cov_x1x1',
                             'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',
                             'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',
@@ -61,6 +63,7 @@ class HD_random:
         """
 
         self.vardf = vardf
+        self.varcompl = varcompl
         self.dataNames = dataNames
         self.fitconfig = fitconfig
         self.par_protect_fit = par_protect_fit
@@ -198,7 +201,7 @@ class Fit_surveys:
         hd_fit : TYPE, optional
             DESCRIPTION. The default is None.
         fields_for_stat : TYPE, optional
-            DESCRIPTION. The default is 
+            DESCRIPTION. The default is
             ['COSMOS', 'XMM-LSS', 'ELAISS1', 'CDFS','EDFS_a', 'EDFS_b'].
         simu_norm_factor : TYPE, optional
             DESCRIPTION. The default is pd.DataFrame().
@@ -252,8 +255,8 @@ class Fit_surveys:
         self.fields_for_stat = fields_for_stat
         self.simu_norm_factor = simu_norm_factor
         self.nproc = nproc
-        self.vardf = hd_fit.vardf+['SNID'] + \
-            [self.timescale]+['field', 'healpixID']
+        self.vardf = hd_fit.vardf+['SNID', self.timescale, 'field',
+                                   'healpixID'] + hd_fit.varcompl
         self.vardf.remove('mu_SN')
         self.surveyDir = surveyDir
         self.select_DDF = select_DDF
@@ -1703,8 +1706,13 @@ class Random_survey:
         cosmo = w0waCDM(H0=self.H0, Om0=self.Om0,
                         Ode0=self.Ode0, w0=self.w0, wa=self.wa)
 
+        from sn_analysis.sn_tools import complete_df
+
+        data = complete_df(data, self.alpha, self.beta)
+
         sigmu = data['sigma_mu'].to_list()
 
+        """
         if 'Cov_mbmb' in data.columns:
             sigmu = data['Cov_mbmb']\
                 + (self.alpha**2)*data['Cov_x1x1']\
@@ -1713,7 +1721,7 @@ class Random_survey:
                 - 2*self.beta*data['Cov_colormb']\
                 - 2*self.alpha*self.beta*data['Cov_x1color']
             sigmu = np.sqrt(sigmu)
-
+        """
         bins = data['z_fit'].to_list()
         dist_mu = cosmo.distmod(bins).value
 
@@ -1729,6 +1737,10 @@ class Random_survey:
         mu_shift = np.random.normal(0., sigma_mu)
 
         data['mu_SN'] = dist_mu+mu_shift
+
+        # add the potentiel bias here
+        data['mu_SN'] -= data['diff_mu']
+
         # data['sigma_mu_SN'] = sigmu
         data['sigma_mu'] = sigmu
         data['sigma_mu_int'] = sigma_mu
