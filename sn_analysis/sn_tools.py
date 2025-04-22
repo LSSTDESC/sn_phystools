@@ -414,6 +414,7 @@ def complete_df(res, alpha=0.13, beta=3.1, Mb=-19.1):
     res['mu_exp'] = res['mb']+alpha * \
         res['x1']-beta*res['color']-Mb
     res['diff_mu'] = res['mu_exp']-res['mu']
+    res['diff_mb'] = (res['mb']-res['mb_fit'])
 
     return res
 
@@ -687,3 +688,153 @@ def get_spline(df, xvar, yvar):
     spl_smooth = spl(xnew)
 
     return xnew, spl_smooth
+
+
+def get_pulls(data):
+    """
+    Function to estimate the pulls
+
+    Parameters
+    ----------
+    data : pandas df
+        Data to process.
+
+    Returns
+    -------
+    res : pandas df
+        processed data.
+
+    """
+    from scipy import stats
+
+    data = pull_it(data)
+
+    r = []
+    cols = []
+
+    for vv in ['x1', 'color', 'mb', 'mu']:
+        pullvar = 'pull_{}'.format(vv)
+        # get_pull(data, pullvar)
+        # plt.show()
+        selb = sel_for_pull(data, pullvar)
+        rr = fit_pull(selb, pullvar)
+        mymean = selb[pullvar].mean()
+        mystd = selb[pullvar].std()
+
+        res = stats.kurtosistest(selb[pullvar].to_list())
+        pval = res.pvalue
+        cols += ['mu_{}'.format(vv), 'sigma_{}'.format(vv),
+                 'mean_{}'.format(vv), 'std_{}'.format(vv), 'pvalue_kurto_{}'.format(vv)]
+        r += [rr[1], rr[2], mymean, mystd, pval]
+
+    res = pd.DataFrame([r], columns=cols)
+
+    return res
+
+
+def fit_pull(sel, pullvar):
+    """
+    Function to fit the pulls using a gaussian fit
+
+    Parameters
+    ----------
+    sel : pandas df
+        Data to fit.
+    pullvar : str
+        variable to fit.
+
+    Returns
+    -------
+    coeff : list(float)
+        fitted values.
+
+    """
+    from scipy.optimize import curve_fit
+    hist, bins = np.histogram(sel[pullvar], bins=50)
+    bin_centres = (bins[:-1] + bins[1:])/2
+    p0 = [np.max(hist), 0., 1.]
+
+    coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
+
+    return coeff
+
+
+def gauss(x, *p):
+    """
+    gaussian function 
+
+    Parameters
+    ----------
+    x : float
+        x values.
+    *p : list(float)
+        gaussian parameters.
+
+    Returns
+    -------
+    list(float)
+        function values.
+
+    """
+    A, mu, sigma = p
+    return A/np.sqrt(sigma)*np.exp(-(x-mu)**2/(2.*sigma**2))
+
+
+def sel_for_pull(data, pullvar, nstd=3):
+    """
+    function to select data for pull estimation
+
+    Parameters
+    ----------
+    data : pandas df
+        Data to process.
+    pullvar : str
+        variable.
+    nstd : int, optional
+        window for pull estimation (nubmer of std). The default is 3.
+
+    Returns
+    -------
+    selb : pandas df
+        selected df.
+
+    """
+
+    idx = data[pullvar] >= -5.
+    idx &= data[pullvar] <= 5.
+    selb = data[idx]
+
+    mystd = selb[pullvar].std()
+    mymean = selb[pullvar].mean()
+
+    idx = data[pullvar] >= mymean-nstd*mystd
+    idx &= data[pullvar] <= mymean+nstd*mystd
+    selb = data[idx]
+
+    return selb
+
+
+def pull_it(dfa):
+    """
+    Function to estimate the pulls
+
+    Parameters
+    ----------
+    dfa : pandas df
+        data to process.
+
+    Returns
+    -------
+    df : pandas df
+        original df+pull variables added.
+
+    """
+
+    df = pd.DataFrame(dfa)
+    df['pull_x1'] = (df['x1']-df['x1_fit'])/df['sigmax1']
+    df['pull_color'] = (df['color']-df['color_fit'])/df['sigma_c']
+    df['pull_daymax'] = (df['daymax']-df['t0_fit'])/df['sigma_t0']
+    df['pull_mb'] = df['diff_mb']/np.sqrt(df['Cov_mbmb'])
+    df['pull_mu'] = (df['diff_mu'])/df['sigma_mu']
+
+    return df
