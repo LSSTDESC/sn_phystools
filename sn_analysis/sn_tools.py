@@ -712,20 +712,37 @@ def get_pulls(data):
     r = []
     cols = []
 
-    for vv in ['x1', 'color', 'mb', 'mu']:
+    vvals = ['x1', 'color', 'mb', 'mu']
+    # vvals = ['color']
+    for vv in vvals:
         pullvar = 'pull_{}'.format(vv)
-        # get_pull(data, pullvar)
-        # plt.show()
+        """
+        histo_fit(data, pullvar)
+        plt.show()
+        """
         selb = sel_for_pull(data, pullvar)
-        rr = fit_pull(selb, pullvar)
-        mymean = selb[pullvar].mean()
-        mystd = selb[pullvar].std()
+        vala = -1.0
+        valb = -1.0
+        mymean = 0.0
+        mystd = 0.0
+        pval = 0.
+        kurtosis = 0.
+        print(pullvar, len(selb))
+        if len(selb) >= 10:
+            rr = fit_pull(selb, pullvar)
+            vala = rr[1]
+            valb = rr[2]
+            mymean = selb[pullvar].mean()
+            mystd = selb[pullvar].std()
 
-        res = stats.kurtosistest(selb[pullvar].to_list())
-        pval = res.pvalue
+            res = stats.kurtosistest(selb[pullvar].to_list())
+            pval = res.pvalue
+            kurtosis = stats.kurtosis(selb[pullvar], fisher=True)
+
         cols += ['mu_{}'.format(vv), 'sigma_{}'.format(vv),
-                 'mean_{}'.format(vv), 'std_{}'.format(vv), 'pvalue_kurto_{}'.format(vv)]
-        r += [rr[1], rr[2], mymean, mystd, pval]
+                 'mean_{}'.format(vv), 'std_{}'.format(vv),
+                 'kurtosis_{}'.format(vv), 'pvalue_kurtosis_{}'.format(vv)]
+        r += [vala, valb, mymean, mystd, kurtosis, pval]
 
     res = pd.DataFrame([r], columns=cols)
 
@@ -754,7 +771,10 @@ def fit_pull(sel, pullvar):
     bin_centres = (bins[:-1] + bins[1:])/2
     p0 = [np.max(hist), 0., 1.]
 
-    coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
+    try:
+        coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
+    except Exception:
+        coeff = [-1, -1, -1]
 
     return coeff
 
@@ -832,9 +852,39 @@ def pull_it(dfa):
 
     df = pd.DataFrame(dfa)
     df['pull_x1'] = (df['x1']-df['x1_fit'])/df['sigmax1']
-    df['pull_color'] = (df['color']-df['color_fit'])/df['sigma_c']
-    df['pull_daymax'] = (df['daymax']-df['t0_fit'])/df['sigma_t0']
+    df['pull_color'] = (df['color']-df['color_fit'])/df['sigmaC']
+    df['pull_daymax'] = (df['daymax']-df['t0_fit'])/df['sigmat0']
     df['pull_mb'] = df['diff_mb']/np.sqrt(df['Cov_mbmb'])
-    df['pull_mu'] = (df['diff_mu'])/df['sigma_mu']
+    df['pull_mu'] = df['diff_mu']/df['sigma_mu']
 
     return df
+
+
+def histo_fit(sel, pullvar, fitgauss=True):
+
+    fig, ax = plt.subplots()
+    figtitle = pullvar
+    fig.suptitle(pullvar)
+    print('fitting', pullvar, sel[pullvar])
+
+    # selb = pd.DataFrame(sel)
+    selb = sel_for_pull(sel, pullvar, nstd=3.)
+
+    ax.hist(selb[pullvar], histtype='step', bins=50)
+
+    # Get the fitted curve
+    if fitgauss:
+        coeff = fit_pull(selb, pullvar)
+        xmin = selb[pullvar].min()
+        xmax = selb[pullvar].max()
+        newbins = np.arange(xmin, xmax, 0.01)
+        hist_fit = gauss(newbins, *coeff)
+        mean = np.round(coeff[1], 2)
+        sigma = np.round(coeff[2], 2)
+        leg = 'pull= {} +- {}'.format(mean, sigma)
+        ax.plot(newbins, hist_fit, label=leg)
+        print('bbb', coeff[0], coeff[1], coeff[2])
+    print(figtitle, np.mean(selb[pullvar]), np.std(selb[pullvar]))
+
+    ax.grid(visible=True)
+    ax.legend()
