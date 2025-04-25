@@ -727,7 +727,7 @@ def get_pulls(data):
         mystd = 0.0
         pval = 0.
         kurtosis = 0.
-        print(pullvar, len(selb))
+
         if len(selb) >= 10:
             rr = fit_pull(selb, pullvar)
             vala = rr[1]
