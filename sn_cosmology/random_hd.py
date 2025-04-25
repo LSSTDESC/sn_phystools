@@ -812,11 +812,13 @@ class Fit_surveys:
 
         """
         # idx = dd['sigma_c'] <= 99999999.
+        """
         idx = dd['n_epochs_bef'] >= 5
         idx &= dd['n_epochs_aft'] >= 10
         idx &= dd['n_epochs_m10_p5'] >= 5
         idx &= dd['n_epochs_phase_minus_10'] >= 2
-
+        """
+        idx = dd['Nfilt_2'] >= 3
         sel = pd.DataFrame(dd[idx])
 
         return sel
@@ -1739,7 +1741,7 @@ class Random_survey:
         data['mu_SN'] = dist_mu+mu_shift
 
         # add the potentiel bias here
-        data['mu_SN'] -= data['diff_mu']
+        # data['mu_SN'] -= data['diff_mu']
 
         # data['sigma_mu_SN'] = sigmu
         data['sigma_mu'] = sigmu
