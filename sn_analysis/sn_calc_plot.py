@@ -163,11 +163,15 @@ def bin_it(res, xvar='z', bins=np.arange(0.01, 1.1, 0.02),
 
     """
 
-    group = res.groupby(pd.cut(res[xvar], bins))
+    group = res.groupby(pd.cut(res[xvar], bins), observed=True)
     bin_centers = (bins[: -1] + bins[1:])/2
     df = pd.DataFrame(bin_centers, columns=[xvar])
     df[outvar] = group.size().to_list()
     df[outvar] /= norm_factor
+    errvar = '{}_err'.format(outvar)
+    df[errvar] = np.sqrt(df[outvar]*(1.-df[outvar]))
+    df[errvar] /= np.sqrt(norm_factor)
+
     return df
 
 
