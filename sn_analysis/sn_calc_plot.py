@@ -163,7 +163,7 @@ def bin_it(res, xvar='z', bins=np.arange(0.01, 1.1, 0.02),
 
     """
 
-    group = res.groupby(pd.cut(res[xvar], bins), observed=True)
+    group = res.groupby(pd.cut(res[xvar], bins), observed=False)
     bin_centers = (bins[: -1] + bins[1:])/2
     df = pd.DataFrame(bin_centers, columns=[xvar])
     df[outvar] = group.size().to_list()
@@ -198,7 +198,7 @@ def bin_it_mean(res, xvar='z', yvar='mu',
 
     """
 
-    group = res.groupby(pd.cut(res[xvar], bins))
+    group = res.groupby(pd.cut(res[xvar], bins), observed=False)
     bin_centers = (bins[: -1] + bins[1:])/2
     df = pd.DataFrame(bin_centers, columns=[xvar])
 
