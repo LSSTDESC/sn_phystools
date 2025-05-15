@@ -91,11 +91,17 @@ class HD_random:
         par_protect_fit = []
         r = []
         # r = [('Om0', 0.3, 0.0073)]
+        """
         r.append(('sigmaInt', 0.12, 0.01))
+
+        
         prior = pd.DataFrame(
             {'varname': ['Om0'], 'refvalue': [0.3], 'sigma': [0.0073]})
         # prior = pd.DataFrame()
-
+        prior = pd.DataFrame(
+            {'varname': ['sigmaInt'], 'refvalue': [0.12], 'sigma': [0.1]})
+        
+        """
         dict_fits = {}
         idx = data['zType'].isin(['spectroz', 'spectroz_nosat'])
         data_sigmaInt = data[idx]
@@ -108,24 +114,28 @@ class HD_random:
             myfit = MyFit(dataValues, dataValues_sigmaInt, self.dataNames,
                           fitparNames=fitparNames, prior=self.prior,
                           par_protect_fit=self.par_protect_fit)
-            # get sigmaInt
 
-            sigmaInt = myfit.get_sigmaInt()
+            if 'sigmaInt' not in fitparNames:
+                # get sigmaInt
 
-            # sigmaInt = 0.12
-            # set sigmaInt
-            myfit.set_sigmaInt(sigmaInt)
+                sigmaInt = myfit.get_sigmaInt()
 
+                # sigmaInt = 0.12
+                # set sigmaInt
+                myfit.set_sigmaInt(sigmaInt)
+                # print('sigmaInt estimation', sigmaInt)
             # myfit.set_sigmaInt(0.0)
 
             dict_fit = myfit.minuit_fit(fitparams)
+            print(dict_fit)
             fitpars = []
             for pp in fitparNames:
                 fitpars.append(dict_fit['{}_fit'.format(pp)])
             dict_fit['Chi2_fit'] = myfit.xi_square(*fitpars)
             dict_fit['NDoF'] = len(data)-len(fitparNames)
             dict_fit['Chi2_fit_red'] = dict_fit['Chi2_fit']/dict_fit['NDoF']
-            dict_fit['sigmaInt'] = myfit.sigmaInt
+            if 'sigmaInt' not in fitparNames:
+                dict_fit['sigmaInt'] = myfit.sigmaInt
             if 'wa_fit' in dict_fit.keys():
                 cov_a = dict_fit['Cov_w0_w0_fit']
                 cov_b = dict_fit['Cov_wa_wa_fit']
@@ -642,9 +652,9 @@ class Fit_surveys:
         """
 
         frac_out = 1.
-        nsigma = 3.
+        nsigma = 5.
         # nsigma = 100.
-        frac_outliers = 0.05
+        frac_outliers = 1.
 
         dd = pd.DataFrame(data)
         if self.test_mode:

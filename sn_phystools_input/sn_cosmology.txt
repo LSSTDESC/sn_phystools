@@ -39,3 +39,6 @@ wa 0.0 float #cosmo par
 alpha 0.13 float #nuisance par
 beta 3.1 float #nuisance par
 recalc_sigmu 1 int #recalc sigma_mu
+prior_varname Om0 str #prior varname list
+prior_refvalue 0.3 str #prior refvalue list
+prior_sigma 0.0073 str #prior sigma list

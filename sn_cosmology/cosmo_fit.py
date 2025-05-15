@@ -464,9 +464,10 @@ class MyFit(CosmoFit):
 
         if 'sigmaInt' in self.fitparNames:
             sigmaInt = parameters[self.fitparNames.index('sigmaInt')]
-
-        # sigmaInt = 0.12
-        denom += self.sigmaInt**2
+            denom += sigmaInt**2
+        else:
+            # sigmaInt = 0.12
+            denom += self.sigmaInt**2
         # print(var_mu)
         f = mu - mu_th
         # Matrix calculation of Xisquare
@@ -474,6 +475,10 @@ class MyFit(CosmoFit):
         X_mat = np.sum(f**2/denom)
         # prior to be set here
 
+        if 'sigmaInt' in self.fitparNames:
+            print('iteration', X_mat, parameters)
+        else:
+            print('iteration', X_mat, parameters, self.sigmaInt)
         if not self.prior.empty:
             idx = self.prior['varname'].isin(self.fitparNames)
             for io, row in self.prior[idx].iterrows():

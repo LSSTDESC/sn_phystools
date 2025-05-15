@@ -545,7 +545,7 @@ class Fit_seasons_deprecated:
             Outlier fraction.
 
         """
-
+        print('fit data cleaned')
         from astropy.cosmology import w0waCDM
         H0 = 70.
         idx = data['sigma_mu'] <= 0.25
