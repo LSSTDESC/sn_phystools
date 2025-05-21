@@ -284,7 +284,9 @@ class CosmoFit(ABC):
 
         """
 
-        m = Minuit(self.xi_square, *parameters, name=self.fitparNames)
+        m = Minuit(self.xi_square, *parameters,
+                   name=self.fitparNames)
+        m.errordef = Minuit.LIKELIHOOD
         if self.par_protect_fit:
             for vv in self.par_protect_fit:
                 m.limits[vv] = (0, None)
