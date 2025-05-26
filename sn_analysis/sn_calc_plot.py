@@ -204,6 +204,8 @@ def bin_it_mean(res, xvar='z', yvar='mu',
 
     df[yvar] = group[yvar].mean().to_list()
     df['{}_std'.format(yvar)] = group[yvar].std().to_list()
+    df['size'] = group.size().to_list()
+    df['{}_sigma'.format(yvar)] = df['{}_std'.format(yvar)]/np.sqrt(df['size'])
     return df
 
 
