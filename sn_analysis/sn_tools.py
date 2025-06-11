@@ -606,7 +606,6 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
             dd['nsn_rat_highz'] = dd['nsn_z_0.8_sigma_mu'] / dd['nsn_z_0.8']
         df = pd.concat((df, dd))
 
-    print(df.columns)
     # re-calculate SMoM here if necessary
     if 'wa_fit' not in df.columns:
         df = recalc(df)
@@ -643,6 +642,35 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
     return dfb
 
 
+def get_cov_name(a, b, df):
+    """
+    Function to estimate the covariance(a,b) name
+
+    Parameters
+    ----------
+    a : str
+        first tag for the name.
+    b : str
+        second tag for the name.
+    df : pandas df
+        Data to process.
+
+    Returns
+    -------
+    str
+      the Cov(a,b) name in df.
+
+    """
+
+    vva = 'Cov_{}_{}_fit'.format(a, b)
+    vvb = 'Cov_{}_{}_fit'.format(b, a)
+
+    if vva in df.columns:
+        return vva
+    else:
+        return vvb
+
+
 def recalc(df, cova='Cov_Om0_Om0_fit',
            covb='Cov_w0_w0_fit',
            covab='Cov_Om0_w0_fit',
@@ -672,10 +700,12 @@ def recalc(df, cova='Cov_Om0_Om0_fit',
 
     sigma_Om0 = df[cova]**0.5
     sigma_w0 = df[covb]**0.5
+    covab = get_cov_name('Om0', 'w0', df)
     rho = df[covab]/(sigma_Om0*sigma_w0)
     smom_inv = delta_chi*sigma_w0*sigma_Om0*(1.-rho**2)**0.5
 
     df['MoM'] = 1./smom_inv
+    df['sigma_w0'] = sigma_w0
 
     return df
 
