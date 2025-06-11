@@ -477,10 +477,6 @@ class MyFit(CosmoFit):
         X_mat = np.sum(f**2/denom)
         # prior to be set here
 
-        if 'sigmaInt' in self.fitparNames:
-            print('iteration', X_mat, parameters)
-        else:
-            print('iteration', X_mat, parameters, self.sigmaInt)
         if not self.prior.empty:
             idx = self.prior['varname'].isin(self.fitparNames)
             for io, row in self.prior[idx].iterrows():

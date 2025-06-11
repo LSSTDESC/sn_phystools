@@ -127,7 +127,7 @@ class HD_random:
             # myfit.set_sigmaInt(0.0)
 
             dict_fit = myfit.minuit_fit(fitparams)
-            print(dict_fit)
+
             fitpars = []
             for pp in fitparNames:
                 fitpars.append(dict_fit['{}_fit'.format(pp)])
