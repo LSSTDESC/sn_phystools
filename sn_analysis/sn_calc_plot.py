@@ -152,7 +152,7 @@ def bin_it(res, xvar='z', bins=np.arange(0.01, 1.1, 0.02),
     xvar : str, optional
         x-axis var. The default is 'z'.
     bins : list(float), optional
-        x var bins. The default is np.arange(0.01, 1.1, 0.02).   
+        x var bins. The default is np.arange(0.01, 1.1, 0.02).
     norm_factor : float, optional
         normalization factor. The default is 1.
 
@@ -207,6 +207,87 @@ def bin_it_mean(res, xvar='z', yvar='mu',
     df['size'] = group.size().to_list()
     df['{}_sigma'.format(yvar)] = df['{}_std'.format(yvar)]/np.sqrt(df['size'])
     return df
+
+
+def bin_it_weighted(res, xvar='z', yvar='mu', yvar_err='sigma_mu',
+                    bins=np.arange(0.01, 1.1, 0.02)):
+    """
+
+
+    Parameters
+    ----------
+    res : pandas df
+        Data to process.
+    xvar : str, optional
+        x-axis var. The default is 'z'.
+    yvar : str, optional
+        y-axis var. The default is 'mu'.
+    yvar_err : str, optional
+        y-axis error var. The default is 'sigma_mu'.
+    bins : list(float), optional
+        binning values. The default is np.arange(0.01, 1.1, 0.02).
+
+    Returns
+    -------
+    df : pandas df
+        binned data + std.
+
+    """
+
+    group = res.groupby(pd.cut(res[xvar], bins),
+                        observed=True).apply(lambda x: weighted_mean(x, xvar)).reset_index()
+
+    group = group.drop(columns=[xvar])
+    group = group.rename(columns={'{}_b'.format(xvar): xvar})
+
+    return group
+
+
+def weighted_mean(grp, xvar='z_fit', thevar='diff_mu', thevar_sigma='sigma_mu'):
+    """
+    Function to estimated the weighted mean, sigma, ...
+
+    Parameters
+    ----------
+    grp : pandas df
+        Data to process.
+    xvar : str, optional
+        x-axis variable. The default is 'z_fit'.
+    thevar : str, optional
+        the var to estimated the wighted mean from. The default is 'diff_mu'.
+    thevar_sigma : str, optional
+        sigma of the var to estimated the weighted mean. The default is 'sigma_mu'.
+
+    Returns
+    -------
+    res : pandas df
+        output data.
+
+    """
+
+    iv = grp.name
+
+    grp['weight'] = 1./grp[thevar_sigma]**2
+
+    mean = grp[thevar].mean()
+    std = grp[thevar].std()
+
+    weighted_mean = np.sum(grp[thevar]*grp['weight'])
+    weighted_mean /= np.sum(grp['weight'])
+
+    sigma = 1./np.sqrt(np.sum(grp['weight']))
+
+    r = [(weighted_mean, sigma, mean, std)]
+    ccols = ['{}_weighted_mean'.format(thevar), '{}_sigma'.format(thevar),
+             '{}_mean'.format(thevar), '{}_std'.format(thevar)]
+
+    res = pd.DataFrame(r, columns=ccols)
+
+    res['{}_b'.format(xvar)] = 0.5*(iv.left+iv.right)
+
+    res['size'] = len(grp)
+
+    return res
 
 
 def bin_it_effi(data, xvar='z', yvar='sigma_mu', yvar_cut=0.12,
