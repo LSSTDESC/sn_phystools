@@ -1469,13 +1469,14 @@ class DD_Scenario:
             nv_UD = self.cad_UD*self.nvisits_zlim(self.zcomp[i])
             nv_UD = int(np.round(nv_UD, 0))
             name = self.scen_names[i]
-            scenario[self.Nf_combi[i]] = [nv_UD, name, self.zcomp[i]]
+            # scenario[self.Nf_combi[i]] = [nv_UD, name, self.zcomp[i]]
+            scenario[name] = [nv_UD, self.Nf_combi[i], self.zcomp[i]]
 
         return scenario
 
     def get_zcomp_req(self):
         """
-        Method to grab zcomp reauirements
+        Method to grab zcomp requirements
 
         Returns
         -------
@@ -1529,7 +1530,8 @@ class DD_Scenario:
              vary='Nv_UD_night',
              legy='N$_{visits}^{UD}/obs. night}$', scenario={}, figtitle='',
              zcomp_req={}, pz_wl_req={},
-             pz_wl_req_err={}, zcomp_req_err={}, deep_universal={}, scoc_pII={}):
+             pz_wl_req_err={}, zcomp_req_err={},
+             deep_universal={}, scoc_pII={}, cohesive_survey=False):
         """
         Method to plot the results
 
@@ -1572,8 +1574,8 @@ class DD_Scenario:
         fig.subplots_adjust(right=0.8)
         # ls = dict(zip([1, 2, 3], ['solid', 'dotted', 'dashed']))
         # mark = dict(zip([2, 3, 4,5,6], ['s', 'o', '^']))
-        ls = ['solid', 'dotted', 'dashed']
-        mark = ['s', 'o', '^']
+        ls = ['solid', 'dotted', 'dashed', 'solid', 'dotted', 'dashed']
+        mark = ['s', 'o', '^', 'v', 'P', 'h']
         vx = -1
         vy = -1
         for_res = []
@@ -1588,26 +1590,38 @@ class DD_Scenario:
 
             label = '$(N_f^{UDF},N_{s}^{UDF})$'
             lab = '{} = ({},{})'.format(label, Nf_UD, Ns_UD)
+            label = '$N_f^{UDF}\\times N_{s}^{UDF}$'
+            lab = '{} = {}'.format(label, Nf_UD*Ns_UD)
             ax.plot(sel[varx], sel[vary], label=lab, marker=mmark,
                     linestyle=lstyle, mfc='None', ms=7, color='k')
             if scenario:
-                tag = scenario[(Nf_UD, Ns_UD)]
-                nv_UD = tag[0]
-                name = tag[1]
-                zcomp = tag[2]
-                interp = interp1d(sel[vary], sel[varx],
-                                  bounds_error=False, fill_value=0.)
-                nv_DD = interp(nv_UD)
-                ax.plot([nv_DD], [nv_UD], marker='s', ms=20,
-                        color='b', mfc='None', markeredgewidth=2)
-                nameb = '{}_SN'.format(name)
-                for_res.append(
-                    (nameb, zcomp, Nf_UD, Ns_UD, int(nv_UD), int(nv_DD),
-                     self.cad_UD, self.sl_UD, 0))
+                tag_udf = (Nf_UD, Ns_UD)
+                for key, vals in scenario.items():
+                    if vals[1] == tag_udf:
+                        print(key, vals)
+                        # tag = scenario[(Nf_UD, Ns_UD)]
+                        nv_UD = vals[0]
+                        name = key
+                        zcomp = vals[2]
+                        interp = interp1d(sel[vary], sel[varx],
+                                          bounds_error=False, fill_value=0.)
+                        nv_DD = interp(nv_UD)
+                        ax.plot([nv_DD], [nv_UD], marker='s', ms=7,
+                                color='b', mfc='b', markeredgewidth=2)
+                        nameb = '{}_SN'.format(name)
+                        for_res.append(
+                            (name, zcomp, Nf_UD, Ns_UD, int(nv_UD), int(nv_DD),
+                             self.cad_UD, self.sl_UD, 0))
+                        """
+                        ax.text(nv_DD-500, 1.1*nv_UD, nameb,
+                                color='b', fontsize=10)
+                        """
+                        ax.text(nv_DD, 1.05*nv_UD, nameb,
+                                horizontalalignment='center',
+                                color='b', fontsize=7)
 
-                ax.text(nv_DD-500, nv_UD-20, nameb, color='b', fontsize=12)
-
-                if pz_wl_req and Nf_UD >= 2:
+                # if pz_wl_req and Nf_UD >= 2:
+                if pz_wl_req and cohesive_survey:
                     nv_DD_n = pz_wl_req['WL_PZ_y2_y10'][1]
                     interpb = interp1d(
                         sel[varx], sel[vary], bounds_error=False)
@@ -1624,23 +1638,25 @@ class DD_Scenario:
                     nv_DD = np.mean([nv_DD, nv_DD_n])
 
                 # print('scenario', name, Nf_UD, Ns_UD, int(nv_UD), int(nv_DD))
-                namea = '{}_co'.format(name)
-                for_res.append(
-                    (namea, zcomp, Nf_UD, Ns_UD, int(nv_UD), int(nv_DD),
-                     self.cad_UD, self.sl_UD, 2))
+                if cohesive_survey:
+                    namea = '{}_co'.format(name)
+                    for_res.append(
+                        (namea, zcomp, Nf_UD, Ns_UD, int(nv_UD), int(nv_DD),
+                         self.cad_UD, self.sl_UD, 2))
 
-                ax.plot([nv_DD], [nv_UD], marker='o', ms=15,
-                        color='b', mfc='None', markeredgewidth=3.)
-                ax.plot([nv_DD], [nv_UD], marker='.', ms=5,
-                        color='b', mfc='None', markeredgewidth=3.)
-                # ax.text(1.05*nv_DD, 1.05*nv_UD, name, color='b', fontsize=12)
-                if vx < 0:
-                    dd = 0.75
+                    ax.plot([nv_DD], [nv_UD], marker='o', ms=15,
+                            color='b', mfc='None', markeredgewidth=3.)
+                    ax.plot([nv_DD], [nv_UD], marker='.', ms=5,
+                            color='b', mfc='None', markeredgewidth=3.)
+                    # ax.text(1.05*nv_DD, 1.05*nv_UD, name, color='b', fontsize=12)
+                    if vx < 0:
+                        dd = 0.75
+                        vx = np.abs(nv_DD-dd*nv_DD)
 
-                    vx = np.abs(nv_DD-dd*nv_DD)
-                if vy < 0:
-                    vy = np.abs(nv_UD-0.95*nv_UD)
-                ax.text(nv_DD-vx, nv_UD-vy, namea, color='b', fontsize=12)
+                    if vy < 0:
+                        vy = np.abs(nv_UD-0.95*nv_UD)
+                        ax.text(nv_DD-vx, nv_UD-vy, namea,
+                                color='b', fontsize=12)
                 # print(name, int(nv_DD), int(nv_UD), vx, vy)
 
         # xmin = np.max([np.min(restot[varx]), 500])
@@ -1979,10 +1995,14 @@ def complete_df(dfa, fieldType='DD', Nfields=5, year=1):
     """
 
     df = pd.DataFrame(dfa)
+    print('booo', fieldType, Nfields, year)
     df['fieldType'] = fieldType
     df['Nfields'] = Nfields
     df['year'] = year
 
+    df[['Nfields', 'year']] = df[['Nfields', 'year']].astype(int)
+
+    print(df.dtypes)
     return df
 
 
@@ -2031,7 +2051,7 @@ def get_final_scenario(grp, NDD, m5_resu, m5_nvisits_y1):
     sel_m5['nvisits_band_season'] = sel_m5['Nvisits_night'] * \
         sel_m5['frac_night']*sel_m5['nights_season']
 
-    print(sel_m5.columns)
+    print(sel_m5)
 
     sel_m5 = sel_m5.rename(
         columns={'nights_season': 'n_night_season',
@@ -2086,15 +2106,19 @@ def get_final_scenario(grp, NDD, m5_resu, m5_nvisits_y1):
         if year == 1:
             # n_DD = n_DD_y1
             df = complete_df(config_DD_y1, 'DD', NDD-Nf_UD, year)
-            df_res = pd.concat((df_res, df))
+
+            if df_res.empty:
+                df_res = pd.DataFrame(df)
+
             df = complete_df(config_DD_y1, 'UD', Nf_UD, year)
             df_res = pd.concat((df_res, df))
+
         else:
 
             Nf_UD_seas = Nf_UD*nn
             if Nf_UD_seas > 0:
                 df = complete_df(config_UD, 'UD', Nf_UD_seas, year)
-                df = pd.DataFrame(config_UD)
+                # df = pd.DataFrame(config_UD)
                 df_res = pd.concat((df_res, df))
             else:
                 df = complete_df(config_DD_y2_y10, 'UD', Nf_UD, year)
@@ -2948,7 +2972,7 @@ def uniformize(dfres, name='DDF_Univ_SN', Nv_LSST=2.1e6, budget=0.07):
 
     # int it
     for vv in ['nvisits_night', 'nvisits_band_season']:
-        #df_UD.loc[idx, vv] *= cad_UD*sl_UD/(cad_DD*sl_DD)
+        # df_UD.loc[idx, vv] *= cad_UD*sl_UD/(cad_DD*sl_DD)
         df_UD[vv] = df_UD[vv].astype(int)
 
     df_UD['fieldType'] = 'DD'
@@ -2966,3 +2990,193 @@ def uniformize(dfres, name='DDF_Univ_SN', Nv_LSST=2.1e6, budget=0.07):
     print('finally', np.sum(df_calc['nvisits_season'])/Nv_LSST)
     """
     return df_calc
+
+
+def get_nfconfig(config):
+
+    import itertools
+    nud = config['Nud'].to_list()
+    nsud = config['Nsud'].to_list()
+    z = list(itertools.zip_longest(nud, nsud))
+
+    return z
+
+
+class Calc_UD_visits:
+    def __init__(self, pparams, bands='ugrizy'):
+
+        # load scenario file
+        config_scenario = pd.read_csv(pparams['config_scenario'], comment='#')
+        zcomp = config_scenario['zcomp'].to_list()
+        scen_names = config_scenario['scen_name'].to_list()
+        Nf_combi = get_nfconfig(config_scenario)
+        self.pparams = pparams
+
+        m5_single_band, frac_band = self.get_m5()
+        m5class = self.get_m5_class(m5_single_band, frac_band)
+
+        msingle = m5class.msingle
+        print('msingle', msingle)
+
+        m5_summary = m5class.summary
+        m5_nvisits = m5class.msingle_calc
+        self.m5_dict = m5_summary.to_dict()
+        self.m5class = m5class
+
+        print('m5_summary', m5_summary)
+        print(self.m5_dict)
+        vv = ['band', 'm5_med_single', 'Nvisits_y1', 'Nvisits_y2_y10']
+        print('m5_nvisits', m5_nvisits[vv])
+
+        ## get (Nvisits_UD vs N_visits_DD for (Kf_UD, Ns_UD) combinations ####
+
+        Nv_DD_y1 = int(self.m5_dict['Nvisits_WL_PZ_y1'])
+        self.dd = DD_Scenario(budget_DD=self.pparams['budget_DD'],
+                              Nf_combi=Nf_combi,
+                              zcomp=zcomp,
+                              scen_names=scen_names,
+                              m5_single_OS=msingle,
+                              Nf_DD_y1=pparams['Nf_DD_y1'],
+                              Nv_DD_y1=Nv_DD_y1,
+                              sl_UD=pparams['sl_UD'], cad_UD=pparams['cad_UD'],
+                              sl_DD=pparams['sl_DD'], cad_DD=pparams['cad_DD'],
+                              Ns_DD=pparams['Ns_DD'],
+                              NDDF=pparams['NDDF'], Nv_LSST=pparams['Nv_LSST'],
+                              frac_moon=pparams['frac_moon'],
+                              obs_UD_DD=pparams['obs_UD_DD'],
+                              Nv_DD_max=pparams['Nv_DD_max'])
+
+    def get_m5(self):
+
+        m5_single_band = {}
+        frac_band = {}
+
+        if self.pparams['m5_from_db']:
+            # getting m5 single exposure from a simulated OS
+            from sn_desc_ddf_strategy.dd_scenario import DB_Infos
+            db_info = DB_Infos(self.pparams['dbDir'], self.pparams['dbName'])
+            m5_single_band = db_info.m5_single
+            frac_band = db_info.filter_alloc
+        else:
+            m5_fi = pd.read_csv(self.pparams['m5_single_file'])
+            for i, row in m5_fi.iterrows():
+                m5_single_band[row['band']] = row['m5_single']
+            frac_fi = pd.read_csv(self.pparams['filter_alloc_file'])
+            for i, row in frac_fi.iterrows():
+                frac_band[row['band']] = row['frac_band']
+
+        return m5_single_band, frac_band
+
+    def get_m5_class(self, m5_single_band, frac_band):
+
+        from sn_desc_ddf_strategy.dd_scenario import FiveSigmaDepth_Nvisits
+        m5class = FiveSigmaDepth_Nvisits(
+            requirements=self.pparams['pz_requirements'],
+            Nvisits_WL_season=self.pparams['Nvisits_WL_season'],
+            frac_band=frac_band,
+            m5_single=m5_single_band, Ns_y2_y10=self.pparams['Ns_DD'])
+
+        return m5class
+
+    def __call__(self):
+
+        restot = self.dd.get_combis()
+        zcomp_req = self.dd.get_zcomp_req()
+        zcomp_req_err = self.dd.get_zcomp_req_err()
+        scenario = self.dd.get_scenario()
+
+        corresp = dict(zip(['Nvisits_y1', 'Nvisits_y2_y10'],
+                           ['PZ_y1', 'PZ_y2_y10']))
+        nseasons = dict(zip(['Nvisits_y1', 'Nvisits_y2_y10'],
+                            [1, self.pparams['Ns_DD']]))
+        corresp = dict(zip(['Nvisits_WL_PZ_y1', 'Nvisits_WL_PZ_y2_y10'],
+                           ['WL_PZ_y1', 'WL_PZ_y2_y10']))
+        nseasons = dict(
+            zip(['Nvisits_WL_PZ_y1', 'Nvisits_WL_PZ_y2_y10'], [1, self.pparams['Ns_DD']]))
+
+        pz_wl_req, pz_wl_req_err = self.get_pz_req(
+            corresp, self.m5_dict, nseasons)
+
+        ### plot the result and get scenarios ######
+
+        nvisits = '$N_{visits}^{LSST}$'
+        cadud = '$cad^{UDF}$'
+        ftit = 'DD budget={}% - {}={} million'.format(np.round(100*self.dd.budget_DD, 1),
+                                                      nvisits, self.dd.Nv_LSST/1.e6)
+        ffig = '{} \n'.format(ftit)
+        ffiga = '{} \n'.format(ftit)
+        ffig += '{}={} days, season length={} days'.format(cadud, int(self.dd.cad_UD),
+                                                           int(self.dd.sl_UD))
+        ffigb = ffig
+        # ffiga += 'season length={} days'.format(int(self.dd.sl_UD))
+
+        """
+        restot = rf.append_fields(restot, 'Nv_UD_season',
+                                  restot['Nv_UD']/restot['Ns_UD'])
+        """
+        self.dd.plot(restot, varx='Nv_DD',
+                     legx='N$_{v}^{DF}/season$',
+                     vary='Nv_UD',
+                     legy='N$_{v}^{UDF}/season$', figtitle=ffiga)
+
+        self.dd.plot(restot, varx='Nv_DD',
+                     legx='N$_{v}^{DF}/season$',
+                     vary='Nv_UD_night',
+                     legy='N$_{v}^{UDF}/obs.~night$', scenario={},
+                     zcomp_req=zcomp_req, zcomp_req_err=zcomp_req_err,
+                     pz_wl_req=pz_wl_req, pz_wl_req_err=pz_wl_req_err,
+                     deep_universal={}, scoc_pII={},
+                     figtitle=ffigb)
+
+        # zcomp_req = {}
+        # zcomp_req_err = {}
+        # pz_wl_req = {}
+        # pz_wl_req_err = {}
+        # scenario = {}
+
+        Nvisits_avail = self.dd.budget_DD*self.dd.Nv_LSST-self.dd.Nf_DD_y1*self.dd.Nv_DD_y1
+        Nv_DD_SCOC_pII = Nvisits_avail/52.
+        Nv_UD_SCOC_pII = (10*Nv_DD_SCOC_pII/3) * \
+            self.pparams['cad_UD']/self.pparams['sl_UD']
+        deep_universal = {}
+        scoc_pII = {}
+        """
+        du_pos = 140
+        if pparams['budget_DD'] < 0.06:
+            du_pos = 90
+        deep_universal['Deep Universal'] = [
+            Nvisits_avail/(opts.Ns_DD*opts.NDDF), du_pos]
+        scoc_pII['SCOC_p2'] = [Nv_DD_SCOC_pII, Nv_UD_SCOC_pII]
+        """
+
+        res = self.dd.plot(restot, varx='Nv_DD',
+                           legx='N$_{v}^{DF}/season$',
+                           vary='Nv_UD_night',
+                           legy='N$_{v}^{UDF}/obs.~night$', scenario=scenario,
+                           zcomp_req=zcomp_req, zcomp_req_err=zcomp_req_err,
+                           pz_wl_req=pz_wl_req, pz_wl_req_err=pz_wl_req_err,
+                           deep_universal=deep_universal, scoc_pII=scoc_pII,
+                           figtitle=ffig)
+
+        return res
+
+    def get_pz_req(self, corresp, m5_dict, nseasons):
+
+        pz_wl_req = {}
+        for key, vals in corresp.items():
+            pz_wl_req[vals] = [150, int(m5_dict[key]/nseasons[key])]
+
+        # pz_wl_req['WL_10xWFD'] = [85, 800]
+        pz_wl_req_err = {}
+        # pz_wl_req_err['PZ_y2_y10'] = (m5_dict['Nvisits_y2_y10_m']/9.,
+        #                              m5_dict['Nvisits_y2_y10_p']/9.)
+        pz_wl_req_err['WL_PZ_y2_y10'] = (m5_dict['Nvisits_WL_PZ_y2_y10_m']/self.pparams['Ns_DD'],
+                                         m5_dict['Nvisits_WL_PZ_y2_y10_p']/self.pparams['Ns_DD'])
+
+        return pz_wl_req, pz_wl_req_err
+
+    def finish(self, res):
+
+        vv = self.dd.finish(res)
+
+        return vv
