@@ -3007,6 +3007,7 @@ class Calc_UD_visits:
 
         # load scenario file
         config_scenario = pd.read_csv(pparams['config_scenario'], comment='#')
+
         zcomp = config_scenario['zcomp'].to_list()
         scen_names = config_scenario['scen_name'].to_list()
         Nf_combi = get_nfconfig(config_scenario)
