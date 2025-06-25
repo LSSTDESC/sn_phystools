@@ -1531,7 +1531,8 @@ class DD_Scenario:
              legy='N$_{visits}^{UD}/obs. night}$', scenario={}, figtitle='',
              zcomp_req={}, pz_wl_req={},
              pz_wl_req_err={}, zcomp_req_err={},
-             deep_universal={}, scoc_pII={}, cohesive_survey=False):
+             deep_universal={}, scoc_pII={}, pz_wl_agn={},
+             cohesive_survey=False):
         """
         Method to plot the results
 
@@ -1711,6 +1712,21 @@ class DD_Scenario:
                 ax.plot([xmin, xmax], [ymin, ymax], ls='dotted', color=coltext)
                 ax.text(xmin+k, x, key, fontsize=12, rotation=270,
                         color=coltext, va='top')
+
+        if pz_wl_agn:
+            ymin, ymax = ax.get_ylim()
+            k = 0
+            x = 400
+            for key, vals in pz_wl_agn.items():
+                xmin = vals
+                if k == 0:
+                    tt = 1.01*xmin
+                    k = tt-xmin
+
+                ax.plot([xmin]*2, [ymin, ymax], ls='dotted', color=coltext)
+                ax.text(xmin+k, x, key, fontsize=12, rotation=270,
+                        color=coltext, va='top')
+
         if deep_universal:
             for key, vals in deep_universal.items():
                 x = vals[0]
@@ -3020,14 +3036,14 @@ class Calc_UD_visits:
         print('msingle', msingle)
 
         m5_summary = m5class.summary
-        m5_nvisits = m5class.msingle_calc
+        self.m5_nvisits = m5class.msingle_calc
         self.m5_dict = m5_summary.to_dict()
         self.m5class = m5class
 
         print('m5_summary', m5_summary)
         print(self.m5_dict)
         vv = ['band', 'm5_med_single', 'Nvisits_y1', 'Nvisits_y2_y10']
-        print('m5_nvisits', m5_nvisits[vv])
+        print('m5_nvisits', self.m5_nvisits[vv])
 
         ## get (Nvisits_UD vs N_visits_DD for (Kf_UD, Ns_UD) combinations ####
 
@@ -3120,13 +3136,15 @@ class Calc_UD_visits:
                      vary='Nv_UD',
                      legy='N$_{v}^{UDF}/season$', figtitle=ffiga)
 
+        pz_wl_agn = {}
+        pz_wl_agn['PZ+WL+AGN reqs'] = 1714
         self.dd.plot(restot, varx='Nv_DD',
                      legx='N$_{v}^{DF}/season$',
                      vary='Nv_UD_night',
                      legy='N$_{v}^{UDF}/obs.~night$', scenario={},
                      zcomp_req=zcomp_req, zcomp_req_err=zcomp_req_err,
                      pz_wl_req=pz_wl_req, pz_wl_req_err=pz_wl_req_err,
-                     deep_universal={}, scoc_pII={},
+                     deep_universal={}, scoc_pII={}, pz_wl_agn=pz_wl_agn,
                      figtitle=ffigb)
 
         # zcomp_req = {}
