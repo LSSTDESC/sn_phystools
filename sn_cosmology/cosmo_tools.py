@@ -506,7 +506,7 @@ def analyze_survey(sn_sample):
     """
 
     fields = sn_sample['field'].unique()
-    print('boooooo', fields)
+    print('Analyze survey', fields)
     for field in fields:
         idx = sn_sample['field'] == field
         print(field, len(sn_sample[idx]))
