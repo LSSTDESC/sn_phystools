@@ -5,7 +5,7 @@ dataDir_WFD ../Output_SN_WFD_sigmaInt_0.0_Hounsell_G10_JLA str #data dir WFD
 dbName_WFD baseline_v3.0_10yrs str #db name WFD
 selconfig G10_JLA str #sel config
 outName cosmo_fit str #output file name
-survey input/cosmology/scenarios/survey_scenario.csv str #survey to use
+surveyFile input/cosmology/scenarios/survey_scenario.csv str #survey to use
 #lookup_survey input/cosmology/scenarios/lookup_survey.csv str #lookup table for scenarios
 hosteffiDir input/cosmology/host_effi str #host effi dir
 footprintDir input/cosmology/footprints str #footprint dir
@@ -22,3 +22,13 @@ nrandom 50 int #number of random sample (per season/year) to generate
 nproc 8 int #number of procs to use
 wfd_tagsurvey notag str #tag for the WFD survey
 dd_tagsurvey notag str #tag for the DD survey
+select_DDF 0 int #to select DDF SN for the fit
+select_WFD 0 int #to select WFD SN for the fit
+H0 70 float #cosmo par
+Om0 0.3 float #cosmo par
+Ode0 0.7 float #cosmo par
+w0 -1. float #cosmo par
+wa 0.0 float #cosmo par
+alpha 0.13 float #nuisance par
+beta 3.1 float #nuisance par
+recalc_sigmu 1 int #recalc sigma_mu

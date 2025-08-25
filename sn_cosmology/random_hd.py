@@ -11,6 +11,7 @@ import numpy as np
 from sn_analysis.sn_calc_plot import bin_it_mean
 from sn_analysis.sn_tools import transform
 from sn_tools.sn_utils import multiproc
+from sn_cosmology.cosmo_tools import analyze_survey
 
 
 class HD_random:
@@ -2564,25 +2565,3 @@ def analyze_data_sample(data, add_str='',
     outdict['all_Fields{}'.format(add_str)] = nsn_tot
     return outdict
     """
-
-
-def analyze_survey(sn_sample):
-    """
-    Function to analyze the survey
-
-    Parameters
-    ----------
-    sn_sample : pandas df
-        Data to process.
-
-    Returns
-    -------
-    None.
-
-    """
-
-    fields = sn_sample['field'].unique()
-    print('boooooo', fields)
-    for field in fields:
-        idx = sn_sample['field'] == field
-        print(field, len(sn_sample[idx]))
