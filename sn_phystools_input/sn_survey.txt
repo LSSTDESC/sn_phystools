@@ -1,0 +1,24 @@
+## run_scripts/cosmology/cosmology.py parameters
+dataDir_DD ../Output_SN_sigmaInt_0.0_Hounsell_G10_JLA str #data dir DD
+dbName_DD DDF_Univ_WZ  str #db name DD
+dataDir_WFD ../Output_SN_WFD_sigmaInt_0.0_Hounsell_G10_JLA str #data dir WFD
+dbName_WFD baseline_v3.0_10yrs str #db name WFD
+selconfig G10_JLA str #sel config
+outName cosmo_fit str #output file name
+survey input/cosmology/scenarios/survey_scenario.csv str #survey to use
+#lookup_survey input/cosmology/scenarios/lookup_survey.csv str #lookup table for scenarios
+hosteffiDir input/cosmology/host_effi str #host effi dir
+footprintDir input/cosmology/footprints str #footprint dir
+max_sigma_mu 0.12 float #Max sigma_mu defining low sigma_mu sample
+test_mode 0 int #test mode run
+plot_test 0 int #test mode run+of the program and plots
+low_z_optimize 1 int #maximize the lowz sample
+sigmaInt 0.12 float #sigmaInt for SN
+surveyDir ../sn_surveys str #to dump surveys on disk
+timescale year str #timescale for the cosmology (year or season)
+simu_norm_factor input/cosmology/simuinfo/normfactor.csv str #norm factors for simu
+seasons 1-10 str #seasons to generate sn surveys
+nrandom 50 int #number of random sample (per season/year) to generate
+nproc 8 int #number of procs to use
+wfd_tagsurvey notag str #tag for the WFD survey
+dd_tagsurvey notag str #tag for the DD survey
