@@ -210,7 +210,17 @@ def load_data_season(fieldTypes, dataDir, dbName, seas, timescale,
         Dbnames.
     seas : list(int)
         seasons.
-
+   timescale : str
+        Timescale to use (year/seson).
+    select_WFD : bool, optional
+        to select the WFD sample. The default is True.
+    select_DDF : bool, optional
+        to select the DDF sample. The default is False.
+    vardf : list(str), optional
+        List of var to use. The default is
+        ['z_fit', 'x1_fit', 'color_fit', 'mbfit', 'Cov_x1x1',
+         'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb,
+         'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu','mu_SN'].
     Returns
     -------
     data_survey : dict
@@ -274,6 +284,8 @@ def load_data(dataDir, dbName, runType, fieldType, seasons, timescale):
         fieldtype.
     seasons : list(int)
         list of seasons.
+    timescale: str
+       Time scale to use (year/season)
 
     Returns
     -------
@@ -358,13 +370,16 @@ def select_SN_DDF(dd):
 
 def random_LSST(sn_simu_seas, simu_norm_factor, test_mode=False):
     """
-    Method to buil a realization of the survey
+    Method to build a realization of the survey
 
     Parameters
     ----------
     sn_simu_seas : dict
         dict of data (pandas df)
-
+   simu_norm_factor : dict
+      normalization factor for the simulation.
+    test_mode : bool, optional
+      To activate the test mode. The default is False.
     Returns
     -------
     dd : dict
@@ -400,6 +415,10 @@ def clean_survey(data, var='SNID', test_mode=False):
     ----------
     data : pandas df
         Data to process.
+    var : str, optional
+        col to use to remove duplicates. The default is 'SNID'.
+    test_mode : bool, optional
+        To activate the test mode. The default is False.
 
     Returns
     -------
@@ -472,8 +491,14 @@ def dump_survey(data, year_min, year_max, nn, surveyDir,
         year max of the survey.
     nn : int
         number to tag the realization of the survey.
+    surveyDir : str
+        dir to save the data.
+    dbName_DD : str
+        OS for the DD fields.
+    dbName_WFD : str
+        OS for the WFD fields.
     add_str: str, optional
-      to add a tag name
+      to add a tag name.The default is ''.
 
     Returns
     -------
@@ -510,3 +535,31 @@ def analyze_survey(sn_sample):
     for field in fields:
         idx = sn_sample['field'] == field
         print(field, len(sn_sample[idx]))
+
+
+def get_seasons(seasons):
+    """
+    Function to get the list of seasons
+
+    Parameters
+    ----------
+    seasons : str
+        list of seasons.
+
+    Returns
+    -------
+    seasons : list(int)
+        list of seasons.
+
+    """
+
+    if '-' in seasons:
+        seas = seasons.split('-')
+        seas_min = int(seas[0])
+        seas_max = int(seas[1])
+        seasons = list(range(seas_min, seas_max+1))
+    else:
+        seas = seasons.split(',')
+        seasons = list(map(int, seas))
+
+    return seasons
