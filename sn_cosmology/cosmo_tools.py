@@ -392,7 +392,6 @@ def random_LSST(sn_simu_seas, simu_norm_factor, test_mode=False):
         idx = simu_norm_factor['survey'] == key
         norm = simu_norm_factor[idx]['norm_factor'].values[0]
         sn_survey = pd.DataFrame()
-        print(vals.columns)
         for field in vals['field'].unique():
             idx = vals['field'] == field
             sel = vals[idx]
@@ -512,6 +511,43 @@ def dump_survey(data, year_min, year_max, nn, surveyDir,
                                                           year_min,
                                                           year_max,
                                                           nn, add_str)
+    data.to_hdf(outName, key='sn')
+
+
+def dump_survey_season(data, seas, nn, surveyDir,
+                       dbName_DD,
+                       dbName_WFD, add_str=''):
+    """
+    Method to dump a survey on disk
+
+    Parameters
+    ----------
+    data: pandas df
+         data to store
+   seas : int
+        season of the survey.
+    nn : int
+        number to tag the realization of the survey.
+    surveyDir : str
+        dir to save the data.
+    dbName_DD : str
+        OS for the DD fields.
+    dbName_WFD : str
+        OS for the WFD fields.
+    add_str: str, optional
+      to add a tag name.The default is ''.
+
+    Returns
+    -------
+    None.
+
+    """
+
+    outName = '{}/survey_sn_{}_{}_{}_{}{}.hdf5'.format(surveyDir,
+                                                       dbName_DD,
+                                                       dbName_WFD,
+                                                       seas,
+                                                       nn, add_str)
     data.to_hdf(outName, key='sn')
 
 
