@@ -32,3 +32,7 @@ wa 0.0 float #cosmo par
 alpha 0.13 float #nuisance par
 beta 3.1 float #nuisance par
 recalc_sigmu 1 int #recalc sigma_mu
+save_full_survey 0 int #to save the survey with no spectro selection
+n_random_survey 1 int #number of random surveys to generate
+nproc 8 int #number of procs for multiprocessing
+analyze_survey 0 int #to analyze the survey online
