@@ -90,7 +90,10 @@ class Gen_Surveys:
 
         self.seasons = get_seasons(self.param['seasons'])
 
-        checkDir(self.param['surveyDir'])
+        self.outDir = '{}/{}_{}'.format(self.param['surveyDir'],
+                                        self.param['dbName_DD'],
+                                        self.param['dbName_WFD'])
+        checkDir(self.outDir)
 
         print('seasons', self.seasons)
 
@@ -176,9 +179,15 @@ class Gen_Surveys:
             pp = {}
             pp['sn_simu_seas'] = sn_simu_seas
             pp['seas'] = seas
-            reals = range(1, self.param['n_random_survey'])
-
-            multiproc(reals, pp, self.survey_realisations, self.param['nproc'])
+            nreals = self.param['n_random_survey']
+            nproc = self.param['nproc']
+            if nreals > 1:
+                reals = range(1, nreals+1)
+                if nreals < 8:
+                    nproc = nreals
+                multiproc(reals, pp, self.survey_realisations, nproc)
+            else:
+                self.survey_realisations([nreals], pp)
 
     def survey_realisations(self, n_real, pp, j=0, output_q=None):
         """
@@ -206,7 +215,7 @@ class Gen_Surveys:
         seas = pp['seas']
 
         for i in n_real:
-            self.survey_season(sn_simu_seas, seas, i+1)
+            self.survey_season(sn_simu_seas, seas, i)
 
         if output_q is not None:
             return output_q.put({j: 0})
@@ -256,13 +265,10 @@ class Gen_Surveys:
         # dump the sample
         # year = sn_sample[self.param['timescale']].mean()
         # year_max = sn_sample[pp['timescale']].max()
-        dump_survey_season(sn_sample, seas, nreal, self.param['surveyDir'],
-                           self.param['dbName_DD'], self.param['dbName_WFD'])
+        dump_survey_season(sn_sample, seas, nreal, self.outDir)
         if self.param['save_full_survey']:
             dump_survey_season(full_survey, seas, nreal,
-                               self.param['surveyDir'],
-                               self.param['dbName_DD'],
-                               self.param['dbName_WFD'],
+                               self.outDir,
                                add_str='_nospectroz')
 
     def make_survey(self, sdict):

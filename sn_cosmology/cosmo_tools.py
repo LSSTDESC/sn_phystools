@@ -514,9 +514,7 @@ def dump_survey(data, year_min, year_max, nn, surveyDir,
     data.to_hdf(outName, key='sn')
 
 
-def dump_survey_season(data, seas, nn, surveyDir,
-                       dbName_DD,
-                       dbName_WFD, add_str=''):
+def dump_survey_season(data, seas, nn, surveyDir, add_str=''):
     """
     Method to dump a survey on disk
 
@@ -543,11 +541,11 @@ def dump_survey_season(data, seas, nn, surveyDir,
 
     """
 
-    outName = '{}/survey_sn_{}_{}_{}_{}{}.hdf5'.format(surveyDir,
-                                                       dbName_DD,
-                                                       dbName_WFD,
-                                                       seas,
-                                                       nn, add_str)
+    outName = '{}/survey_sn_{}_{}{}.hdf5'.format(surveyDir,
+                                                 seas,
+                                                 nn, add_str)
+
+    print('dumping in', outName)
     data.to_hdf(outName, key='sn')
 
 
