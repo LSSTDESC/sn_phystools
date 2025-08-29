@@ -262,9 +262,13 @@ class Gen_Surveys:
         if self.param['analyze_survey']:
             analyze_survey(sn_sample)
 
+        # add realization number
+        sn_sample['nreal'] = nreal
+
         # dump the sample
         # year = sn_sample[self.param['timescale']].mean()
         # year_max = sn_sample[pp['timescale']].max()
+
         dump_survey_season(sn_sample, seas, nreal, self.outDir)
         if self.param['save_full_survey']:
             dump_survey_season(full_survey, seas, nreal,

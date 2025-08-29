@@ -545,7 +545,6 @@ def dump_survey_season(data, seas, nn, surveyDir, add_str=''):
                                                  seas,
                                                  nn, add_str)
 
-    print('dumping in', outName)
     data.to_hdf(outName, key='sn')
 
 
