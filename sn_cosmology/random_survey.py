@@ -95,6 +95,10 @@ class Gen_Surveys:
                                         self.param['dbName_WFD'])
         checkDir(self.outDir)
 
+        if self.param['save_full_survey']:
+            self.outDir_nospectroz = '{}_nospectroz'.format(self.outDir)
+            checkDir(self.outDir_nospectroz)
+
         print('seasons', self.seasons)
 
         self.survey = pd.read_csv(self.param['surveyFile'], comment='#')
@@ -246,7 +250,7 @@ class Gen_Surveys:
             sn_simu_seas, self.simu_norm_factor, test_mode=self.param['test_mode'])
 
         full_survey = self.make_survey(rand_LSST)
-
+        full_survey['nreal'] = nreal
         if self.param['analyze_survey']:
             analyze_survey(full_survey)
 
@@ -272,8 +276,7 @@ class Gen_Surveys:
         dump_survey_season(sn_sample, seas, nreal, self.outDir)
         if self.param['save_full_survey']:
             dump_survey_season(full_survey, seas, nreal,
-                               self.outDir,
-                               add_str='_nospectroz')
+                               self.outDir_nospectroz)
 
     def make_survey(self, sdict):
         """
