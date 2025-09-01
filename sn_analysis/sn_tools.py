@@ -918,3 +918,99 @@ def histo_fit(sel, pullvar, fitgauss=True):
 
     ax.grid(visible=True)
     ax.legend()
+
+
+def load_multiproc(fis, params, j=0, output_q=None):
+    """
+    Function to load data using multiprocessing
+
+    Parameters
+    ----------
+    fis : list(str)
+        list of files to load.
+    params : dict
+        parameters.
+    j : int, optional
+        internal tag for multiprocessing. The default is 0.
+    output_q : output processing queue, optional
+        where to store the data. The default is None.
+
+    Returns
+    -------
+    pandas df
+        output data.
+
+    """
+
+    df_survey = pd.DataFrame()
+    for fi in fis:
+        dd_ = pd.read_hdf(fi)
+        df_survey = pd.concat((df_survey, dd_))
+
+    if output_q is not None:
+        return output_q.put({j: df_survey})
+    else:
+        return df_survey
+
+
+def get_stat(grp):
+    """
+    Estimate some stat
+
+    Parameters
+    ----------
+    grp : pandas df
+        Data to process.
+
+    Returns
+    -------
+    pandas df
+        result.
+
+    """
+
+    dd = {}
+    dd['nsn'] = [len(grp)]
+
+    survey_area = grp['survey_area'].mean()
+    survey_area *= len(grp['healpixID'].unique())
+    dd['survey_area'] = [survey_area]
+
+    idx = grp['z_fit'] >= 0.8
+    sela = grp[idx]
+    dd['nsn_z_08'] = [len(sela)]
+    idx &= grp['sigmaC'] <= 0.04
+
+    sel = grp[idx]
+
+    dd['nsn_z_08_sigmaC'] = [len(sel)]
+
+    return pd.DataFrame.from_dict(dd)
+
+
+def get_statb(grp):
+    """
+    Estimate some stat on SN realization
+
+    Parameters
+    ----------
+    grp : pandas df
+        Data to process.
+
+    Returns
+    -------
+    pandas df
+        output data.
+
+    """
+
+    dd = {}
+    dd['nsn'] = [grp['nsn'].mean()]
+    dd['err_nsn'] = [grp['nsn'].std()]
+    dd['nsn_z_08_sigmaC'] = [grp['nsn_z_08_sigmaC'].mean()]
+    dd['err_nsn_z_08_sigmaC'] = [grp['nsn_z_08_sigmaC'].std()]
+    dd['nsn_z_08'] = [grp['nsn_z_08'].mean()]
+    dd['err_nsn_z_08'] = [grp['nsn_z_08'].std()]
+    dd['survey_area'] = [grp['survey_area'].mean()]
+
+    return pd.DataFrame.from_dict(dd)
