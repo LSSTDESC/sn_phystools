@@ -596,3 +596,27 @@ def get_seasons(seasons):
         seasons = list(map(int, seas))
 
     return seasons
+
+
+def transform(dicta):
+    """
+    Function to transform a dict of var to a dict of list(var)
+
+    Parameters
+    ----------
+    dicta : dict
+        input dict.
+
+    Returns
+    -------
+    dictb : dict
+        output dict.
+
+    """
+
+    dictb = {}
+
+    for key, vals in dicta.items():
+        dictb[key] = [vals]
+
+    return dictb

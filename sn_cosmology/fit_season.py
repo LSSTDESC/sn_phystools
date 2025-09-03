@@ -8,6 +8,7 @@ Created on Wed Jul  5 13:58:35 2023
 import pandas as pd
 import numpy as np
 from sn_cosmology.random_hd import HD_random, Fit_surveys, analyze_data_sample
+from sn_cosmology.cosmo_tools import transform
 from sn_tools.sn_utils import multiproc
 
 
@@ -812,27 +813,3 @@ class Fit_seasons_deprecated:
 
         # return dict_res
         # return resdf
-
-
-def transform(dicta):
-    """
-    Function to transform a dict of var to a dict of list(var)
-
-    Parameters
-    ----------
-    dicta : dict
-        input dict.
-
-    Returns
-    -------
-    dictb : dict
-        output dict.
-
-    """
-
-    dictb = {}
-
-    for key, vals in dicta.items():
-        dictb[key] = [vals]
-
-    return dictb
