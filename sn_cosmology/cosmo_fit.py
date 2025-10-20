@@ -284,7 +284,7 @@ class CosmoFit(ABC):
 
         """
 
-        m = Minuit(self.xi_square, *parameters,
+        m = Minuit(self.ln_likelihood, *parameters,
                    name=self.fitparNames)
         m.errordef = Minuit.LIKELIHOOD
         if self.par_protect_fit:
@@ -415,6 +415,31 @@ class MyFit(CosmoFit):
 
         return f
 
+    def ln_likelihood(self, *parameters):
+        '''
+        log(likelihood) to minimize
+
+        Parameters
+        ----------
+        *parameters : dict
+            parameters to fit.
+
+        Returns
+        -------
+         ln_likelihood: float
+            ln(likelihood).
+
+        '''
+
+        X_mat, denom, nsn = self.xi_square(*parameters)
+
+        ln_likelihood = X_mat
+        ln_likelihood += np.sum(np.log(denom))
+
+        ln_likelihood += nsn*np.log(2.*np.pi)
+
+        return ln_likelihood
+
     def xi_square(self, *parameters):
         '''
         Calculate Xi_square for a data set of value x and y and a function.
@@ -475,6 +500,12 @@ class MyFit(CosmoFit):
         # Matrix calculation of Xisquare
         # X_mat = np.matmul(f * f, sigma_mu**-2)
         X_mat = np.sum(f**2/denom)
+
+        """
+        X_mat += np.sum(np.log(denom))
+
+        X_mat += len(mu)*np.log(2.*np.pi)
+        """
         # prior to be set here
 
         if not self.prior.empty:
@@ -486,7 +517,7 @@ class MyFit(CosmoFit):
                 if len(parameters) > 0:
                     X_mat += ((parameters[i] - ref_val)**2)/sigma_val**2
 
-        return X_mat
+        return X_mat, denom, len(sigma_mu)
 
     def get_sigmaInt(self):
         """
