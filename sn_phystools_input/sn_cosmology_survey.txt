@@ -1,6 +1,6 @@
 ## run_scripts/cosmology/cosmology_survey.py parameters
-fitparam_names w0,wa,Om0 str #fit parameter names
-fitparam_values -1.0,0.0,0.3 str #fit parameter init values
+fitparam_names w0,wa,Om0,sigmaInt str #fit parameter names
+fitparam_values -1.0,0.0,0.3,0.12 str #fit parameter init values
 prior 1 int #prior for the fit
 H0 70 float #cosmo par
 Om0 0.3 float #cosmo par
@@ -9,6 +9,7 @@ w0 -1. float #cosmo par
 wa 0.0 float #cosmo par
 alpha 0.13 float #nuisance par
 beta 3.1 float #nuisance par
+sigmaInt 0.12 float #SN intrinsic dispersion
 recalc_sigmu 1 int #recalc sigma_mu
 prior_varname Om0 str #prior varname list
 prior_refvalue 0.3 str #prior refvalue list
