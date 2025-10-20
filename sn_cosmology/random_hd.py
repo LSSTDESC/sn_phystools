@@ -132,7 +132,8 @@ class HD_random:
             fitpars = []
             for pp in fitparNames:
                 fitpars.append(dict_fit['{}_fit'.format(pp)])
-            dict_fit['Chi2_fit'] = myfit.xi_square(*fitpars)
+            chisq, a, b = myfit.xi_square(*fitpars)
+            dict_fit['Chi2_fit'] = chisq
             dict_fit['NDoF'] = len(data)-len(fitparNames)
             dict_fit['Chi2_fit_red'] = dict_fit['Chi2_fit']/dict_fit['NDoF']
             if 'sigmaInt' not in fitparNames:
