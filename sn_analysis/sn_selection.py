@@ -176,11 +176,21 @@ class Select_filt:
 
         import os
 
+        dirContents = os.listdir(self.outDir_full)
+        print('checking the folder', self.outDir_full)
+        if not dirContents:
+            print('Folder is Empty - processing')
+        else:
+            print('Folder is Not Empty - cleaning')
+            cmd = 'rm {}/*'.format(self.outDir_full)
+            os.system(cmd)
+        """
         for seas in self.seasons:
             outName = self.get_name(seas)
 
             if os.path.isfile(outName):
                 os.remove(outName)
+        """
 
     def process(self):
         """
