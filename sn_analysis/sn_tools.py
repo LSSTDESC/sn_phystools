@@ -1014,3 +1014,76 @@ def get_statb(grp):
     dd['survey_area'] = [grp['survey_area'].mean()]
 
     return pd.DataFrame.from_dict(dd)
+
+
+def load_data_field(dbDir, dbName, runType, field):
+    """
+    Function to load the data
+
+    Parameters
+    ----------
+    dbDir : str
+        data dir.
+    dbName : str
+        OS to process.
+    runType : str
+        runtype.
+    field : str
+        field.
+
+    Returns
+    -------
+    df : pandas df
+        loaded data.
+
+    """
+
+    theDir = '{}/{}/{}'.format(dbDir, dbName, runType)
+
+    print('scanning', theDir)
+    fis = glob.glob('{}/*{}*.hdf5'.format(theDir, field))
+
+    df = pd.DataFrame()
+
+    for fi in fis:
+
+        df_ = pd.read_hdf(fi)
+
+        df = pd.concat((df, df_))
+
+    return df
+
+
+def load_data(dbDir, dbName, runType):
+    """
+    Function to load the data
+
+    Parameters
+    ----------
+    dbDir : str
+        data dir.
+    dbName : str
+        OS to process.
+    runType : str
+        runtype.
+    Returns
+    -------
+    df : pandas df
+        loaded data.
+
+    """
+
+    theDir = '{}/{}/{}'.format(dbDir, dbName, runType)
+
+    print('scanning', theDir)
+    fis = glob.glob('{}/*.hdf5'.format(theDir))
+
+    df = pd.DataFrame()
+
+    for fi in fis:
+
+        df_ = pd.read_hdf(fi)
+
+        df = pd.concat((df, df_))
+
+    return df
