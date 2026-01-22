@@ -416,6 +416,8 @@ def complete_df(res, alpha=0.13, beta=3.1, Mb=-19.1):
     res['diff_mu'] = res['mu_exp']-res['mu']
     res['diff_mb'] = (res['mb']-res['mb_fit'])
 
+    res['chisq_red'] = res['chisq']/res['ndof']
+
     return res
 
 
