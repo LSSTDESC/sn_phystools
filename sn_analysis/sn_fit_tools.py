@@ -8,6 +8,7 @@ Created on Tue Feb 17 08:56:26 2026
 
 from scipy.optimize import curve_fit
 import numpy as np
+import pandas as pd
 
 def fit_hist(sel, pullvar,bins='auto',fit_with_errors=False):
     """
@@ -46,6 +47,7 @@ def fit_hist(sel, pullvar,bins='auto',fit_with_errors=False):
 
     ndof = nevts-3
     chi_square = 9999.
+    stat = [sel[pullvar].mean(),sel[pullvar].std()]
     try:
         
         coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0,
@@ -64,8 +66,8 @@ def fit_hist(sel, pullvar,bins='auto',fit_with_errors=False):
         err_coeff = [-1.,-1.,-1.]
         chi_square=9999.
         
-
-    return coeff,err_coeff,chi_square,ndof
+    outres = make_df(pullvar,list(coeff),list(err_coeff),chi_square,ndof,stat)
+    return outres
 
 def gauss(x, *p):
     """
@@ -86,3 +88,41 @@ def gauss(x, *p):
     """
     A, mu, sigma = p
     return A/(np.sqrt(2.*np.pi)*sigma)*np.exp(-(x-mu)**2/(2.*sigma**2))
+
+def make_df(pullvar,coeff,err_coeff,chi_square,ndof,stat):
+    """
+    Function to transform a set of result to a pandas df
+
+    Parameters
+    ----------
+    pullvar : str
+        var name.
+    coeff : list(float)
+        Fit coeffs.
+    err_coeff : list(float)
+        Fit coeff errors.
+    chi_square : float
+        chisq value.
+    ndof : int
+        ndof.
+    stat : list(float)
+        pull mean and std.
+
+    Returns
+    -------
+    res : pandas df
+        Output data.
+
+    """
+    
+    ra = [pullvar]+coeff+err_coeff+[chi_square,ndof]+stat
+
+    r = []
+    r.append(ra)    
+    res = pd.DataFrame(r,columns=['sn_param',
+                                  'A','mu','sigma',
+                                  'err_A','err_mu','err_sigma',
+                                  'chisq','ndof','pull_mean','pull_std'])
+    
+    return res
+    
