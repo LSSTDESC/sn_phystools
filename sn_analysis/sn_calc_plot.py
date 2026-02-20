@@ -124,8 +124,8 @@ def effi(resa, resb, xvar='z', bins=np.arange(0.01, 1.1, 0.02)):
 
     """
 
-    groupa = resa.groupby(pd.cut(resa[xvar], bins))
-    groupb = resb.groupby(pd.cut(resb[xvar], bins))
+    groupa = resa.groupby(pd.cut(resa[xvar], bins),observed=True)
+    groupb = resb.groupby(pd.cut(resb[xvar], bins),observed=True)
 
     effi = groupb.size()/groupa.size()
 
