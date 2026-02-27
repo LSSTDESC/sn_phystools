@@ -69,6 +69,14 @@ def fit_hist(sel, pullvar,bins='auto',fit_with_errors=False):
     outres = make_df(pullvar,list(coeff),list(err_coeff),chi_square,ndof,stat)
     return outres
 
+def fit_linear(x,y):
+    
+    p0=[0,1.]
+    coeff, var_matrix = curve_fit(lin,x,y, p0=p0)
+    
+    
+    return coeff, var_matrix
+
 def gauss(x, *p):
     """
     gaussian function
@@ -88,6 +96,28 @@ def gauss(x, *p):
     """
     A, mu, sigma = p
     return A/(np.sqrt(2.*np.pi)*sigma)*np.exp(-(x-mu)**2/(2.*sigma**2))
+
+def lin(x,*p):
+    """
+    Linear func
+
+    Parameters
+    ----------
+    x : float
+        x-axis values.
+    *p : list(float)
+        parameters.
+
+    Returns
+    -------
+    float
+        Result.
+
+    """
+    
+    a,b=p
+    
+    return a*x+b
 
 def make_df(pullvar,coeff,err_coeff,chi_square,ndof,stat):
     """
