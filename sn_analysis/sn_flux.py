@@ -8,7 +8,7 @@ Created on Thu Mar  5 13:19:36 2026
 import sncosmo
 from sn_telmodel.sn_throughputs import get_telescope
 import numpy as np
-from astropy.table import Table
+from astropy.table import Table,vstack
 import pandas as pd
 from sn_tools.sn_io import check_get_file
 from sn_tools.sn_cosmo_model import cosmo_wrapper
@@ -147,9 +147,10 @@ class SNflux:
         
         self.zp = zp
        
-        self.tmin = daymax-20*(1+z)
-        self.tmax = daymax+60*(1+z)
-        self.tstep = 0.5
+        tmin = daymax-20*(1+z)
+        tmax = daymax+60*(1+z)
+        tstep = 0.5
+        self.mjds = np.arange(tmin,tmax,tstep).tolist()
         
     def get_sn(self):
         """
@@ -167,8 +168,8 @@ class SNflux:
         if self.model == 'salt3':
            source._wave[0] = 1500.  # used to be 1700
            source._wave[-1] = 24990.
-           wave_min = 1500
-           wave_max = 24990
+           wave_min = 2701./(1.+self.z)
+           wave_max = 33333./(1.+self.z)
            
            
         self.wave = np.arange(wave_min, wave_max, 1.)
@@ -280,21 +281,22 @@ class SNflux:
             df_ = pd.DataFrame(flux.tolist(),columns=['flux'])
             df_['filter'] = 'LSST:'+b
             df_['time'] = lcb['time'].to_list()
-            
+            print(df_)
             lc_df = pd.concat((lc_df,df_))
         
-        self.plot_flux(lc_df,lc_data)
+        #self.plot_flux(lc_df,lc_data)
         
-        print(test)
+        lc_df['phase'] = (lc_df['time']-self.daymax)/(1.+self.z)
+        return lc_df
         
-    def complete_lc(self,lc_data):
+    def complete_lc(self,lc_data=None):
         """
         Method to complete lc_data with obs
 
         Parameters
         ----------
-        lc_data : astropy table
-            Data to process.
+        lc_data : astropy table, optional.
+            Data to process. The default is None.
 
         Returns
         -------
@@ -356,13 +358,11 @@ class SNflux:
             b_filt[fi] = bcols
             
         r = []
-         
-        tis = np.arange(self.tmin,self.tmax,self.tstep)
         
         df_lc = pd.DataFrame()
         for key,vals in b_filt.items():
             
-            df = pd.DataFrame(tis, columns=['time'])
+            df = pd.DataFrame(self.mjds, columns=['time'])
             df['band_cosmo'] = vals
             df['filter'] = key
             df['airmass'] = airmassb
@@ -429,7 +429,7 @@ class SNflux:
         
         for b in bands:
             fig, ax = plt.subplots()
-            idx = lc_flux['filter'] == 'LSST:'+b
+            idx = lc_flux['filter'] == b
             idx &= lc_flux['flux'] > 0.
             sel = lc_flux[idx]
             sel = sel.sort_values(by=['time'])
@@ -463,7 +463,34 @@ class SNflux:
          sed['wavelength'] = self.wave
          sed['fluxerr'] = 0.0
     
-         return sed        
+         idx = sed['wavelength'] >= 4500.
+         idx &= sed['wavelength'] <= 20000.
+         return Table(sed[idx])        
         
-        
+    def get_sed(self):
+        """
+        Method to estimate SN Ia SEDs for self.mjds 
+
+        Returns
+        -------
+        sed : list(astropy tables)
+            List of SEDs.
+
+        """
+       
+        sed = []
+        for io, mjd in enumerate(self.mjds):
+            phase = (mjd-self.daymax)/(1+self.z)
+            sedm = self.sn_sed_mjd(mjd)
+            metadata = {}
+            metadata['phase'] = np.round(phase,2)
+            metadata['mjd'] = mjd
+            tab = Table(sedm)
+            tab.meta = metadata
+            sed.append(tab)
+          
+        return sed
+         
+         
+         
         
