@@ -148,7 +148,7 @@ class SNflux:
         self.zp = zp
        
         tmin = daymax-20*(1+z)
-        tmax = daymax+60*(1+z)
+        tmax = daymax+45*(1+z)
         tstep = 0.5
         self.mjds = np.arange(tmin,tmax,tstep).tolist()
         
