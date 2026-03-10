@@ -483,7 +483,7 @@ class SNflux:
             phase = (mjd-self.daymax)/(1+self.z)
             sedm = self.sn_sed_mjd(mjd)
             metadata = {}
-            metadata['phase'] = np.round(phase,2)
+            metadata['phase'] = float(np.round(phase,2))
             metadata['mjd'] = mjd
             tab = Table(sedm)
             tab.meta = metadata
