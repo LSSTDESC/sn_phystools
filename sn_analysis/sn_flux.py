@@ -166,14 +166,16 @@ class SNflux:
         source = sncosmo.get_source(self.model, self.version)
         
         if self.model == 'salt3':
-           source._wave[0] = 1500.  # used to be 1700
-           source._wave[-1] = 24990.
-           wave_min = 2701./(1.+self.z)
-           wave_max = 33333./(1.+self.z)
+            wave_min = 1500.
+            wave_max = 24990.
+            source._wave[0] = wave_min  # used to be 1700
+            source._wave[-1] = wave_max
            
-           
-        self.wave = np.arange(wave_min, wave_max, 1.)
-        self.wave *= (1.+self.z)
+        wmin = wave_min*(1+self.z)
+        wmax = np.min([wave_max*(1+self.z),33333])
+        
+        self.wave = np.arange(wmin, wmax, 1.)
+        #self.wave *= (1.+self.z)
         
         dustmap = sncosmo.OD94Dust()
         sn = sncosmo.Model(source=source,
@@ -280,8 +282,11 @@ class SNflux:
         
             df_ = pd.DataFrame(flux.tolist(),columns=['flux'])
             df_['filter'] = 'LSST:'+b
+            df_['filter_notel'] = b
             df_['time'] = lcb['time'].to_list()
-            print(df_)
+            df_['zp'] = lcb['zp']
+            df_['zpsys'] = lcb['zpsys']
+            df_['mag'] = -2.5*np.log(df_['flux'])+df_['zp']
             lc_df = pd.concat((lc_df,df_))
         
         #self.plot_flux(lc_df,lc_data)
