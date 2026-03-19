@@ -214,7 +214,8 @@ def plot_effi_nsn(zz, effiInterp, effiInterp_err, nsn, nsn_err):
 
 
 def getRates(rate='Hounsell', survey_area=9.6, season_length=180.,
-             zmin=0.01, zmax=1.11, dz=0.01, H0=70., Om0=0.3):
+             zmin=0.01, zmax=1.11, dz=0.01, H0=70., Om0=0.3,
+             min_rf_phase=-10,max_rf_phase=35):
     """
     Function to estimate SNe Ia rate explosion
 
@@ -236,6 +237,10 @@ def getRates(rate='Hounsell', survey_area=9.6, season_length=180.,
         Hubble constant. The default is 70..
     Om0 : float, optional
         Om0 cosmological parameter. The default is 0.3.
+    min_rf_phase: float, optional
+        min rf phase. The default is -10.
+    max_rf_phase: float, optional
+        max rf phase. The default is +35.
 
     Returns
     -------
@@ -249,7 +254,8 @@ def getRates(rate='Hounsell', survey_area=9.6, season_length=180.,
     """
 
     rateSN = SN_Rate(rate=rate, H0=H0, Om0=Om0,
-                     min_rf_phase=-10., max_rf_phase=35.)
+                     min_rf_phase=min_rf_phase,
+                     max_rf_phase=max_rf_phase)
 
     # estimate the rates and nsn vs z
     zz, rate, err_rate, nsn, err_nsn, age_universe = rateSN(zmin=zmin,
