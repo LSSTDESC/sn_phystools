@@ -712,11 +712,11 @@ def recalc(df, cova='Cov_Om0_Om0_fit',
     return df
 
 
-def get_spline(df, xvar, yvar):
+def get_spline(df, xvar, yvar,nx=100):
 
-    from scipy.interpolate import make_interp_spline
-    xnew = np.linspace(np.min(df[xvar]), np.max(df[xvar]), 100)
-    spl = make_interp_spline(df[xvar], df[yvar], k=3)  # type: BSpline
+    from scipy.interpolate import make_smoothing_spline
+    xnew = np.linspace(np.min(df[xvar]), np.max(df[xvar]), nx)
+    spl = make_smoothing_spline(df[xvar], df[yvar])  # type: BSpline
     spl_smooth = spl(xnew)
 
     return xnew, spl_smooth
