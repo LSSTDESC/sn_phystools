@@ -781,7 +781,7 @@ def get_pulls(data):
     return res
 
 
-def fit_pull(sel, pullvar):
+def fit_pull(sel, pullvar,bins=20):
     """
     Function to fit the pulls using a gaussian fit
 
@@ -791,6 +791,8 @@ def fit_pull(sel, pullvar):
         Data to fit.
     pullvar : str
         variable to fit.
+    bins: int, optional
+        number of bins for the fit. The default is 20.
 
     Returns
     -------
@@ -799,9 +801,9 @@ def fit_pull(sel, pullvar):
 
     """
     from scipy.optimize import curve_fit
-    hist, bins = np.histogram(sel[pullvar], bins=50)
+    hist, bins = np.histogram(sel[pullvar], bins=bins)
     bin_centres = (bins[:-1] + bins[1:])/2
-    p0 = [np.max(hist), 0., 1.]
+    p0 = [np.max(hist), sel[pullvar].mean(), sel[pullvar].std()]
 
     try:
         coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
@@ -892,31 +894,52 @@ def pull_it(dfa):
     return df
 
 
-def histo_fit(sel, pullvar, fitgauss=True):
+def histo_fit(sel, var_name, fitgauss=True,bins=20):
+    """
+    Function to fit and display a histogram
+
+    Parameters
+    ----------
+    sel : pandas df
+        Data to fit.
+    var_name : str
+        varname.
+    fitgauss : bool, optional
+        To fit the histo with a gaussian. The default is True.
+    bins : int, optional
+        Nbins for the fit. The default is 20.
+
+    Returns
+    -------
+    None.
+
+    """
 
     fig, ax = plt.subplots()
-    figtitle = pullvar
-    fig.suptitle(pullvar)
-    print('fitting', pullvar, sel[pullvar])
+    figtitle = var_name
+    fig.suptitle(var_name)
+    print('fitting', var_name, sel[var_name])
 
-    # selb = pd.DataFrame(sel)
-    selb = sel_for_pull(sel, pullvar, nstd=3.)
+    selb = pd.DataFrame(sel)
+    #selb = sel_for_pull(sel, pullvar, nstd=5.)
 
-    ax.hist(selb[pullvar], histtype='step', bins=50)
+    ax.hist(selb[var_name], histtype='step', bins=bins)
 
     # Get the fitted curve
     if fitgauss:
-        coeff = fit_pull(selb, pullvar)
-        xmin = selb[pullvar].min()
-        xmax = selb[pullvar].max()
-        newbins = np.arange(xmin, xmax, 0.01)
+        coeff = fit_pull(selb, var_name,bins=bins)
+        print('resultat',coeff)
+        xmin = selb[var_name].min()
+        xmax = selb[var_name].max()
+        print(xmin,xmax,selb)
+        newbins = np.arange(xmin, xmax, 0.000001)
         hist_fit = gauss(newbins, *coeff)
         mean = np.round(coeff[1], 2)
-        sigma = np.round(coeff[2], 2)
-        leg = 'pull= {} +- {}'.format(mean, sigma)
+        sigma = np.round(coeff[2], 5)
+        leg = 'fit= {} +- {}'.format(mean, sigma)
         ax.plot(newbins, hist_fit, label=leg)
-        print('bbb', coeff[0], coeff[1], coeff[2])
-    print(figtitle, np.mean(selb[pullvar]), np.std(selb[pullvar]))
+       
+    print(figtitle, np.mean(selb[var_name]), np.std(selb[var_name]))
 
     ax.grid(visible=True)
     ax.legend()
