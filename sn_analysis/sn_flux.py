@@ -35,7 +35,8 @@ class SNflux:
                                         'de_eos','H0','Om0','Ode0','class_loc'],
                                        [dict(zip(['w0','wa'],[-1,0.])),
                                         'w0waCDM','CPL','w0+wa*z/(1+z)',
-                                        70.,0.3,0.7,'astropy.cosmology']))):
+                                        70.,0.3,0.7,'astropy.cosmology'])),
+                 phases_sed=[-10,0.,20]):
         """
         class to estimate SN Ia  flux vs time
 
@@ -151,6 +152,16 @@ class SNflux:
         tmax = daymax+45*(1+z)
         tstep = 0.5
         self.mjds = np.arange(tmin,tmax,tstep).tolist()
+        
+        mjds_from_ph = []
+        if phases_sed:
+            for ph in phases_sed:
+                mjd_ = ph*(1.+self.z)+daymax
+                mjds_from_ph.append(mjd_)
+            self.mjds_sed=mjds_from_ph
+        else:
+            self.mjds_sed=self.mjds
+            
         
     def get_sn(self):
         """
@@ -484,7 +495,7 @@ class SNflux:
         """
        
         sed = []
-        for io, mjd in enumerate(self.mjds):
+        for io, mjd in enumerate(self.mjds_sed):
             phase = (mjd-self.daymax)/(1+self.z)
             sedm = self.sn_sed_mjd(mjd)
             metadata = {}
