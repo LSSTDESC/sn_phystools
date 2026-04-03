@@ -812,6 +812,46 @@ def fit_pull(sel, pullvar,bins=20):
 
     return coeff
 
+def fit_lin(sel,varx,vary):
+    """
+    Function to fit using a linear fit
+
+    Parameters
+    ----------
+    sel : pandas df
+        Data to fit.
+    pullvar : str
+        variable to fit.
+    bins: int, optional
+        number of bins for the fit. The default is 20.
+
+    Returns
+    -------
+    coeff : list(float)
+        fitted values.
+
+    """
+    from scipy.optimize import curve_fit
+    
+    xmin = sel[varx].min()
+    xmax = sel[varx].max()
+    idx = sel[varx]==xmin
+    ymin = sel[idx][vary]
+    idx = sel[varx]==xmax
+    ymax = sel[idx][vary]
+    
+    a0 = (ymin-ymax)/(xmin-xmax)
+    b0 = ymin-a0*xmin
+    
+    
+    p0 = [a0,b0]
+
+    try:
+        coeff, var_matrix = curve_fit(lin, sel[varx],sel[vary],p0=p0)
+    except Exception:
+        coeff = [-1, -1]
+
+    return coeff
 
 def gauss(x, *p):
     """
@@ -832,6 +872,26 @@ def gauss(x, *p):
     """
     A, mu, sigma = p
     return A/np.sqrt(sigma)*np.exp(-(x-mu)**2/(2.*sigma**2))
+
+def lin(x, *p):
+    """
+    linear function 
+
+    Parameters
+    ----------
+    x : float
+        x values.
+    *p : list(float)
+        parameters.
+
+    Returns
+    -------
+    list(float)
+        function values.
+
+    """
+    a,b = p
+    return a*x+b
 
 
 def sel_for_pull(data, pullvar, nstd=3):
