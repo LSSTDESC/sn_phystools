@@ -156,3 +156,87 @@ def make_df(pullvar,coeff,err_coeff,chi_square,ndof,stat):
     
     return res
     
+def load_fit_atmos_data(theDir,atmos_params):
+    """
+    Function to load data (zp, mean_wave) vs sigma_atmos_params
+
+    Parameters
+    ----------
+    theDir : str
+        Data dir.
+    atmos_params : list(str)
+        List of atmospheric parameters.
+
+    Returns
+    -------
+    df_zp : pandas df
+        zp data.
+    df_wave : pandas df
+        mean wave data.
+
+    """
+    df_zp = pd.DataFrame()
+    df_wave = pd.DataFrame()
+    for atm in atmos_params:
+        fName = '{}/zp_atmos_{}.hdf5'.format(theDir,atm)
+        df = pd.read_hdf(fName)
+        for b in 'grizy':
+            df['std_zp_{}'.format(b)] *= 1000
+        df= df.round({'mean_airmass':2})
+        dfa = linfit_atmos(df,varxp=atm,
+                           vary_prefix='zp',
+                           airmass=[1.2,2.0],bands='grizy')
+        dfb = linfit_atmos(df,varxp=atm,
+                           vary_prefix='mean_wave',
+                           airmass=[1.2,2.0],bands='grizy')
+        df_zp = pd.concat((df_zp,dfa))
+        df_wave = pd.concat((df_wave,dfb))
+
+    return df_zp,df_wave
+
+def linfit_atmos(df,varxp='pwv',
+                 vary_prefix='zp',airmass=[1.2,2.0],bands='grizy'):
+    """
+    Function to perform a linear fit of zp/mean_wave vs atmos params
+
+    Parameters
+    ----------
+    df : pandas df
+        Data to fit.
+    varxp : str, optional
+        atmos parameter. The default is 'pwv'.
+    vary_prefix : str, optional
+        prefix obs (zp/mean_wave). The default is 'zp'.
+    airmass : list(float), optional
+        List of airmass values o consider. The default is [1.2,2.0].
+    bands : str, optional
+        Filters to consider. The default is 'grizy'.
+
+    Returns
+    -------
+    dfn : pandas df
+        output data.
+
+    """
+    
+    ro = []
+    #print(df.columns)
+    varx = 'sigma_{}'.format(varxp)
+    from sn_analysis.sn_tools import fit_lin
+    for airm in airmass:
+        idx = df['mean_airmass'] == airm
+        sel = pd.DataFrame(df[idx])
+        for b in bands:
+            yvar = 'std_{}_{}'.format(vary_prefix,b)
+            yvar_rel = 'std_{}_{}_rel'.format(vary_prefix,b)
+            sel[yvar_rel] = sel[yvar]/sel['mean_{}'.format(varxp)]
+            #print('fitting',sel[[varx,yvar,yvar_rel]])
+            res = list(fit_lin(sel,varx,yvar))
+            res += [b,airm]
+            ro.append(res)
+    dfn = pd.DataFrame(ro,columns=['slope','intercept','band','airmass'])
+    dfn['atmos_param'] = varxp
+    dfn['obs_param'] = vary_prefix
+    dfn['obs_param_value'] = df['mean_{}'.format(varxp)].mean()
+    dfn['sigma_max'] = df['{}'.format(varx)].max()
+    return dfn
