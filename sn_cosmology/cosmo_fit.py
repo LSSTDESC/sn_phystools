@@ -20,7 +20,7 @@ class CosmoFit(ABC):
                  cosmo_model='w0waCDM',
                  cosmo_default=dict(
                      zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])),
-                 prior=pd.DataFrame(), par_protect_fit=[]):
+                 prior=pd.DataFrame(), par_protect_fit=[],cosmodict={}):
         """
         Abstract class to estimate cosmoly parameters
 
@@ -58,6 +58,7 @@ class CosmoFit(ABC):
         self.cosmo_default = cosmo_default
         self.prior = prior
         self.par_protect_fit = par_protect_fit
+        self.cosmodict = cosmodict
 
     @ abstractmethod
     def fit_function(self,  parameters, fitparNames=[]):
@@ -358,11 +359,11 @@ class MyFit(CosmoFit):
                  cosmo_model='w0waCDM',
                  cosmo_default=dict(
                      zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])),
-                 prior=pd.DataFrame(), par_protect_fit=[]):
+                 prior=pd.DataFrame(), par_protect_fit=[],cosmodict={},):
         super().__init__(dataValues, dataNames, fitparNames,
                          cosmo_model,
                          cosmo_default,
-                         prior, par_protect_fit)
+                         prior, par_protect_fit,cosmodict)
 
         for i, vals in enumerate(dataNames):
             exec(
@@ -600,6 +601,14 @@ class MyFit(CosmoFit):
                             Ode0=1.-Om,
                             w0=w0, wa=wa)
 
+        return cosmology.distmod(z).value
+    
+    def mu_astro_new(self,z,cosmodict):
+        
+        from sn_tools.sn_cosmo_model import cosmo_wrapper
+        
+        cosmology = cosmo_wrapper(cosmodict)
+        
         return cosmology.distmod(z).value
 
     def set_sigmaInt(self, sigmaInt):

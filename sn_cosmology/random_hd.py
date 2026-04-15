@@ -26,7 +26,7 @@ class HD_random:
                             'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',
                             'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',
                             'mu_SN'],
-                 fitconfig={},
+                 fitconfig={},cosmodict_fit={},cosmodict_simu={},
                  par_protect_fit=['Om0'],
                  prior=pd.DataFrame({'varname': ['Om0'],
                                      'refvalue': [0.3], 'sigma': [0.0073]}),
@@ -70,6 +70,8 @@ class HD_random:
         self.par_protect_fit = par_protect_fit
         self.prior = prior
         self.test_mode = test_mode
+        self.cosmodict_fit = cosmodict_fit
+        self.cosmodict_simu = cosmodict_simu
 
     def __call__(self, data):
         """
@@ -114,7 +116,8 @@ class HD_random:
             fitparams = list(vals.values())
             myfit = MyFit(dataValues, dataValues_sigmaInt, self.dataNames,
                           fitparNames=fitparNames, prior=self.prior,
-                          par_protect_fit=self.par_protect_fit)
+                          par_protect_fit=self.par_protect_fit,
+                          cosmodict=self.cosmodict_fit)
 
             if 'sigmaInt' not in fitparNames:
                 # get sigmaInt
