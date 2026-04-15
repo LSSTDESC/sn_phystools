@@ -38,3 +38,4 @@ dbName_WFD baseline_v4.3.1_10yrs str #OS to consider - WFD
 yearmax 10 int #year max for cosmology measurements
 nproc 8 int #number of procs for multiprocessing
 outDir ../cosmo_fit_test str #output directory
+test_mode 0 int #to run in test mode
