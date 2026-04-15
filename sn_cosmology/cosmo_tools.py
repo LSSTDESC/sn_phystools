@@ -620,3 +620,85 @@ def transform(dicta):
         dictb[key] = [vals]
 
     return dictb
+
+def load_cosmo_params_from_script(cosmo_par):
+    """
+    Function to load cosmo parameters from script values
+
+    Parameters
+    ----------
+    cosmo_par : dict
+        cosmo parameters from script.
+
+    Returns
+    -------
+    params : dict
+        cosmo parameter dict.
+
+    """
+    
+    
+    de_values = cosmo_par['devalues'].split(',')
+    de_params = cosmo_par['deparams'].split(',')
+
+    de_values = list(map(float,de_values))
+    
+    params = {}
+    params['de_params'] = dict(zip(de_params,de_values))
+    params['de_class'] = cosmo_par['declass']
+    params['class_loc'] = cosmo_par['classloc']
+    params['de_model'] = cosmo_par['demodel']  
+    params['de_eos'] = cosmo_par['deeos']
+    params['H0'] = cosmo_par['H0']
+    params['Om0'] = cosmo_par['Om0']
+    params['Ode0'] = cosmo_par['Ode0']
+    
+    return params
+    
+def cosmo_dict(pp,txt='cosmofit_'):
+    """
+    Function to select and rename dict items
+
+    Parameters
+    ----------
+    pp : dict
+        original dict.
+    txt : str, optional
+        substr to search/remove. The default is 'cosmofit_'.
+
+    Returns
+    -------
+    res : dict
+        Final dict.
+
+    """
+    
+    res = dict(filter(lambda item: txt in item[0],pp.items()))
+    res = {key.split(txt)[-1]:value for key, value in res.items()}
+    
+    return res
+
+def make_df(ddict):
+    """
+    Function to transform a dict to pandas df
+
+    Parameters
+    ----------
+    ddict : dict
+        Data to process.
+
+    Returns
+    -------
+    res_df : pandas df
+        output data.
+
+    """
+
+    res_df = pd.DataFrame()
+    # fitted values in a df
+    for key, vals in ddict.items():
+        res = pd.DataFrame.from_dict(transform(vals))
+        res['config'] = [key]
+        res_df = pd.concat((res, res_df))
+
+    return res_df
