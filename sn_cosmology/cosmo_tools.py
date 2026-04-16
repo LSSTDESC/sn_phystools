@@ -431,7 +431,7 @@ def clean_survey(data, var='SNID', test_mode=False):
 
     idx = data[var].isin(snids_dup)
     df_dup = data[idx]
-    df_dup = df_dup.groupby([var]).apply(lambda x: add_survey(x))
+    df_dup = df_dup.groupby([var]).apply(lambda x: add_survey(x),include_groups=False)
 
     if len(df_dup) > 0 and test_mode:
         print("duplicate", df_dup[[var, 'survey']])
