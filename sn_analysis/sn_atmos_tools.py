@@ -173,7 +173,6 @@ def get_obs_values(grp,sigma):
 
     """
     
-    print(grp.name)
     atmos_param = grp.name[2]
     sigmas = sigma[atmos_param]
     
@@ -240,16 +239,13 @@ def process_obs_data(df_zp,sigma,atmos_params,do_combi=False):
     cols = ['band', 'airmass', 'atmos_param', 'obs_param']
     df_values = interp_zp.groupby(cols).apply(lambda x: get_obs_values(x,sigma),include_groups=False).reset_index()
 
-    print(df_values)
 
     if do_combi:
         combis = df_values.groupby(['band','airmass','obs_param']).apply(lambda x:make_combi(x),include_groups=False).reset_index()
     else:
         ccols = ['band','airmass','config']
         combis = df_values.groupby(ccols).apply(lambda x:transform(x),include_groups=False).reset_index()
-        #return combis
-    
-    print(combis)
+        
 
     #estimate sigma_tot
 
@@ -260,7 +256,6 @@ def process_obs_data(df_zp,sigma,atmos_params,do_combi=False):
     
     combis['sigma_tot'] = np.sqrt(combis['sigma_tot'])
 
-    print(combis)
 
     return combis
 
@@ -331,7 +326,6 @@ def merge_zp_wave(combi_zp,combi_wave,atmos_params):
     for atm in atmos_params:
         ccols += ['sigma_{}'.format(atm)]
         
-    print('alalala',ccols)
     combi_tot = combi_zp.merge(combi_wave,left_on=ccols,right_on=ccols)
         
     print(combi_tot.columns)    
