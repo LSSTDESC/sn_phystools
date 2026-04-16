@@ -153,3 +153,65 @@ def calc_combi(grp):
     res =res.round(decimals=4)
    
     return res
+
+def get_obs_values(grp,sigma):
+    """
+    To estimate sigmas of obs params (zp or mean_wave) 
+    for sigma values of atmos params
+
+    Parameters
+    ----------
+    grp : pandas df
+        Data to process.
+    sigma : dict(str,array(float))
+        sigma_atmos_param value.
+
+    Returns
+    -------
+    df : pandas df
+        Output data.
+
+    """
+    
+    print(grp.name)
+    atmos_param = grp.name[2]
+    sigmas = sigma[atmos_param]
+    
+    interp = grp['interp'].values[0]
+    
+    res = interp(sigmas)
+    
+    df = pd.DataFrame(res,columns=['sigma_obs_param'])
+    
+    df['sigma_atmos_param'] = sigmas
+    
+    return df
+
+def rename(dfa,atmos_params):
+    """
+    function to perform some renaming
+
+    Parameters
+    ----------
+    dfa : pandas df
+        Data to process.
+    atmos_params: list(str)
+        List of atmos parameters.
+
+    Returns
+    -------
+    df : pandas df
+        Output data.
+
+    """
+    
+    df = pd.DataFrame(dfa)
+    obs_param = df['obs_param'].unique()[0]
+    for atm in atmos_params:
+        vvara = 'sigma_obs_param_{}'.format(atm)
+        vvarb = 'sigma_{}_{}'.format(obs_param,atm)
+        df = df.rename(columns={vvara:vvarb})
+    
+    df = df.rename(columns={'sigma_tot':'sigma_{}_tot'.format(obs_param)})
+    
+    return df
