@@ -23,7 +23,8 @@ class Gen_Surveys:
                         'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',
                         'field', 'healpixID', 'year', 'Cov_t0t0', 'x0_fit',
                         'Cov_x0x0', 'Cov_x0x1', 'Cov_x0color', 'x0', 'x1',
-                        'color', 'SNID', 'season_length', 'survey_area']):
+                        'color', 'SNID', 'season_length', 'survey_area',
+                        'chisq','ndof']):
         """
         class to generate random SN surveys (with spectroscopic scenarios)
 
