@@ -49,8 +49,7 @@ def get_interp(grp):
         table of interpolators.
 
     """
-    
-    
+     
     a = grp['slope'].values[0]
     b = grp['intercept'].values[0]
     xmin = 0.
@@ -368,4 +367,135 @@ def transform(grp):
     
     res = pd.DataFrame([values],columns=cols)
     res['obs_param'] = obs_param
+    return res
+
+def add_index_band(df,bands='grizy'):
+    """
+    Function to add an index corresponding to filters
+
+    Parameters
+    ----------
+    df : pandas df
+        input data.
+    bands: str, optional.
+        list of bands to consider. The default is 'grizy'
+        
+
+    Returns
+    -------
+    df : pandas df
+        orig data plus index col.
+
+    """
+    
+    indx = range(len(bands))
+    df_index = pd.DataFrame(list(bands),columns=['band'])
+    df_index['index'] = indx
+    
+    df = df.merge(df_index,left_on=['band'],right_on=['band'])
+    
+    df = df.sort_values(by=['index'])
+    
+    return df
+
+def get_str(df,atmos_params=['airmass','ozone','aerosol','pwv']):
+    """
+    Function to transform a set of df parameters to a string.
+
+    Parameters
+    ----------
+    df : pandas df
+        Data to consider.
+    atmos_params : list(str), optional
+        List of columns of interest. The default is ['airmass','ozone','aerosol','pwv'].
+
+    Returns
+    -------
+    str_ : str
+        Output string.
+
+    """
+    
+    str_ = '('
+    for i,vv in enumerate(atmos_params):
+        val = df[vv].values[0]
+        if val < 1:
+            str_ += '{:.0e}'.format(val)
+        else:
+            str_ += '{}'.format(val)
+        if i < len(atmos_params)-1:
+            str_+= ','
+        else:
+            str_ += ')'
+    
+    return str_
+
+def add_legend(ax,airmass):
+    """
+    Add legend related to airmass
+
+    Parameters
+    ----------
+    ax : matplotlib axis
+        axis for the plot.
+    airmass : list(float)
+        list of airmass values.
+
+    Returns
+    -------
+    None.
+
+    """
+    
+    x_trans=0.25
+    y_trans = 1.02
+    ax.annotate('', xy=(x_trans+0.,y_trans+0.01), 
+                xycoords='axes fraction', xytext=(x_trans+0.05, y_trans+0.01),
+                arrowprops=dict(arrowstyle="-", color='k'))
+    ax.text(x_trans+0.055,y_trans,'airmass={}'.format(airmass[0]),
+            fontsize=12,transform=ax.transAxes)
+    ax.annotate('', xy=(x_trans+0.2,y_trans+0.01), xycoords='axes fraction',
+                xytext=(x_trans+0.25, y_trans+0.01),
+               arrowprops=dict(arrowstyle="-", color='k',linestyle='dotted'))
+    ax.text(x_trans+0.255,y_trans,'airmass={}'.format(airmass[1]),
+            fontsize=12,transform=ax.transAxes)
+
+def get_sigmas_atmos(grp,sigmas=[0.5,1.,2.,5.]):
+    """
+    Function to estimate sigma_atmos from interpolator using sigma_zp_atmos as input
+
+    Parameters
+    ----------
+    grp : pandas df
+        Data to ptocess.
+    sigmas : list(float), optional
+        List of sigma_zp_atmos. The default is [0.5,1.,2.,5.].
+
+    Returns
+    -------
+    res : pandas df
+        resulting sigma_atmos.
+
+    """
+
+    a = grp['slope'].values[0]
+    b = grp['intercept'].values[0]
+    
+    from scipy.interpolate import interp1d
+    import numpy as np
+    
+    sigma_ = np.arange(0.,10,0.001)
+    rr = sigma_/a-b/a
+    
+    interp = interp1d(sigma_,rr,bounds_error=False, fill_value=0.)
+    
+    vv = interp(sigmas)
+    
+    sigma_col = 'sigma_obs_param'
+    res = pd.DataFrame(sigmas,columns=[sigma_col])
+    
+    atm_col = 'sigma_atmos_param'
+    
+    res[atm_col] = vv
+    
     return res
