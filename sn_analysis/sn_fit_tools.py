@@ -237,6 +237,6 @@ def linfit_atmos(df,varxp='pwv',
     dfn = pd.DataFrame(ro,columns=['slope','intercept','band','airmass'])
     dfn['atmos_param'] = varxp
     dfn['obs_param'] = vary_prefix
-    dfn['obs_param_value'] = df['mean_{}'.format(varxp)].mean()
+    dfn['atmos_param_value'] = df['mean_{}'.format(varxp)].mean()
     dfn['sigma_max'] = df['{}'.format(varx)].max()
     return dfn
