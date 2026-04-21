@@ -5,7 +5,7 @@ dataDir_WFD ../Output_SN_WFD_sigmaInt_0.0_Hounsell_G10_JLA str #data dir WFD
 dbName_WFD baseline_v3.0_10yrs str #db name WFD
 selconfig G10_JLA str #sel config
 outName cosmo_fit str #output file name
-surveyFile input/cosmology/scenarios/survey_scenario.csv str #survey to use
+surveyFile input/cosmology/scenarios/survey_scenario_spectroz_TiDES_5.csv str #survey to use
 #lookup_survey input/cosmology/scenarios/lookup_survey.csv str #lookup table for scenarios
 hosteffiDir input/cosmology/host_effi str #host effi dir
 footprintDir input/cosmology/footprints str #footprint dir
