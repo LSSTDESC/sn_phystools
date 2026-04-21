@@ -12,6 +12,7 @@ from sn_cosmology.cosmo_tools import load_footprints, load_host_effi
 from sn_cosmology.cosmo_tools import load_data_season, random_LSST
 from sn_cosmology.cosmo_tools import clean_survey, analyze_survey
 from sn_cosmology.cosmo_tools import get_seasons, dump_survey_season
+from sn_cosmology.cosmo_tools import load_cosmo_params_from_script
 from sn_cosmology.random_hd import Random_survey
 from sn_tools.sn_utils import multiproc
 
@@ -61,11 +62,17 @@ class Gen_Surveys:
         # simu infos
         self.load_simu_infos()
 
+        #load cosmology parameters
+        cosmo_params = load_cosmo_params_from_script(param)
+        
+        print('hello',cosmo_params)
+
         # init random_survey
 
         self.rand_survey = Random_survey(self.survey,
                                          self.footprints, param['timescale'],
                                          param['sigmaInt'], self.host_effi,
+                                         cosmo_params,
                                          H0=param['H0'],
                                          Om0=param['Om0'],
                                          Ode0=param['Ode0'],

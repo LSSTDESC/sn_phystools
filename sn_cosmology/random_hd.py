@@ -1068,7 +1068,7 @@ class Fit_surveys:
 
 class Random_survey:
     def __init__(self, survey, footprints,
-                 timescale, sigmaInt, host_effi,
+                 timescale, sigmaInt, host_effi,cosmo_params,
                  H0=70, Om0=0.3, Ode0=0.7,
                  w0=-1., wa=0.0, alpha=0.13, beta=3.1,
                  low_z_optimize=True, plot_test=False, test_mode=False):
@@ -1087,6 +1087,8 @@ class Random_survey:
             sigma_int parameter.
         host_effi : interp1D
             Host-z efficiency.
+        cosmo_params: dict
+            parameters for cosmology
         H0 : float, optional
             H0 parameter. The default is 70.
         Om0 : float, optional
@@ -1128,6 +1130,13 @@ class Random_survey:
         self.plot_test = plot_test
         self.test_mode = test_mode
 
+        #instance of cosmology here
+        from sn_tools.sn_cosmo_model import cosmo_wrapper
+        
+        self.cosmology = cosmo_wrapper(cosmo_params)
+        
+        
+        
     def __call__(self, data_survey, seas):
         """
         Method to build sn sample
@@ -1526,11 +1535,12 @@ class Random_survey:
         ax.errorbar(df['z_fit'], df[yvar], yerr=df['{}_std'.format(yvar)],
                     marker='o', color='k', mfc='None', ms=5)
 
+        """
         from astropy.cosmology import w0waCDM
         cosmo = w0waCDM(H0=H0, Om0=Om0, Ode0=Ode0, w0=w0, wa=wa)
-
+        """
         bins = np.arange(df['z_fit'].min(), 1.1, 0.02)
-        f = cosmo.distmod(bins).value
+        f = self.cosmology.distmod(bins).value
 
         ax.plot(bins, f, 'bs', ms=5)
 
@@ -1719,10 +1729,11 @@ class Random_survey:
         """
 
         from random import gauss
+        """
         from astropy.cosmology import w0waCDM
         cosmo = w0waCDM(H0=self.H0, Om0=self.Om0,
                         Ode0=self.Ode0, w0=self.w0, wa=self.wa)
-
+        """
         from sn_analysis.sn_tools import complete_df
 
         data = complete_df(data, self.alpha, self.beta)
@@ -1740,7 +1751,7 @@ class Random_survey:
             sigmu = np.sqrt(sigmu)
         """
         bins = data['z_fit'].to_list()
-        dist_mu = cosmo.distmod(bins).value
+        dist_mu = self.cosmology.distmod(bins).value
 
         # sigmu = np.sqrt(var_mu).to_list()
         # sigma_mu = [np.sqrt(sigmu[i]**2+self.sigmaInt**2)
