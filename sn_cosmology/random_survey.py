@@ -64,8 +64,6 @@ class Gen_Surveys:
 
         #load cosmology parameters
         cosmo_params = load_cosmo_params_from_script(param)
-        
-        print('hello',cosmo_params)
 
         # init random_survey
 
