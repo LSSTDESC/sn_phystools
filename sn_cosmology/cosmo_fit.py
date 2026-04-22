@@ -13,10 +13,12 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from astropy.cosmology import w0waCDM
 from scipy import optimize
-
+from sn_tools.sn_cosmo_model import cosmo_wrapper
 
 class CosmoFit(ABC):
-    def __init__(self, dataValues, dataNames, fitparNames=['w0', 'wa', 'Om0'],
+    def __init__(self, dataValues, dataNames, 
+                 fitparNames=['w0', 'wa', 'Om0'],
+                 fitcosmo_params=['w0','wa','Om0'],
                  cosmo_model='w0waCDM',
                  cosmo_default=dict(
                      zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])),
@@ -32,8 +34,10 @@ class CosmoFit(ABC):
             corresponding list names.
         fitparNames : str, optional
             List of parameters to fit. The default is ['w0','wa','Om0'].
-        cosmo_model : str, optional
-            Name of the cosmology model. The default is 'w0waCDM'.
+        fitcosmo_params : str, optional
+            List of cosmo parameters to fit. The default is ['w0','wa','Om0'].
+        #cosmo_model : str, optional
+        #    Name of the cosmology model. The default is 'w0waCDM'.
         cosmo_default : dict, optional
             Default values for the cosmology model.
             The default is dict(zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])).
@@ -42,6 +46,8 @@ class CosmoFit(ABC):
         par_protect_fit : list(str), optional
             List of fit parameters that have to be protected (example: Om0 > 0)
             The default is [].
+        cosmodict: dict, optional.
+            cosmology model and parameters. The default is {}.
 
         Returns
         -------
@@ -55,6 +61,7 @@ class CosmoFit(ABC):
         self.h = 1.e-7
         self.fitparNames = fitparNames
         self.cosmo_model = cosmo_model
+        self.fitcosmo_params = fitcosmo_params
         self.cosmo_default = cosmo_default
         self.prior = prior
         self.par_protect_fit = par_protect_fit
@@ -98,7 +105,7 @@ class CosmoFit(ABC):
         """
         pass
 
-    def updating_a_parameter(self, i_par, i_list, *parameters):
+    def updating_a_parameter_deprecated(self, i_par, i_list, *parameters):
         '''
         Updates a parameter by an small amount and calculates the Xisquare
         for this change for the change. Does this following a sequence.
@@ -162,7 +169,7 @@ class CosmoFit(ABC):
             D[i] = self.xi_square(*parameters)
         return D
 
-    def diff_Xi2_twice(self, i_par, *parameters):
+    def diff_Xi2_twice_deprecated(self, i_par, *parameters):
         '''
         Calculate the double derivative of Xi_square.
         Parameters
@@ -183,7 +190,7 @@ class CosmoFit(ABC):
 
         return Diff
 
-    def diff_Xi2_didj(self, i_par, j_par, *parameters):
+    def diff_Xi2_didj_deprecated(self, i_par, j_par, *parameters):
         '''
         Calculate the cross derivative of Xi_square.
         Parameters
@@ -208,7 +215,7 @@ class CosmoFit(ABC):
         Diff = (D[0]+D[1]-D[2]-D[3])/(4*(self.h**2))
         return Diff
 
-    def fisher(self, *parameters):
+    def fisher_deprecated(self, *parameters):
         '''
         Calculate the fisher function.
         Parameters
@@ -230,7 +237,7 @@ class CosmoFit(ABC):
                     F[i, j] = 0.5*self.diff_Xi2_didj(i, j, *parameters)
         return F
 
-    def covariance_fisher(self, parameters):
+    def covariance_fisher_deprecated(self, parameters):
         '''
         Calculate the covariance matrix from the fisher matrix
         Parameters
@@ -253,7 +260,7 @@ class CosmoFit(ABC):
 
         return dict_out
 
-    def fisher_uncertainty_matrix(self, *parameters):
+    def fisher_uncertainty_matrix_deprecated(self, *parameters):
         '''
         Calculate the uncertainty matrix from the fisher matrix
         Parameters
@@ -287,6 +294,7 @@ class CosmoFit(ABC):
 
         m = Minuit(self.ln_likelihood, *parameters,
                    name=self.fitparNames)
+
         m.errordef = Minuit.LIKELIHOOD
         if self.par_protect_fit:
             for vv in self.par_protect_fit:
@@ -356,11 +364,13 @@ def fom(cov_a, cov_b, cov_ab, deltaXi2=6.17):
 class MyFit(CosmoFit):
     def __init__(self, dataValues, dataValues_for_sigmaInt,
                  dataNames, fitparNames=['w0', 'wa', 'Om0'],
+                 fitcosmo_params=['w0','wa','Om0'],
                  cosmo_model='w0waCDM',
                  cosmo_default=dict(
                      zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])),
                  prior=pd.DataFrame(), par_protect_fit=[],cosmodict={},):
         super().__init__(dataValues, dataNames, fitparNames,
+                         fitcosmo_params,
                          cosmo_model,
                          cosmo_default,
                          prior, par_protect_fit,cosmodict)
@@ -386,10 +396,6 @@ class MyFit(CosmoFit):
             parameters given.
         '''
 
-        # instance of the cosmology model
-        to_import = 'from astropy.cosmology import {}'.format(self.cosmo_model)
-        exec(to_import)
-
         import copy
         # set default parameters
         parDict = copy.deepcopy(self.cosmo_default)
@@ -398,24 +404,83 @@ class MyFit(CosmoFit):
 
         if len(parameters) > 0:
             # for i, val in enumerate(self.fitparNames):
-            for vv in ['w0', 'wa', 'Om0']:
+            #for vv in ['w0', 'wa', 'Om0']:
+            for vv in self.fitcosmo_params:
                 try:
                     ind = self.fitparNames.index(vv)
                     parDict[vv] = parameters[ind]
                 except Exception:
                     continue
 
+        f = self.distmod(parDict)
+        
+        del parDict
+        return f
+
+    def distmod(self,parDict):
+        """
+        Function to estimate distance modulus
+
+        Parameters
+        ----------
+        parDict : dict
+            cosmo parameter values.
+
+        Returns
+        -------
+        f : array
+            èdictance moduli.
+
+        """
+        
+        import copy
+        cos_dict = copy.deepcopy(self.cosmodict)
+        
+        for vv in self.fitcosmo_params:
+            if vv in self.cosmodict.keys():
+                cos_dict[vv] = parDict[vv]
+                
+        for key, values in self.cosmodict['de_params'].items():
+            if key in self.fitcosmo_params:
+                cos_dict['de_params'][key] = parDict[key]
+
+        
+        cosmo = cosmo_wrapper(cos_dict)
+        
+        f = cosmo.distmod(self.z.to_list()).value
+        
+        del cos_dict
+        
+        return f
+    
+    def distmod_old(self,parDict):
+        """
+        Function to estimate distance moduli
+
+        Parameters
+        ----------
+        parDict : dict
+            cosmo parameter values.
+
+        Returns
+        -------
+        f : array(float)
+            distance moduli.
+
+        """
+        # instance of the cosmology model
+        to_import = 'from astropy.cosmology import {}'.format(self.cosmo_model)
+        exec(to_import)
+        
         cosmo = eval(
             '{}(H0=70, Om0={}, Ode0=0.7,w0={}, wa={})'.format(self.cosmo_model,
                                                               parDict['Om0'],
                                                               parDict['w0'],
                                                               parDict['wa']))
-
         f = cosmo.distmod(self.z.to_list()).value
-        self.h = np.max(f) * (10**-8)
 
         return f
-
+    
     def ln_likelihood(self, *parameters):
         '''
         log(likelihood) to minimize
@@ -431,7 +496,6 @@ class MyFit(CosmoFit):
             ln(likelihood).
 
         '''
-
         X_mat, denom, nsn = self.xi_square(*parameters)
 
         ln_likelihood = X_mat

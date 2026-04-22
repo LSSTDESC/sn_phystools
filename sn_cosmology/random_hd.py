@@ -26,7 +26,7 @@ class HD_random:
                             'Cov_x1color', 'Cov_colorcolor', 'Cov_mbmb',
                             'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu',
                             'mu_SN'],
-                 fitconfig={},cosmodict_fit={},cosmodict_simu={},
+                 fitconfig={},fitcosmo_params=[],cosmodict={},
                  par_protect_fit=['Om0'],
                  prior=pd.DataFrame({'varname': ['Om0'],
                                      'refvalue': [0.3], 'sigma': [0.0073]}),
@@ -47,6 +47,10 @@ class HD_random:
                             'Cov_x1mb', 'Cov_colormb', 'mu', 'sigma_mu'].
         fitconfig : dict, optional
             configuration dict for the fit. The default is {}.
+        fitcosmo_params: list(str), optional.
+            list of cosmo params to fit
+        cosmodict: dict, optional.
+            dict for cosmology model/parameters. The default is {}.
         par_protect_fit : list(str), optional
             List of fit parameters to protect. The default is ['Om0'].
         prior : pandas df, optional
@@ -67,11 +71,11 @@ class HD_random:
         self.varcompl = varcompl
         self.dataNames = dataNames
         self.fitconfig = fitconfig
+        self.fitcosmo_params = fitcosmo_params
         self.par_protect_fit = par_protect_fit
         self.prior = prior
         self.test_mode = test_mode
-        self.cosmodict_fit = cosmodict_fit
-        self.cosmodict_simu = cosmodict_simu
+        self.cosmodict= cosmodict
 
     def __call__(self, data):
         """
@@ -90,9 +94,11 @@ class HD_random:
         """
 
         dataValues = [data[key] for key in self.vardf]
+        """
         par_protect_fit = ['Om0']
         par_protect_fit = []
         r = []
+        """
         # r = [('Om0', 0.3, 0.0073)]
         """
         r.append(('sigmaInt', 0.12, 0.01))
@@ -115,9 +121,11 @@ class HD_random:
             fitparNames = list(vals.keys())
             fitparams = list(vals.values())
             myfit = MyFit(dataValues, dataValues_sigmaInt, self.dataNames,
-                          fitparNames=fitparNames, prior=self.prior,
+                          fitparNames=fitparNames, 
+                          fitcosmo_params=self.fitcosmo_params,
+                          prior=self.prior,
                           par_protect_fit=self.par_protect_fit,
-                          cosmodict=self.cosmodict_fit)
+                          cosmodict=self.cosmodict)
 
             if 'sigmaInt' not in fitparNames:
                 # get sigmaInt
