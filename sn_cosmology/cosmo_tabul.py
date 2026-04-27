@@ -104,7 +104,9 @@ class Cosmo_tabul:
         
         #outName = '{}_{}.hdf5'.format(params['outName'],params['demodel'])
         
-        outName = self.params['outName']
+        outName = ''
+        if 'outName' in self.params.keys():
+            outName = self.params['outName']
         if outName != '':
             df_tot.to_hdf(outName,key='distmod')
 

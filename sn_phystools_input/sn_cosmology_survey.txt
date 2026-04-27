@@ -39,3 +39,9 @@ yearmax 10 int #year max for cosmology measurements
 nproc 8 int #number of procs for multiprocessing
 outDir ../cosmo_fit_test str #output directory
 test_mode 0 int #to run in test mode
+#this is to estimate tabulated distmod values
+cosmofitparams w0,wa,Om0 str #cosmo params to fit
+cosmofitparams_min -0.5,-3.,0.2 str #min val of cosmo parameters
+cosmofitparams_max 0.,-1.,0.4 str #max val of cosmo parameters
+cosmofitparams_delta 0.1,0.1,0.05 str #delta val of cosmo parameters
+distmod_from_tabul 0 int #to estimate distmod values from imterpolator
