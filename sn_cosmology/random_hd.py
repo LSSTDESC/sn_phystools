@@ -30,7 +30,7 @@ class HD_random:
                  par_protect_fit=['Om0'],
                  prior=pd.DataFrame({'varname': ['Om0'],
                                      'refvalue': [0.3], 'sigma': [0.0073]}),
-                 test_mode=0):
+                 test_mode=0,distmod_interp=None):
         """
         Class to perform cosmological fits
 
@@ -60,6 +60,8 @@ class HD_random:
                           'sigma':[0.0073]}).
          test_mode: int, optional.
           To activate the program in test mode. The default is 0.
+        distmod_interp: RegularGrid_interpolator, optional.
+          to estimate distance moduli from interpolator
 
         Returns
         -------
@@ -76,6 +78,7 @@ class HD_random:
         self.prior = prior
         self.test_mode = test_mode
         self.cosmodict= cosmodict
+        self.distmod_interp = distmod_interp
 
     def __call__(self, data):
         """
@@ -125,7 +128,8 @@ class HD_random:
                           fitcosmo_params=self.fitcosmo_params,
                           prior=self.prior,
                           par_protect_fit=self.par_protect_fit,
-                          cosmodict=self.cosmodict)
+                          cosmodict=self.cosmodict,
+                          distmod_interp=self.distmod_interp)
 
             if 'sigmaInt' not in fitparNames:
                 # get sigmaInt

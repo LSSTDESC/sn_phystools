@@ -22,7 +22,8 @@ class CosmoFit(ABC):
                  cosmo_model='w0waCDM',
                  cosmo_default=dict(
                      zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])),
-                 prior=pd.DataFrame(), par_protect_fit=[],cosmodict={}):
+                 prior=pd.DataFrame(), 
+                 par_protect_fit=[],cosmodict={},distmod_interp=None):
         """
         Abstract class to estimate cosmoly parameters
 
@@ -48,7 +49,8 @@ class CosmoFit(ABC):
             The default is [].
         cosmodict: dict, optional.
             cosmology model and parameters. The default is {}.
-
+        distmod_interp: RegularGrid interpolator, optional.
+            grid interp for distmod estimation. The default is None
         Returns
         -------
         None.
@@ -66,6 +68,7 @@ class CosmoFit(ABC):
         self.prior = prior
         self.par_protect_fit = par_protect_fit
         self.cosmodict = cosmodict
+        self.distmod_interp = distmod_interp
 
     @ abstractmethod
     def fit_function(self,  parameters, fitparNames=[]):
@@ -368,12 +371,13 @@ class MyFit(CosmoFit):
                  cosmo_model='w0waCDM',
                  cosmo_default=dict(
                      zip(['w0', 'wa', 'Om0'], [-1.0, 0.0, 0.3])),
-                 prior=pd.DataFrame(), par_protect_fit=[],cosmodict={},):
+                 prior=pd.DataFrame(), par_protect_fit=[],cosmodict={},
+                 distmod_interp=None):
         super().__init__(dataValues, dataNames, fitparNames,
                          fitcosmo_params,
                          cosmo_model,
                          cosmo_default,
-                         prior, par_protect_fit,cosmodict)
+                         prior, par_protect_fit,cosmodict,distmod_interp)
 
         for i, vals in enumerate(dataNames):
             exec(
@@ -396,10 +400,16 @@ class MyFit(CosmoFit):
             parameters given.
         '''
 
+        """
         import copy
         # set default parameters
+        print('allo',self.cosmodict)
         parDict = copy.deepcopy(self.cosmo_default)
-
+        """
+        
+        parDict = {}
+        for vv in self.fitcosmo_params:
+            parDict[vv] = self.cosmodict[vv]
         # change the parameters that have to be changes
 
         if len(parameters) > 0:
@@ -447,11 +457,44 @@ class MyFit(CosmoFit):
         
         cosmo = cosmo_wrapper(cos_dict)
         
-        f = cosmo.distmod(self.z.to_list()).value
+        if self.distmod_interp is not None:
+            f = self.distmod_from_interp(parDict)    
+        else:
+            cosmo = cosmo_wrapper(cos_dict)
+            f = cosmo.distmod(self.z.to_list()).value
         
         del cos_dict
         
         return f
+    
+    def distmod_from_interp(self,parDict):
+        """
+        Method to estimate dismod values from interpolator
+
+        Parameters
+        ----------
+        parDict : dict
+            Parameter values.
+
+        Returns
+        -------
+        res : array(float)
+            distance moduli.
+
+        """
+        
+        zv = self.z.to_list()
+        
+        di = pd.DataFrame(zv,columns=['z'])
+        
+        for vv in self.fitcosmo_params:
+            di[vv] = parDict[vv]
+            
+        ccols = self.fitcosmo_params+['z']  
+        res = self.distmod_interp(di[ccols])
+        
+        return res
+        
     
     def distmod_old(self,parDict):
         """
