@@ -317,7 +317,10 @@ class CosmoFit(ABC):
         for i, vala in enumerate(self.fitparNames):
             for j, valb in enumerate(self.fitparNames):
                 if j <= i:
-                    dict_out['Cov_{}_{}_fit'.format(vala, valb)] = cov[i, j]
+                    if cov is not None:
+                        dict_out['Cov_{}_{}_fit'.format(vala, valb)] = cov[i, j]
+                    else:
+                        dict_out['Cov_{}_{}_fit'.format(vala, valb)] = -1
 
         return dict_out
 
