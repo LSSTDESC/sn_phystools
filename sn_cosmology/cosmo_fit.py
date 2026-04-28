@@ -460,6 +460,7 @@ class MyFit(CosmoFit):
         if self.distmod_interp is not None:
             f = self.distmod_from_interp(parDict)    
         else:
+            cos_dict['Ode0'] = 1.-cos_dict['Om0']
             cosmo = cosmo_wrapper(cos_dict)
             f = cosmo.distmod(self.z.to_list()).value
         

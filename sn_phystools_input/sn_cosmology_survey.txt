@@ -44,3 +44,5 @@ cosmofitparams_min -0.5,-3.,0.2 str #min val of cosmo parameters
 cosmofitparams_max 0.,-1.,0.4 str #max val of cosmo parameters
 cosmofitparams_delta 0.1,0.1,0.05 str #delta val of cosmo parameters
 distmod_from_tabul 0 int #to estimate distmod values from imterpolator
+distmod_tabul_file distmod_tabul_oscilla.hdf5 str #tabulated values of distmod
+distmod_tabul_dir ../distmod_tabul str #dir of tabulated values of distmod

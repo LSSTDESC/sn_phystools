@@ -12,7 +12,7 @@ from sn_tools.sn_utils import multiproc
 from sn_cosmology.cosmo_tools import load_cosmo_params_from_script
 from sn_tools.sn_cosmo_model import cosmo_wrapper
 
-__all__ = ['Cosmo_tabul','check_interp_new']
+__all__ = ['Cosmo_tabul','check_interp']
 
 class Cosmo_tabul:
     def __init__(self,params):
@@ -146,7 +146,9 @@ class Cosmo_tabul:
         for i, row in df_params.iterrows():
             de_values = '{},{}'.format(row[par_name[0]],row[par_name[1]])
             params['devalues'] = de_values
+            params['Om0'] = row['Om0']
             cosmo_params = load_cosmo_params_from_script(params)
+            cosmo_params['Ode0'] = 1.-cosmo_params['Om0']
             vv = dist_modulus(cosmo_params)
             for i in range(len(par_name)):
                 vv[par_name[i]] = row[par_name[i]]
@@ -262,6 +264,7 @@ def check_interp(interp,df_tot,ccols,params):
         params['devalues'] = rb
         if 'Om0' in ccols:
             params['Om0'] = row['Om0']
+            params['Ode'] = 1.-row['Om0']
         cosmo_params = load_cosmo_params_from_script(params)
         estim_val =  dist_modulus(cosmo_params,[row['z']])['distmod'].values[0]
         real_val.append(estim_val)
