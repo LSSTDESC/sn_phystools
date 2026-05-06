@@ -813,7 +813,7 @@ class Fit_surveys:
             Selected data.
 
         """
-        idx = dd['sigma_c'] <= 0.04
+        idx = dd['sigmaC'] <= 0.04
         idx &= dd['n_epochs_bef'] >= 5
         idx &= dd['n_epochs_aft'] >= 10
         idx &= dd['n_epochs_m10_p5'] >= 5
