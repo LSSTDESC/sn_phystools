@@ -269,9 +269,11 @@ def loadData(theDir, dbName, inDir, field='COSMOS', seasons='*', nproc=8,
         else:
             searchname = '{}/{}/{}/SN*{}*_{}.hdf5'.format(
                 theDir, dbName, inDir, field, sea)
-        """
         searchname = '{}/{}/{}/SN*{}*_{}{}*.hdf5'.format(
             theDir, dbName, inDir, field, sea, suffix)
+        """
+        searchname = '{}/{}/{}/SN*{}*.hdf5'.format(
+            theDir, dbName, inDir, field)
 
         print('searching for', searchname)
         files += glob.glob(searchname)
