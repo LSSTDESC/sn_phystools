@@ -14,6 +14,15 @@ import pandas as pd
 
 
 def selection_criteria():
+    """
+    Method setting selection criteria
+
+    Returns
+    -------
+    dict_sel : dict
+        selection criteria.
+
+    """
 
     dict_sel = {}
 
@@ -30,7 +39,8 @@ def selection_criteria():
                     ('n_epochs_p5_p20', operator.ge, 1, 5),
                     ('n_bands_m8_p10', operator.ge, 2, 6),
                     ('fitstatus', operator.eq, 'fitok', 7),
-                    ('chisq_red', operator.le, 2, 8)]
+                    #('chisq_red', operator.le, 2, 8)
+                    ]
 
     sdict['sigmaC'] = [('sigmaC', operator.le, 0.04, 8)]
     # sdict['z0.7'] = [('z', operator.ge, 0.7)]
