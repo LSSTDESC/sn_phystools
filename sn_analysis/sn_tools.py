@@ -597,7 +597,7 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
 
     """
 
-    fName = '{}/cosmo_*{}*.hdf5'.format(theDir, dbName)
+    fName = '{}/cosmo_fit_{}*.hdf5'.format(theDir, dbName)
     fis = glob.glob(fName)
     if len(fis) == 0:
         print('Problem here: file not found in path', fName)
@@ -609,7 +609,7 @@ def load_cosmo_data(theDir, dbName, cols_group, spectro_config,
         if 'nsn_z_0.8_sigma_mu' in dd.columns:
             dd['nsn_rat_highz'] = dd['nsn_z_0.8_sigma_mu'] / dd['nsn_z_0.8']
         df = pd.concat((df, dd))
-
+        
     # re-calculate SMoM here if necessary
     if 'wa_fit' not in df.columns:
         df = recalc(df)
