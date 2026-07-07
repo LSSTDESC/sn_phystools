@@ -285,18 +285,20 @@ class SNflux:
         bands = lc['filter'].unique()
         
         lc_df = pd.DataFrame()
+        
         for b in bands:
             idx = lc['filter'] == b
-            lcb = lc[idx]
+            lcb = pd.DataFrame(lc[idx])
+            
             flux = self.sn.bandflux(lcb['band_cosmo'], lcb['time'], 
                                     zpsys=lcb['zpsys'],zp=lcb['zp'])
-        
+            
             df_ = pd.DataFrame(flux.tolist(),columns=['flux'])
             df_['filter'] = 'LSST:'+b
             df_['filter_notel'] = b
             df_['time'] = lcb['time'].to_list()
-            df_['zp'] = lcb['zp']
-            df_['zpsys'] = lcb['zpsys']
+            df_['zp'] = lcb['zp'].to_list()
+            df_['zpsys'] = lcb['zpsys'].to_list()
             df_['mag'] = -2.5*np.log(df_['flux'])+df_['zp']
             lc_df = pd.concat((lc_df,df_))
         
