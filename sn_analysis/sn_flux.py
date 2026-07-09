@@ -323,10 +323,11 @@ class SNflux:
 
         """
 
-        lc = Table()        
+        lc = Table()  
+        
         if lc_data is not None:
-            print(lc_data[['pwv','aerosol','ozone']])
-       
+            #print(lc_data[['pwv','aerosol','ozone']])
+        
             ccols = ['time','band_cosmo','filter',
                      'airmass','pwv','aerosol','ozone',
                      'zpsys','zp']
