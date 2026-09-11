@@ -124,8 +124,8 @@ def effi(resa, resb, xvar='z', bins=np.arange(0.01, 1.1, 0.02)):
 
     """
 
-    groupa = resa.groupby(pd.cut(resa[xvar], bins),observed=True)
-    groupb = resb.groupby(pd.cut(resb[xvar], bins),observed=True)
+    groupa = resa.groupby(pd.cut(resa[xvar], bins),observed=False)
+    groupb = resb.groupby(pd.cut(resb[xvar], bins),observed=False)
 
     effi = groupb.size()/groupa.size()
 
@@ -207,6 +207,37 @@ def bin_it_mean(res, xvar='z', yvar='mu',
     df['{}_std'.format(yvar)] = group[yvar].std().to_list()
     df['size'] = group.size().to_list()
     df['{}_sigma'.format(yvar)] = df['{}_std'.format(yvar)]/np.sqrt(df['size'])
+    return df
+
+def bin_it_sum(res, xvar='z', yvar='mu',
+                bins=np.arange(0.01, 1.1, 0.02)):
+    """
+
+
+    Parameters
+    ----------
+    res : pandas df
+        Data to process.
+    xvar : str, optional
+        x-axis var. The default is 'z'.
+    yvar : str, optional
+        y-axis var. The default is 'sigma_mu'.
+    bins : list(float), optional
+        binning values. The default is np.arange(0.01, 1.1, 0.02).
+
+    Returns
+    -------
+    df : pandas df
+        binned data + std.
+
+    """
+
+    group = res.groupby(pd.cut(res[xvar], bins), observed=False)
+    bin_centers = (bins[: -1] + bins[1:])/2
+    df = pd.DataFrame(bin_centers, columns=[xvar])
+
+    df[yvar] = group[yvar].sum().to_list()
+    
     return df
 
 
