@@ -175,20 +175,22 @@ def load_fit_atmos_data(theDir,atmos_params):
         mean wave data.
 
     """
+    bands = ['g','r','i','z','y','gr','ri','iz','zy']
     df_zp = pd.DataFrame()
     df_wave = pd.DataFrame()
     for atm in atmos_params:
         fName = '{}/zp_atmos_{}.hdf5'.format(theDir,atm)
         df = pd.read_hdf(fName)
-        for b in 'grizy':
+        print(fName,df.columns)
+        for b in bands:
             df['std_zp_{}'.format(b)] *= 1000
         df= df.round({'mean_airmass':2})
         dfa = linfit_atmos(df,varxp=atm,
                            vary_prefix='zp',
-                           airmass=[1.2,2.0],bands='grizy')
+                           airmass=[1.2,2.0],bands=bands)
         dfb = linfit_atmos(df,varxp=atm,
                            vary_prefix='mean_wave',
-                           airmass=[1.2,2.0],bands='grizy')
+                           airmass=[1.2,2.0],bands=bands)
         df_zp = pd.concat((df_zp,dfa))
         df_wave = pd.concat((df_wave,dfb))
 
