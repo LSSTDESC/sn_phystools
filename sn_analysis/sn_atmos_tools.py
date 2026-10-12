@@ -56,7 +56,7 @@ def get_interp(grp):
     xmax = grp['sigma_max'].values[0]
     xvals = np.linspace(xmin,xmax,100)
     yvals = a*xvals+b
-    interp = interp1d(xvals,yvals)
+    interp = interp1d(xvals,yvals, bounds_error=False, fill_value=0.)
 
     dd = {}
     dd['interp'] = [interp]
@@ -330,6 +330,31 @@ def merge_zp_wave(combi_zp,combi_wave,atmos_params):
     print(combi_tot.columns)    
     
     return combi_tot
+
+
+def clean(df,atmos_params):
+    """
+    function to rename and clean
+
+    Parameters
+    ----------
+    df : pandas df
+        Data to process
+    atmos_params : str
+        atmos param.
+
+    Returns
+    -------
+    df : pandas df
+        output df.
+
+    """
+    
+    df = rename(df,atmos_params)
+
+    df = df.drop(columns=['obs_param']) 
+    
+    return df
 
 def transform(grp):
     """
