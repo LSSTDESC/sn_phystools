@@ -34,7 +34,7 @@ def load_OS(dbDir,dbName,dbExtens):
     
     fName = '{}/{}.{}'.format(dbDir,dbName,dbExtens)
     
-    tt = np.load(fName)
+    tt = np.load(fName,allow_pickle=True)
     
     df = pd.DataFrame.from_records(tt)
     
@@ -113,6 +113,10 @@ def ddf_wfd(obs,nside=64):
     
     wfd = obs[~idx]
     
+    import numpy.lib.recfunctions as rf
+    
+    wfd = rf.append_fields(wfd, 'field', ['WFD']*len(wfd))
+                           
     return ddf,wfd
 
 def get_pixels(obs,nside):
