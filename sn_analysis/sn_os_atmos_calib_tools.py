@@ -212,3 +212,31 @@ def load_star_calib(fName,star_type='calspec'):
         df = df[idx]
 
     return df
+
+def dist(ra_a,dec_a,ra_b,dec_b):
+    """
+    function to estimate the distance between two (ra,dec) 
+    positions in the sky
+
+    Parameters
+    ----------
+    ra_a : float
+        RA 1st position.
+    dec_a : float
+        Dec 1st position
+    ra_b : float
+        RA 2nd position.
+    dec_b : float
+        Dec 2nd position.
+
+    Returns
+    -------
+    dist : float
+        distance.
+
+    """
+    dist = ((ra_a-ra_b)*np.cos(np.deg2rad(dec_a)))**2
+    dist =+ (dec_a-dec_b)**2
+    dist = np.sqrt(dist)
+    
+    return dist
