@@ -236,7 +236,7 @@ def dist(ra_a,dec_a,ra_b,dec_b):
 
     """
     dist = ((ra_a-ra_b)*np.cos(np.deg2rad(dec_a)))**2
-    dist =+ (dec_a-dec_b)**2
+    dist += (dec_a-dec_b)**2
     dist = np.sqrt(dist)
     
     return dist
